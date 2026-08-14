@@ -17,21 +17,24 @@ class LoginController extends Controller
     }
 
     public function login(Request $request)
-    {
-        $credentials = $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required',
-        ]);
+{
+    $request->validate([
+        'email'    => 'required|email',
+        'password' => 'required',
+    ]);
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            $request->session()->regenerate();
-            return redirect()->route('admin.dashboard');
-        }
+    $admin = \App\Models\Admin::where('email', $request->email)->first();
 
-        return back()->withErrors([
-            'email' => 'Invalid email or password.',
-        ])->onlyInput('email');
+    if ($admin && \Illuminate\Support\Facades\Hash::check($request->password, $admin->password_hash)) {
+        \Illuminate\Support\Facades\Auth::login($admin, $request->boolean('remember'));
+        $request->session()->regenerate();
+        return redirect()->route('admin.dashboard');
     }
+
+    return back()->withErrors([
+        'email' => 'Invalid email or password.',
+    ])->onlyInput('email');
+}
 
     public function logout(Request $request)
     {

@@ -7,7 +7,7 @@
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <form method="POST" action="{{ route('admin.bikes.store') }}">
+    <form method="POST" action="#">
       @csrf
       <div class="form-group"><label class="form-label">Bike Name</label><input type="text" name="name" class="form-input" placeholder="e.g. Mountain Pro X1" required></div>
       <div class="form-group">

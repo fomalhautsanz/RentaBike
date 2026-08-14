@@ -1,7 +1,7 @@
 <section id="page-rentals" class="page">
   <div class="page-header">
     <div>
-      <div class="page-title">Rental History</div>
+      <div class="page-title">Activity Logs</div>
       <div class="page-sub">Full log of all bike rentals and returns</div>
     </div>
     <button class="btn btn-outline">
