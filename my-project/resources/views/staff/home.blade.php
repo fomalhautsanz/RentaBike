@@ -5,12 +5,8 @@
   <div class="topbar">
     <div class="topbar-left">
       <div class="topbar-logo">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/>
-          <path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/>
-          <path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/>
-        </svg>
-      </div>
+        <img src="{{ asset('images/system_logo.png') }}" alt="RentaBike Logo" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">
+     </div>
       <div>
         <div class="topbar-brand">RentaBike</div>
         <div class="topbar-sub">Energy Park · Staff View</div>

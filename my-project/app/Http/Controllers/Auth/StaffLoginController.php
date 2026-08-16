@@ -39,8 +39,16 @@ class StaffLoginController extends Controller
     }
 
     public function logout(Request $request)
-    {
-        Session::forget(['staff_id', 'staff_name', 'staff_role']);
-        return redirect()->route('staff.login');
-    }
+{
+    Session::forget([
+        'staff_id',
+        'staff_name',
+        'staff_role',
+    ]);
+
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect()->route('staff.login');
+}
 }

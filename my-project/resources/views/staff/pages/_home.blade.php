@@ -3,18 +3,28 @@
   <div class="topbar">
     <div class="topbar-left">
       <div class="topbar-logo">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/>
-          <path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/>
-          <path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/>
-        </svg>
+        <img src="{{ asset('images/system_logo.png') }}" alt="RentaBike Logo">
       </div>
       <div>
         <div class="topbar-brand">RentaBike</div>
         <div class="topbar-sub">Energy Park · Staff View</div>
       </div>
     </div>
+   <div class="topbar-actions">
     <div class="time-chip" id="liveTime">--:-- --</div>
+
+    <form method="POST" action="{{ route('staff.logout') }}">
+        @csrf
+        <button type="submit" class="logout-btn" title="Logout">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span>Logout</span>
+        </button>
+    </form>
+</div>
   </div>
 
   <div class="content">

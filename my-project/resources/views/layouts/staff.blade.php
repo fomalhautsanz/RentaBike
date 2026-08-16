@@ -41,11 +41,56 @@ body{background:#f9fafb;color:#111827;font-family:'DM Sans',sans-serif;-webkit-f
 /* ── TOPBAR ── */
 .topbar{background:var(--white);border-bottom:1px solid var(--gray-200);padding:16px 20px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50;}
 .topbar-left{display:flex;align-items:center;gap:10px}
-.topbar-logo{width:36px;height:36px;background:linear-gradient(135deg,var(--green-500),var(--green-700));border-radius:10px;display:flex;align-items:center;justify-content:center;}
+.topbar-logo{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;}
 .topbar-logo svg{color:#fff}
 .topbar-brand{font-size:17px;font-weight:700;color:var(--gray-900);letter-spacing:-.3px}
 .topbar-sub{font-size:12px;color:var(--gray-500);margin-top:1px}
 .time-chip{background:var(--white);border:1px solid var(--gray-200);padding:6px 12px;border-radius:999px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--gray-700);box-shadow:var(--shadow-sm);}
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.topbar-actions form {
+    margin: 0;
+}
+
+.logout-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    background: var(--white);
+    color: var(--gray-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: all .15s ease;
+    font-family: 'DM Sans', sans-serif;
+}
+
+.logout-btn svg {
+    width: 17px;
+    height: 17px;
+}
+
+.logout-btn span {
+    display: none;
+}
+
+.logout-btn:hover {
+    color: var(--red-600);
+    border-color: #fecaca;
+    background: var(--red-50);
+}
+
+.logout-btn:active {
+    transform: scale(.95);
+    box-shadow: none;
+}
 
 /* ── PAGE HEADER (back button screens) ── */
 .page-header{background:var(--white);border-bottom:1px solid var(--gray-200);padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;}

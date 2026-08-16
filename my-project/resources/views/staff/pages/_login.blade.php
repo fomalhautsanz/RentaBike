@@ -54,7 +54,7 @@
     <div class="alert-error">{{ $errors->first() }}</div>
   @endif
 
-  <form class="login-form" method="POST" action="{{ route('staff.login') }}">
+  <form class="login-form" method="POST" action="{{ route('staff.login.submit') }}">
     @csrf
 
     <div class="form-group">
