@@ -12,7 +12,7 @@ class StaffLoginController extends Controller
 {
     public function showLogin()
     {
-        return view('staff.home'); // shows the login screen inside staff.home
+        return view('staff.pages._login'); // shows the login screen inside staff.home
     }
 
     public function login(Request $request)

@@ -1,5 +1,5 @@
 {{-- HOME SCREEN --}}
-<section class="screen" id="home">
+<section class="screen active" id="home">
   <div class="topbar">
     <div class="topbar-left">
       <div class="topbar-logo">
