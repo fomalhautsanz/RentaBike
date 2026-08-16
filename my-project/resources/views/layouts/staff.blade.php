@@ -7,6 +7,8 @@
 <title>RentaBike · Staff</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+@vite(['resources/css/app.css', 'resources/js/app.js'])
+
 <style>
 
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
