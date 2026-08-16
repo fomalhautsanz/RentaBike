@@ -12,7 +12,7 @@ class StaffLoginController extends Controller
 {
     public function showLogin()
     {
-        return view('staff.home'); // shows the login screen inside staff.home
+        return view('staff.pages._login'); // shows the login screen inside staff.home
     }
 
     public function login(Request $request)
@@ -39,8 +39,16 @@ class StaffLoginController extends Controller
     }
 
     public function logout(Request $request)
-    {
-        Session::forget(['staff_id', 'staff_name', 'staff_role']);
-        return redirect()->route('staff.login');
-    }
+{
+    Session::forget([
+        'staff_id',
+        'staff_name',
+        'staff_role',
+    ]);
+
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect()->route('staff.login');
+}
 }
