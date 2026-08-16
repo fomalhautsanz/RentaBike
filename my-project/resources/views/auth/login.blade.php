@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RentaBike — Login</title>
+
+
+@vite(['resources/css/app.css', 'resources/js/app.js'])
+
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(135deg,#f0fdf4,#dcfce7);min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px}
@@ -19,9 +23,10 @@
   .form-input{width:100%;padding:11px 12px 11px 40px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;color:#111827;outline:none;font-family:inherit}
   .form-input:focus{border-color:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.1)}
   .input-icon-wrap{position:relative;display:flex;align-items:center}
-  .input-icon-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af;flex-shrink:0;pointer-events:none;width:16px;height:16px}
-  .eye-btn{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;color:#9ca3af;padding:6px;display:flex;align-items:center}
-  .eye-btn:hover{color:#6b7280}
+  .input-icon-wrap > svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af;flex-shrink:0;pointer-events:none;width:16px;height:16px}
+  .eye-btn{position:absolute;right:8px;top:0;bottom:0;margin:auto;width:28px;height:28px;background:transparent;border:none;outline:none;appearance:none;-webkit-appearance:none;cursor:pointer;color:#9ca3af;padding:0;display:flex;align-items:center;justify-content:center;border-radius:6px}
+  .eye-btn:hover{background:#f3f4f6;color:#6b7280}
+  .eye-btn svg{display:block;width:16px;height:16px}
   .login-extras{display:flex;align-items:center;justify-content:space-between;margin:20px 0 24px;gap:12px}
   .login-extras label{display:flex;align-items:center;gap:8px;font-size:13px;color:#6b7280;cursor:pointer}
   .login-link{font-size:13px;color:#16a34a;text-decoration:none;font-weight:500}
@@ -32,6 +37,7 @@
   .login-footer{margin-top:28px;text-align:center;font-size:13px;color:#9ca3af}
   .login-help{text-align:center;font-size:13px;color:#6b7280}
   .alert-error{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
+  #pw-input{padding-right:40px}
 </style>
 </head>
 <body>
@@ -84,13 +90,13 @@
     <button type="submit" class="login-submit">Sign In to Admin Portal</button>
 
     <div class="login-footer">
-      RentaBike Admin Portal · © {{ date('Y') }}
+      © {{ date('Y') }} RentaBike. All rights reserved.
     </div>
   </form>
 </div>
 
 <div class="login-help">
-  Having trouble? Contact your system administrator.
+  Need help? Contact <a class="text-[#01A63E] font-medium hover:underline" href="mailto:support@bikerental.com">support@bikerental.com</a>.
 </div>
 
 <script>
