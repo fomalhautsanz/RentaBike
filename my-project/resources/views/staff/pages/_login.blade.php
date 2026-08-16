@@ -1,10 +1,11 @@
 {{-- LOGIN SCREEN --}}
+
 <section class="screen active" id="login">
   <div class="login-bg">
     <div class="login-logo-wrap">
-      <img src="../system_logo.png" alt="Logo" class="login-logo-img">
+      <img src="{{ asset('images/system_logo.png') }}" alt="Logo" class="login-logo-img">
       <div class="login-brand">RentaBike</div>
-      <div class="login-sub">Staff Portal</div>
+      <div class="login-sub">Staff Portal · Sign in to continue</div>
     </div>
     <div class="login-card">
       <div class="login-error" id="loginError">Incorrect email or password. Please try again.</div>
@@ -55,7 +56,7 @@
 
     <div class="login-footer">
       &copy; 2026 RentaBike. All rights reserved.<br>
-      Need help? <a href="mailto:support@rentabike.com">Contact support@rentabike.com</a>
+      Need help? Contact <a class="text-[#01A63E]! font-medium hover:underline" href="mailto:support@bikerental.com">support@bikerental.com</a>.
     </div>
   </div>
 </section>
