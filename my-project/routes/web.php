@@ -21,4 +21,5 @@ Route::get('/staff', fn() => view('staff.home'))->name('staff.home');
 Route::prefix('admin')->middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
     Route::post('/bikes', [DashboardController::class, 'storeBike'])->name('admin.bikes.store');
+    Route::post('/staff', [DashboardController::class, 'storeStaff'])->name('admin.staff.store');
 });

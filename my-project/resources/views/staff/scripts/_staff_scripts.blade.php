@@ -138,7 +138,7 @@ function openModal(type, data = {}) {
       <div class="modal-detail-row"><span class="label">Updated By</span><span class="value">${data.updatedBy ?? '—'}</span></div>
       <div class="modal-detail-row"><span class="label">Date Flagged</span><span class="value">${data.date ?? '—'}</span></div>
       <div class="modal-actions">
-        <button class="primary-btn" onclick="closeModal(); openReportForm('damage')">
+        <button class="primary-btn" onclick="askConfirm(() => { closeModal(); openReportForm('damage'); })">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
           File Damage Report
         </button>
@@ -150,6 +150,21 @@ function openModal(type, data = {}) {
 }
 function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
 function closeModalOutside(e) { if (e.target === document.getElementById('modalBg')) closeModal(); }
+let pendingConfirmAction = null;
+function askConfirm(action) {
+  pendingConfirmAction = action;
+  document.getElementById('confirmBg').classList.add('open');
+}
+function confirmAction() {
+  const action = pendingConfirmAction;
+  closeConfirm();
+  if (action) action();
+}
+function closeConfirm() {
+  pendingConfirmAction = null;
+  document.getElementById('confirmBg').classList.remove('open');
+}
+function closeConfirmOutside(e) { if (e.target === document.getElementById('confirmBg')) closeConfirm(); }
 function toggleID() {
   const c = document.getElementById('idContainer');
   c.style.display = c.style.display === 'none' ? 'block' : 'none';

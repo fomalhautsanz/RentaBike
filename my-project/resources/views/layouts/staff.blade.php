@@ -208,6 +208,12 @@ body{background:#f9fafb;color:#111827;font-family:'DM Sans',sans-serif;-webkit-f
 .modal-detail-row .label{font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px}
 .modal-detail-row .value{font-size:14px;font-weight:600;color:var(--gray-900);text-align:right}
 .modal-actions{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.confirm-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.4);display:none;align-items:center;justify-content:center;padding:24px;z-index:250}
+.confirm-backdrop.open{display:flex}
+.confirm-dialog{width:100%;max-width:350px;background:var(--white);border-radius:var(--radius-lg);padding:24px 20px 20px;text-align:center;box-shadow:var(--shadow-lg);animation:popIn .2s ease}
+.confirm-icon{width:38px;height:38px;border-radius:50%;background:var(--orange-50);color:var(--orange-600);font-size:22px;font-weight:700;line-height:38px;margin:0 auto 12px}
+.confirm-dialog h3{font-size:17px;color:var(--gray-900);margin-bottom:6px}.confirm-dialog p{font-size:13px;color:var(--gray-500);line-height:1.5;margin-bottom:18px}
+.confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.confirm-actions .primary-btn{margin-top:0}
 
 /* ── ID PREVIEW ── */
 .id-preview-box{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius-md);padding:28px;text-align:center;margin-top:10px;}

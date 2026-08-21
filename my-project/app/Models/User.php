@@ -35,7 +35,7 @@ class User extends Authenticatable
     protected static function booted(): void
     {
         static::saving(function (self $user): void {
-            if ($user->isDirty('email')) {
+            if ($user->isDirty('email') || blank($user->email_hash)) {
                 $user->email = Str::lower(trim((string) $user->email));
                 $user->email_hash = self::emailLookupHash($user->email);
             }
