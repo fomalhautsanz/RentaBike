@@ -14,27 +14,6 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-<<<<<<< Updated upstream
-// Auth routes
-//Admin
-Route::get('/admin/login', [LoginController::class, 'showLogin'])->name('login');
-Route::post('/admin/login', [LoginController::class, 'login']);
-Route::post('/admin/logout', [LoginController::class, 'logout'])->name('logout');
-
-// Staff
-Route::get('/staff/login', [StaffLoginController::class, 'showLogin'])
-    ->name('staff.login');
-
-Route::post('/staff/login', [StaffLoginController::class, 'login'])
-    ->name('staff.login.submit');
-
-Route::post('/staff/logout', [StaffLoginController::class, 'logout'])
-    ->name('staff.logout');
-
-// Staff routes (protected)
-Route::prefix('staff')->middleware('staff.auth')->group(function () {
-    Route::get('/home', fn() => view('staff.home'))->name('staff.home');
-=======
 
 // ======================================================
 // ADMIN AUTHENTICATION
@@ -74,7 +53,6 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
 
     Route::post('/bikes', [DashboardController::class, 'storeBike'])
         ->name('admin.bikes.store');
->>>>>>> Stashed changes
 });
 
 
