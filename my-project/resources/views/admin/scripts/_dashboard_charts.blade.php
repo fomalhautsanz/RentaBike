@@ -37,4 +37,45 @@ window.nav = function(id, btn) {
   _origNav(id, btn);
   if (id === 'dashboard') initCharts();
 };
+// kini gi add nako function sa modals
+// export dashboard data to CSV
+function exportDashboardData() {
+  const rows = [];
+
+  rows.push(['Dashboard Summary', '']);
+  document.querySelectorAll('#page-dashboard .stat-card').forEach(card => {
+    const value = card.querySelector('.stat-value').textContent.trim();
+    const label = card.querySelector('.stat-label').textContent.trim();
+    rows.push([label, value]);
+  });
+
+  rows.push(['', '']); 
+
+  rows.push(['Recent Activity', '']);
+  rows.push(['Type', 'Detail', 'Staff', 'Time']);
+
+  document.querySelectorAll('#page-dashboard .activity-item').forEach(item => {
+    const type = item.querySelector('.activity-type').textContent.trim();
+    const detail = item.querySelector('.activity-detail').textContent.trim();
+    const metaSpans = item.querySelectorAll('.activity-meta span');
+    const time = metaSpans[0]?.textContent.trim() || '';
+    const staff = metaSpans[1]?.textContent.trim() || '';
+
+    rows.push([type, detail, staff, time]);
+  });
+
+  const csvContent = rows.map(row =>
+    row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+  ).join('\n');
+
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `dashboard-summary-${new Date().toISOString().slice(0,10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+
+  showToast('Dashboard data exported successfully.');
+}
 </script>
