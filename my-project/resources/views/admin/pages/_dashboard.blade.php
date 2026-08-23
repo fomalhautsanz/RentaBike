@@ -1,8 +1,8 @@
 <section id="page-dashboard" class="page active">
   <div class="page-header">
     <div>
-      <div class="page-title">Dashboard</div>
-      <div class="page-sub">Welcome back! Here's what's happening today.</div>
+      <div class="page-title">Admin Dashboard</div>
+      <div class="page-sub">Welcome back! Here's what's happening today!</div>
     </div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-outline">
