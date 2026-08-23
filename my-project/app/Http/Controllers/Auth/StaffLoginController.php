@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Helpers\HashHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Staff;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class StaffLoginController extends Controller
 {
@@ -27,8 +29,11 @@ class StaffLoginController extends Controller
             'password' => 'required',
         ]);
 
-       
-        $key = strtolower($request->email) . '|' . $request->ip();
+
+        $email = Str::lower(trim($request->input('email')));
+        $emailHash = HashHelper::email($email);
+
+        $key = 'staff-login|' . $emailHash . '|' . $request->ip();
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
 
@@ -42,7 +47,7 @@ class StaffLoginController extends Controller
                 ->onlyInput('email');
         }
 
-        $staff = Staff::where('email', $request->email)
+        $staff = Staff::where('email_hash', $emailHash)
             ->where('status', 'active')
             ->first();
 

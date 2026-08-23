@@ -26,4 +26,13 @@ class Admin extends Authenticatable
     {
         return $this->password_hash;
     }
+
+    protected static function booted(): void
+    {
+        static::saving(function ($model) {
+            if ($model->isDirty('email')) {
+                $model->email_hash = \App\Helpers\HashHelper::email($model->email);
+            }
+        });
+    }
 }
