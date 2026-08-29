@@ -186,7 +186,8 @@ function updateTime() {
   const m   = String(now.getMinutes()).padStart(2, '0');
   const suf = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
-  document.getElementById('liveTime').textContent = h + ':' + m + ' ' + suf;
+  const timeElement = document.querySelector('.screen.active #liveTime');
+  if (timeElement) timeElement.textContent = h + ':' + m + ' ' + suf;
 }
 setInterval(updateTime, 1000);
 updateTime();
