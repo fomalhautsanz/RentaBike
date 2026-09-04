@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Helpers\HashHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use Illuminate\Http\Request;
@@ -32,9 +33,10 @@ class LoginController extends Controller
         ]);
 
 
-        $email = Str::lower($request->input('email'));
+        $email = Str::lower(trim($request->input('email')));
+        $emailHash = HashHelper::email($email);
 
-        $key = 'admin-login|' . $email . '|' . $request->ip();
+        $key = 'admin-login|' . $emailHash . '|' . $request->ip();
 
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
@@ -51,7 +53,7 @@ class LoginController extends Controller
         }
 
 
-        $admin = Admin::where('email', $email)->first();
+        $admin = Admin::where('email_hash', $emailHash)->first();
 
         if (
             !$admin ||

@@ -18,6 +18,19 @@
           <option>Staff</option><option>Manager</option><option>Technician</option>
         </select>
       </div>
+      <div class="form-group">
+        <label class="form-label">Privileges</label>
+        <div class="permission-grid">
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="View Inventory"> <span>View Inventory</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Add Inventory"> <span>Add Inventory</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Edit Inventory"> <span>Edit Inventory</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Delete Inventory"> <span>Delete Inventory</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Process Rentals"> <span>Process Rentals</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="View Reports"> <span>View Reports</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Manage Staff"> <span>Manage Staff</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Handle Maintenance"> <span>Handle Maintenance</span></label>
+        </div>
+      </div>
       <div class="form-group"><label class="form-label">Password</label><input type="password" name="password" class="form-input" placeholder="Set initial password" required></div>
       <div class="form-actions">
         <button type="button" class="btn btn-outline" onclick="closeModal('add-staff-modal')">Cancel</button>
@@ -48,6 +61,19 @@
       <select id="edit-staff-status" class="form-select">
         <option>Active</option><option>On Leave</option>
       </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Privileges</label>
+      <div class="permission-grid">
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="View Inventory"> <span>View Inventory</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Add Inventory"> <span>Add Inventory</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Edit Inventory"> <span>Edit Inventory</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Delete Inventory"> <span>Delete Inventory</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Process Rentals"> <span>Process Rentals</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="View Reports"> <span>View Reports</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Manage Staff"> <span>Manage Staff</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Handle Maintenance"> <span>Handle Maintenance</span></label>
+      </div>
     </div>
     <div class="form-actions">
       <button class="btn btn-outline" onclick="closeModal('edit-staff-modal')">Cancel</button>

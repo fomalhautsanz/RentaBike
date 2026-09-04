@@ -19,4 +19,13 @@ class Staff extends Model
         'role',
         'status',
     ];
+
+    protected static function booted(): void
+        {
+            static::saving(function ($model) {
+                if ($model->isDirty('email')) {
+                    $model->email_hash = \App\Helpers\HashHelper::email($model->email);
+                }
+            });
+        }
 }

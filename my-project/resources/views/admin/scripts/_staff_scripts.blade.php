@@ -15,10 +15,19 @@ function applyStaffFilters() {
     r.style.display = roleOk && statusOk ? '' : 'none';
   });
 }
-function openEditStaff(name, role, status) {
+function openEditStaff(name, role, status, permissions = []) {
   document.getElementById('edit-staff-name').value = name;
   document.getElementById('edit-staff-role').value = role;
   document.getElementById('edit-staff-status').value = status;
+
+  const selectedPermissions = Array.isArray(permissions)
+    ? permissions
+    : (typeof permissions === 'string' ? permissions.split(',').map(p => p.trim()).filter(Boolean) : []);
+
+  document.querySelectorAll('#edit-staff-modal .permission-checkbox').forEach(cb => {
+    cb.checked = selectedPermissions.includes(cb.value);
+  });
+
   // remember which record we're editing 
   //temporary until we have IDs from the backend 
   window._editingStaffOriginalName = name; 
