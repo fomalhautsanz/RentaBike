@@ -9,42 +9,62 @@ use App\Models\Admin;         // model sa admin table
 use App\Models\Bicycle;       // model sa bicycle table
 use App\Models\IssueReport;   // model sa issue report table
 use App\Models\Rental;        // model sa rental table
-use App\Models\Staff;         // model sa staff table
-use Illuminate\Support\Carbon; // para sa pag-handle og dates/time
+use App\Models\Staff;         // model sa staff table 
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon; // para sa pag-handle og dates/time
 
 class DashboardController extends Controller
 {
     // kini ang function nga ma-run pag adto ka sa admin dashboard
     public function index()
-    {
-        // d na hardcoded sah ga compute nag real data 
-        $stats = [
-            'total_bikes'       => Bicycle::count(), // i-ihap tanan rows sa bicycle table, basra mga status na nila og count 
-            'active_rentals'    => Rental::where('status', 'active')->count(), 
-            'under_maintenance' => Bicycle::whereIn('status', ['maintenance', 'repair'])->count(), 
-            'revenue'           => (float) Rental::where('status', 'completed') 
-                ->whereMonth('start_time', now()->month) // real time shi kuhaon karon na month ang report 
-                ->whereYear('start_time', now()->year)   
-                ->sum('total_fee'),
-        ];
+{
+    $stats = [
+        'total_bikes'       => Bicycle::count(),
+        'active_rentals'    => Rental::where('status', 'active')->count(),
+        'under_maintenance' => Bicycle::whereIn('status', ['maintenance', 'repair'])->count(),
+        'revenue'           => (float) Rental::where('status', 'completed')
+            ->whereMonth('start_time', now()->month)
+            ->whereYear('start_time', now()->year)
+            ->sum('total_fee'),
+    ];
 
-        $staff    = collect([]);
-        $bikes    = collect([]);
-        $reports  = collect([]);
-        $rentals  = collect([]);
+    // ── Call the helper methods ──────────────────────────────────────────
+    $weeklyRentals      = $this->weeklyRentalCounts();
+    $revenueVsRentals   = $this->monthlyRevenueVsRentals();
+    $peakHours          = $this->peakRentalHours();
 
-        $pendingReports    = 2;
-        $inProgressReports = 1;
-        $resolvedReports   = 5;
+    // ── Recent activity from the view ────────────────────────────────────
+    $recentActivity = \DB::table('vw_staff_activity_log')
+        ->latest('timestamp')
+        ->limit(10)
+        ->get()
+        ->map(function ($log) {
+            $log->timestamp = \Carbon\Carbon::parse($log->timestamp);
+            return $log;
+        });
 
-        // ipadala tanan variables sa dashboard view ngani 
-        return view('admin.dashboard', compact(
-            'stats',
-            'pendingReports', 'inProgressReports', 'resolvedReports',
-            'recentActivity', 'bikeTypeDistribution',
-            'weeklyRentals', 'revenueVsRentals', 'peakHours'
-        ));
-    }
+    // ── Bike type distribution ───────────────────────────────────────────
+    $bikeTypeDistribution = Bicycle::selectRaw('bike_type, COUNT(*) as count')
+        ->groupBy('bike_type')
+        ->pluck('count', 'bike_type')
+        ->toArray();
+
+    $staff    = collect([]);
+    $bikes    = collect([]);
+    $reports  = collect([]);
+    $rentals  = collect([]);
+
+    $pendingReports    = IssueReport::where('status', 'pending')->count();
+    $inProgressReports = IssueReport::where('status', 'in_progress')->count();
+    $resolvedReports   = IssueReport::where('status', 'resolved')->count();
+
+    return view('admin.dashboard', compact(
+        'stats',
+        'pendingReports', 'inProgressReports', 'resolvedReports',
+        'recentActivity', 'bikeTypeDistribution',
+        'weeklyRentals', 'revenueVsRentals', 'peakHours'
+    ));
+}
 
     // Rental counts for the last 7 days, oldest first.
     protected function weeklyRentalCounts(): array
