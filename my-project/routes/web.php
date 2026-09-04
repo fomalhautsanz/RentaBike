@@ -51,6 +51,9 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('admin.dashboard');
 
+    Route::get('/dashboard/export', [DashboardController::class, 'exportAdminDashboardCsv'])
+        ->name('admin.dashboard.export');
+
     Route::post('/bikes', [DashboardController::class, 'storeBike'])
         ->name('admin.bikes.store');
 });
@@ -66,4 +69,7 @@ Route::prefix('staff')
 
         Route::get('/home', fn () => view('staff.home'))
             ->name('staff.home');
+
+        Route::get('/export', [DashboardController::class, 'exportStaffDashboardCsv'])
+            ->name('staff.export');
     });

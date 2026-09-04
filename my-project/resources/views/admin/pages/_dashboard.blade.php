@@ -1,14 +1,11 @@
+{{-- mao ni akong gi fix na ui kay naguba pag merge argh --}}
+
+{{-- update: CONNECTED NA SA REAL DATA --}}
 <section id="page-dashboard" class="page active">
   <div class="page-header">
     <div>
       <div class="page-title">Admin Dashboard</div>
       <div class="page-sub">Welcome back! Here's what's happening today!</div>
-    </div>
-    <div style="display:flex;gap:10px">
-      <button class="btn btn-outline">
-        <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Export Report
-      </button>
     </div>
   </div>
 
@@ -21,7 +18,7 @@
         </div>
         <span class="stat-change up">↑ 12%</span>
       </div>
-      <div class="stat-value">{{ $stats['total_bikes'] ?? 24 }}</div>
+      <div class="stat-value">{{ $stats['total_bikes'] }}</div>
       <div class="stat-label">Total Bikes</div>
     </div>
     <div class="stat-card">
@@ -29,9 +26,8 @@
         <div class="stat-icon" style="background:#eff6ff">
           <svg width="22" height="22" fill="none" stroke="#2563eb" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         </div>
-        <span class="stat-change up">↑ 8%</span>
       </div>
-      <div class="stat-value">{{ $stats['active_rentals'] ?? 8 }}</div>
+      <div class="stat-value">{{ $stats['active_rentals'] }}</div>
       <div class="stat-label">Active Rentals</div>
     </div>
     <div class="stat-card">
@@ -39,9 +35,8 @@
         <div class="stat-icon" style="background:#fff7ed">
           <svg width="22" height="22" fill="none" stroke="#ea580c" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
         </div>
-        <span class="stat-change down">↑ 2</span>
       </div>
-      <div class="stat-value">{{ $stats['under_maintenance'] ?? 3 }}</div>
+      <div class="stat-value">{{ $stats['under_maintenance'] }}</div>
       <div class="stat-label">Under Maintenance</div>
     </div>
     <div class="stat-card">
@@ -49,9 +44,8 @@
         <div class="stat-icon" style="background:#f0fdf4">
           <svg width="22" height="22" fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         </div>
-        <span class="stat-change up">↑ 18%</span>
       </div>
-      <div class="stat-value">₱{{ number_format($stats['revenue'] ?? 19800) }}</div>
+      <div class="stat-value">₱{{ number_format($stats['revenue'], 2) }}</div>
       <div class="stat-label">Revenue This Month</div>
     </div>
   </div>
@@ -65,12 +59,20 @@
     <div class="card">
       <div class="chart-title">Bike Type Distribution</div>
       <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+      @php
+        $pieColors = ['#8b5cf6', '#3b82f6', '#22c55e', '#0ea5e9', '#f59e0b', '#ef4444', '#14b8a6'];
+      @endphp
       <div class="pie-legend">
-        <div class="pie-legend-item"><div style="display:flex;align-items:center"><div class="pie-dot" style="background:#8b5cf6"></div>E-Scooter</div><span>48</span></div>
-        <div class="pie-legend-item"><div style="display:flex;align-items:center"><div class="pie-dot" style="background:#3b82f6"></div>Lady's/Men's Bike</div><span>68</span></div>
-        <div class="pie-legend-item"><div style="display:flex;align-items:center"><div class="pie-dot" style="background:#22c55e"></div>Mountain Bike</div><span>89</span></div>
-        <div class="pie-legend-item"><div style="display:flex;align-items:center"><div class="pie-dot" style="background:#0ea5e9"></div>City Bike</div><span>72</span></div>
-        <div class="pie-legend-item"><div style="display:flex;align-items:center"><div class="pie-dot" style="background:#f59e0b"></div>Kiddie Bikes</div><span>40</span></div>
+        @forelse ($bikeTypeDistribution as $type => $count)
+          <div class="pie-legend-item">
+            <div style="display:flex;align-items:center">
+              <div class="pie-dot" style="background:{{ $pieColors[$loop->index % count($pieColors)] }}"></div>{{ $type }}
+            </div>
+            <span>{{ $count }}</span>
+          </div>
+        @empty
+          <div class="pie-legend-item">No bikes recorded yet.</div>
+        @endforelse
       </div>
     </div>
   </div>
@@ -93,66 +95,41 @@
       <div style="font-size:16px;font-weight:600;color:#111827">Recent Activity</div>
     </div>
     <div class="activity-list">
-      <div class="activity-item">
-        <div class="activity-dot" style="background:#22c55e"></div>
-        <div class="activity-body">
-          <div class="activity-type">Bike Rented</div>
-          <div class="activity-detail">Mountain Pro X1 (BK-001) rented by Juan dela Cruz</div>
-          <div class="activity-meta">
-            <span>
-              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              2 minutes ago
-            </span>
-            <span>Staff: Alice Cooper</span>
+      @php
+        $activityStyle = fn ($action) => match (true) {
+            str_contains($action, 'OPEN_RENTAL')  => ['#22c55e', 'badge-green', 'Rental'],
+            str_contains($action, 'CLOSE_RENTAL')  => ['#3b82f6', 'badge-blue', 'Return'],
+            str_contains($action, 'REPORT')        => ['#f97316', 'badge-orange', 'Report'],
+            str_contains($action, 'STAFF')         => ['#22c55e', 'badge-green', 'Staff'],
+            str_contains($action, 'BIKE')          => ['#0ea5e9', 'badge-blue', 'Bike'],
+            default                                 => ['#6b7280', 'badge-gray', 'Activity'],
+        };
+      @endphp
+
+      @forelse ($recentActivity as $log)
+        @php [$dotColor, $badgeClass, $badgeLabel] = $activityStyle($log->action); @endphp
+        <div class="activity-item">
+          <div class="activity-dot" style="background:{{ $dotColor }}"></div>
+          <div class="activity-body">
+            <div class="activity-type">{{ ucwords(str_replace('_', ' ', strtolower($log->action))) }}</div>
+            <div class="activity-detail">{{ $log->details }}</div>
+            <div class="activity-meta">
+              <span>
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {{ $log->timestamp->diffForHumans() }}
+              </span>
+              <span>{{ ucfirst($log->user_type) }}: {{ $log->actor_name }}</span>
+            </div>
+          </div>
+          <span class="badge {{ $badgeClass }}">{{ $badgeLabel }}</span>
+        </div>
+      @empty
+        <div class="activity-item">
+          <div class="activity-body">
+            <div class="activity-detail">No activity recorded yet.</div>
           </div>
         </div>
-        <span class="badge badge-green">Rental</span>
-      </div>
-      <div class="activity-item">
-        <div class="activity-dot" style="background:#3b82f6"></div>
-        <div class="activity-body">
-          <div class="activity-type">Bike Returned</div>
-          <div class="activity-detail">City Explorer C3 (BK-004) returned by Maria Santos</div>
-          <div class="activity-meta">
-            <span>
-              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              15 minutes ago
-            </span>
-            <span>Staff: Bob Wilson</span>
-          </div>
-        </div>
-        <span class="badge badge-blue">Return</span>
-      </div>
-      <div class="activity-item">
-        <div class="activity-dot" style="background:#f97316"></div>
-        <div class="activity-body">
-          <div class="activity-type">Maintenance Report</div>
-          <div class="activity-detail">Mountain Trail M2 (BK-005) flagged for flat rear tire</div>
-          <div class="activity-meta">
-            <span>
-              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              1 hour ago
-            </span>
-            <span>Staff: Carol Martinez</span>
-          </div>
-        </div>
-        <span class="badge badge-orange">Report</span>
-      </div>
-      <div class="activity-item">
-        <div class="activity-dot" style="background:#22c55e"></div>
-        <div class="activity-body">
-          <div class="activity-type">New Staff Added</div>
-          <div class="activity-detail">David Lee added as Technician</div>
-          <div class="activity-meta">
-            <span>
-              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              3 hours ago
-            </span>
-            <span>By: Admin</span>
-          </div>
-        </div>
-        <span class="badge badge-green">Staff</span>
-      </div>
+      @endforelse
     </div>
   </div>
 </section>
