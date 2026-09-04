@@ -49,7 +49,31 @@ class DashboardController extends Controller
         ->pluck('count', 'bike_type')
         ->toArray();
 
-    $staff    = collect([]);
+    $staff = Staff::orderBy('staff_id')->get()->map(function ($member) {
+        return (object) [
+            'id'          => $member->staff_id,
+            'name'        => $member->full_name,
+            'email'       => $member->email ?? 'N/A',
+            'phone'       => $member->phone ?? 'N/A',
+            'role'        => $member->role ?? 'Staff',
+            'status'      => ucfirst(strtolower($member->status ?? 'active')),
+            'permissions' => $member->permissions ?? ['View Inventory', 'Process Rentals', 'View Reports'],
+        ];
+    });
+
+    $admins = Admin::orderBy('admin_id')->get()->map(function ($admin) {
+        return (object) [
+            'id'          => $admin->admin_id,
+            'name'        => $admin->full_name,
+            'email'       => $admin->email ?? 'N/A',
+            'phone'       => $admin->phone ?? 'N/A',
+            'role'        => 'Administrator',
+            'status'      => 'Active',
+            'permissions' => ['Manage Staff', 'View Reports', 'Process Rentals', 'View Inventory'],
+        ];
+    });
+
+    $staff = $staff->merge($admins);
     $bikes    = collect([]);
     $reports  = collect([]);
     $rentals  = collect([]);
@@ -59,6 +83,7 @@ class DashboardController extends Controller
     $resolvedReports   = IssueReport::where('status', 'resolved')->count();
 
     return view('admin.dashboard', compact(
+        'staff',
         'stats',
         'pendingReports', 'inProgressReports', 'resolvedReports',
         'recentActivity', 'bikeTypeDistribution',
