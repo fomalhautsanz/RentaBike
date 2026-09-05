@@ -38,36 +38,6 @@ class StaffLoginController extends Controller
         | The email + IP address combination gets its own attempt counter.
         |
         */
-        $key = strtolower($request->email) . '|' . $request->ip();
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Check if Login is Currently Locked
-        |--------------------------------------------------------------------------
-        */
-
-        if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
-
-            $seconds = RateLimiter::availableIn($key);
-
-            $minutes = ceil($seconds / 60);
-
-            return back()
-                ->withErrors([
-                    'email' => "Too many failed attempts. Please try again in {$minutes} minute(s).",
-                ])
-                ->onlyInput('email');
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Find Staff Account
-        |--------------------------------------------------------------------------
-        */
-
-
         $email = Str::lower(trim($request->input('email')));
         $emailHash = HashHelper::email($email);
 
@@ -96,9 +66,11 @@ class StaffLoginController extends Controller
             return redirect()->route('staff.home');
         }
 
-        return back()->withErrors([
-            'email' => 'Invalid email or password.',
-        ])->onlyInput('email');
+        RateLimiter::hit($key, self::LOCKOUT_SECONDS);
+
+        return back()
+            ->withErrors(['email' => 'Invalid email or password.'])
+            ->onlyInput('email');
     }
 
 
