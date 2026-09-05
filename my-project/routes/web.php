@@ -43,6 +43,7 @@ Route::post('/staff/logout', [StaffLoginController::class, 'logout'])
     ->name('staff.logout');
 
 
+
 // ======================================================
 // ADMIN PROTECTED ROUTES
 // ======================================================
