@@ -7,6 +7,17 @@
       <div class="page-title">Admin Dashboard</div>
       <div class="page-sub">Welcome back! Here's what's happening today!</div>
     </div>
+
+    {{-- Export CSV button, upper right --}}
+    <a href="{{ route('admin.dashboard.export') }}"
+      style="display:inline-flex;align-items:center;gap:6px;padding:9px 13px;background:linear-gradient(135deg,#16a34a,#15803d);border:none;border-radius:12px;font-size:13px;font-weight:600;color:#fff;text-decoration:none;box-shadow:0 4px 14px rgba(22,163,74,.3)">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Export CSV
+    </a>
   </div>
 
   {{-- STAT CARDS --}}
