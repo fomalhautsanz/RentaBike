@@ -59,7 +59,7 @@ class DashboardController extends Controller
             'status'      => ucfirst(strtolower($member->status ?? 'active')),
             'permissions' => $member->permissions ?? ['View Inventory', 'Process Rentals', 'View Reports'],
         ];
-    });
+    })->toBase(); // downgrade to plain Support Collection so merge() doesn't call getKey() on stdClass
 
     $admins = Admin::orderBy('admin_id')->get()->map(function ($admin) {
         return (object) [
@@ -71,7 +71,7 @@ class DashboardController extends Controller
             'status'      => 'Active',
             'permissions' => ['Manage Staff', 'View Reports', 'Process Rentals', 'View Inventory'],
         ];
-    });
+    })->toBase(); // downgrade to plain Support Collection so merge() doesn't call getKey() on stdClass
 
     $staff = $staff->merge($admins);
     $bikes    = collect([]);
