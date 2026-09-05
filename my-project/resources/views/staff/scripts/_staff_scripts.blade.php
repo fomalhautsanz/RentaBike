@@ -64,6 +64,30 @@ function startTimer() {
 function pad(n) { return String(n).padStart(2, '0'); }
 
 // ── MODALS ───────────────────────────────────────────────────────────────────
+function openBikeAction(action) {
+  const content = document.getElementById('modalContent');
+  const title = action === 'add' ? 'Add Bike' : action === 'edit' ? 'Edit Bike' : 'Delete Bike';
+  const body = action === 'delete'
+    ? `<p class="modal-confirmation-message">Are you sure you want to remove this bike from inventory?</p>`
+    : `<div class="form-group"><label class="form-label">Bike ID</label><input class="form-input" placeholder="e.g. RB-004"></div>
+       <div class="form-group"><label class="form-label">Bike Type</label><select class="form-select"><option>Road Bike</option><option>Sidecar Bike</option><option>Children's Bike</option></select></div>
+       <div class="form-group"><label class="form-label">Status</label><select class="form-select"><option>Available</option><option>Rented</option><option>Repair</option></select></div>`;
+  content.innerHTML = `<div class="modal-bike-title">${title}</div>${body}<div class="modal-actions"><button class="primary-btn" onclick="showToast('Bike ${action} action submitted'); closeModal()">${action === 'delete' ? 'Delete Bike' : 'Save Changes'}</button><button class="primary-btn outline" onclick="closeModal()">Cancel</button></div>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+
+function openStaffAction(action, name = '') {
+  const content = document.getElementById('modalContent');
+  const title = action === 'add' ? 'Add Staff Account' : action === 'edit' ? `Edit ${name}` : `Delete ${name}`;
+  const body = action === 'delete'
+    ? `<p class="modal-confirmation-message">Are you sure you want to remove this staff account?</p>`
+    : `<div class="form-group"><label class="form-label">Full Name</label><input class="form-input" value="${name}" placeholder="Enter full name"></div>
+       <div class="form-group"><label class="form-label">Email Address</label><input class="form-input" type="email" placeholder="staff@rentabike.com"></div>
+       <div class="form-group"><label class="form-label">Role</label><select class="form-select"><option>Staff</option><option>Admin</option></select></div>`;
+  content.innerHTML = `<div class="modal-bike-title">${title}</div>${body}<div class="modal-actions"><button class="primary-btn" onclick="showToast('Staff account ${action} action submitted'); closeModal()">${action === 'delete' ? 'Delete Account' : 'Save Account'}</button><button class="primary-btn outline" onclick="closeModal()">Cancel</button></div>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+
 function openModal(type, data = {}) {
   const bikeIconHtml = (cls) => `
     <div class="bike-icon ${cls}" style="width:48px;height:48px">

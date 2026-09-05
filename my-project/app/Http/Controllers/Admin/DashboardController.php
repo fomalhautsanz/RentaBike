@@ -11,10 +11,83 @@ use App\Models\IssueReport;   // model sa issue report table
 use App\Models\Rental;        // model sa rental table
 use App\Models\Staff;         // model sa staff table 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use Carbon\Carbon; // para sa pag-handle og dates/time
 
 class DashboardController extends Controller
 {
+    public function storeStaff(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:150'],
+            'email' => ['required', 'email', 'max:150', 'unique:staff,email'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'role' => ['required', 'in:Staff,Admin'],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string', 'max:100'],
+            'password' => ['required', 'string', 'min:9', 'confirmed'],
+            'profile_picture' => ['nullable', 'image', 'max:2048'],
+        ]);
+
+        $username = Str::before($validated['email'], '@');
+        $baseUsername = $username;
+        $suffix = 1;
+        while (Staff::where('username', $username)->exists()) {
+            $username = $baseUsername . $suffix++;
+        }
+
+        $profilePicture = $request->hasFile('profile_picture')
+            ? $request->file('profile_picture')->store('staff-profiles', 'public')
+            : null;
+
+        Staff::create([
+            'admin_id' => auth()->id(),
+            'username' => $username,
+            'full_name' => $validated['name'],
+            'email' => Str::lower($validated['email']),
+            'phone' => $validated['phone'] ?? null,
+            'password_hash' => Hash::make($validated['password']),
+            'role' => $validated['role'],
+            'status' => 'active',
+            'profile_picture' => $profilePicture,
+            'permissions' => $validated['permissions'] ?? [],
+        ]);
+
+        return redirect()->route('admin.dashboard')->with('success', 'Staff member added successfully.');
+    }
+
+    public function updateStaff(Request $request, Staff $staff)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:150'],
+            'role' => ['required', 'in:Staff,Admin'],
+            'status' => ['required', 'in:Active,On Leave'],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string', 'max:100'],
+            'profile_picture' => ['nullable', 'image', 'max:2048'],
+        ]);
+
+        $staff->full_name = $validated['name'];
+        $staff->role = $validated['role'];
+        $staff->status = strtolower(str_replace(' ', '_', $validated['status']));
+        $staff->permissions = $validated['permissions'] ?? [];
+
+        if ($request->hasFile('profile_picture')) {
+            if ($staff->profile_picture) {
+                Storage::disk('public')->delete($staff->profile_picture);
+            }
+
+            $staff->profile_picture = $request->file('profile_picture')->store('staff-profiles', 'public');
+        }
+
+        $staff->save();
+
+        return redirect()->route('admin.dashboard')->with('success', 'Staff member updated successfully.');
+    }
+
     // kini ang function nga ma-run pag adto ka sa admin dashboard
     public function index()
 {
@@ -56,8 +129,12 @@ class DashboardController extends Controller
             'email'       => $member->email ?? 'N/A',
             'phone'       => $member->phone ?? 'N/A',
             'role'        => $member->role ?? 'Staff',
-            'status'      => ucfirst(strtolower($member->status ?? 'active')),
-            'permissions' => $member->permissions ?? ['View Inventory', 'Process Rentals', 'View Reports'],
+            'status'      => ucwords(str_replace('_', ' ', strtolower($member->status ?? 'active'))),
+            'profile_picture' => $member->profile_picture,
+            'permissions' => array_values(array_diff(
+                $member->permissions ?? ['View Inventory'],
+                ['Process Rentals', 'View Reports']
+            )),
         ];
     });
 
@@ -67,9 +144,9 @@ class DashboardController extends Controller
             'name'        => $admin->full_name,
             'email'       => $admin->email ?? 'N/A',
             'phone'       => $admin->phone ?? 'N/A',
-            'role'        => 'Administrator',
+            'role'        => 'Admin',
             'status'      => 'Active',
-            'permissions' => ['Manage Staff', 'View Reports', 'Process Rentals', 'View Inventory'],
+            'permissions' => ['Manage Staff', 'View Inventory'],
         ];
     });
 

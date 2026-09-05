@@ -7,15 +7,16 @@
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <form method="POST" action="#">
+    <form method="POST" action="{{ route('admin.staff.store') }}" enctype="multipart/form-data">
       @csrf
       <div class="form-group"><label class="form-label">Full Name</label><input type="text" name="name" class="form-input" placeholder="e.g. Juan dela Cruz" required></div>
       <div class="form-group"><label class="form-label">Email Address</label><input type="email" name="email" class="form-input" placeholder="staff@rentabike.com" required></div>
       <div class="form-group"><label class="form-label">Phone Number</label><input type="text" name="phone" class="form-input" placeholder="+63 912 345 6789"></div>
+      <div class="form-group"><label class="form-label">Profile Picture</label><input type="file" name="profile_picture" class="form-input" accept="image/jpeg,image/png,image/webp"></div>
       <div class="form-group">
         <label class="form-label">Role</label>
         <select name="role" class="form-select">
-          <option>Staff</option><option>Manager</option><option>Technician</option>
+          <option>Staff</option><option>Admin</option>
         </select>
       </div>
       <div class="form-group">
@@ -25,18 +26,32 @@
           <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Add Inventory"> <span>Add Inventory</span></label>
           <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Edit Inventory"> <span>Edit Inventory</span></label>
           <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Delete Inventory"> <span>Delete Inventory</span></label>
-          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Process Rentals"> <span>Process Rentals</span></label>
-          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="View Reports"> <span>View Reports</span></label>
-          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Manage Staff"> <span>Manage Staff</span></label>
           <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Handle Maintenance"> <span>Handle Maintenance</span></label>
         </div>
       </div>
-      <div class="form-group"><label class="form-label">Password</label><input type="password" name="password" class="form-input" placeholder="Set initial password" required></div>
+      <div class="form-group"><label class="form-label">Password</label><input type="password" name="password" class="form-input" placeholder="At least 9 characters" minlength="9" required></div>
+      <div class="form-group"><label class="form-label">Confirm Password</label><input type="password" name="password_confirmation" class="form-input" placeholder="Re-enter password" minlength="9" required></div>
       <div class="form-actions">
         <button type="button" class="btn btn-outline" onclick="closeModal('add-staff-modal')">Cancel</button>
         <button type="submit" class="btn btn-primary">Add Staff</button>
       </div>
     </form>
+  </div>
+</div>
+
+{{-- CONFIRM STAFF MODAL --}}
+<div class="modal-backdrop" id="confirm-staff-modal" onclick="closeModalOutside(event,'confirm-staff-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Confirm Staff Account</span>
+      <button class="modal-close" type="button" onclick="closeModal('confirm-staff-modal')">&times;</button>
+    </div>
+    <p>Please review the account details before creating it.</p>
+    <div id="staff-confirmation-summary" class="confirmation-summary"></div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-outline" onclick="closeModal('confirm-staff-modal')">Back</button>
+      <button type="button" class="btn btn-primary" onclick="confirmStaffCreation()">Create Account</button>
+    </div>
   </div>
 </div>
 
@@ -49,36 +64,39 @@
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="form-group"><label class="form-label">Full Name</label><input type="text" id="edit-staff-name" class="form-input"></div>
+    <form method="POST" action="" enctype="multipart/form-data" id="edit-staff-form">
+      @csrf
+      @method('PATCH')
+      <div class="form-group"><label class="form-label">Full Name</label><input type="text" name="name" id="edit-staff-name" class="form-input" required></div>
+      <div class="form-group"><label class="form-label">Profile Picture</label><input type="file" name="profile_picture" class="form-input" accept="image/jpeg,image/png,image/webp"></div>
     <div class="form-group">
       <label class="form-label">Role</label>
-      <select id="edit-staff-role" class="form-select">
-        <option>Staff</option><option>Manager</option><option>Technician</option>
+      <select name="role" id="edit-staff-role" class="form-select">
+        <option>Staff</option><option>Admin</option>
       </select>
     </div>
     <div class="form-group">
       <label class="form-label">Status</label>
-      <select id="edit-staff-status" class="form-select">
+      <select name="status" id="edit-staff-status" class="form-select">
         <option>Active</option><option>On Leave</option>
       </select>
     </div>
     <div class="form-group">
       <label class="form-label">Privileges</label>
       <div class="permission-grid">
-        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="View Inventory"> <span>View Inventory</span></label>
-        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Add Inventory"> <span>Add Inventory</span></label>
-        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Edit Inventory"> <span>Edit Inventory</span></label>
-        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Delete Inventory"> <span>Delete Inventory</span></label>
-        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Process Rentals"> <span>Process Rentals</span></label>
-        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="View Reports"> <span>View Reports</span></label>
-        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Manage Staff"> <span>Manage Staff</span></label>
-        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Handle Maintenance"> <span>Handle Maintenance</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="View Inventory"> <span>View Inventory</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Add Inventory"> <span>Add Inventory</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Edit Inventory"> <span>Edit Inventory</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Delete Inventory"> <span>Delete Inventory</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Manage Staff"> <span>Manage Staff</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Handle Maintenance"> <span>Handle Maintenance</span></label>
       </div>
     </div>
     <div class="form-actions">
       <button class="btn btn-outline" onclick="closeModal('edit-staff-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEditStaff()">Save Changes</button>
+      <button type="submit" class="btn btn-primary">Save Changes</button>
     </div>
+    </form>
   </div>
 </div>
 

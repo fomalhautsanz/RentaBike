@@ -15,9 +15,16 @@ class Staff extends Model
         'username',
         'full_name',
         'email',
+        'phone',
+        'profile_picture',
+        'permissions',
         'password_hash',
         'role',
         'status',
+    ];
+
+    protected $casts = [
+        'permissions' => 'array',
     ];
 
     protected static function booted(): void
