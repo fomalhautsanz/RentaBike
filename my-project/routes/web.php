@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StaffLoginController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
 
 
 // ======================================================
@@ -43,6 +44,7 @@ Route::post('/staff/logout', [StaffLoginController::class, 'logout'])
     ->name('staff.logout');
 
 
+
 // ======================================================
 // ADMIN PROTECTED ROUTES
 // ======================================================
@@ -67,9 +69,9 @@ Route::prefix('staff')
     ->middleware('staff.auth')
     ->group(function () {
 
-        Route::get('/home', fn () => view('staff.home'))
+        Route::get('/home', [StaffDashboardController::class, 'index'])
             ->name('staff.home');
 
-        Route::get('/export', [DashboardController::class, 'exportStaffDashboardCsv'])
+        Route::get('/export', [StaffDashboardController::class, 'exportStaffDashboardCsv'])
             ->name('staff.export');
     });
