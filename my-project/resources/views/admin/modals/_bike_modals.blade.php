@@ -61,7 +61,7 @@
     </div>
     <div class="form-actions">
       <button class="btn btn-outline" onclick="closeModal('edit-bike-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="closeModal('edit-bike-modal')">Save Changes</button>
+      <button class="btn btn-primary" onclick="saveEditBike()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -71,14 +71,14 @@
   <div class="modal">
     <div class="delete-warning">
       <div class="delete-icon">
-        <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-triangle-alert-icon lucide-triangle-alert"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
       </div>
       <div class="delete-title">Delete Bike</div>
       <div class="delete-desc">Are you sure you want to delete <strong id="delete-bike-name-display"></strong>? This cannot be undone.</div>
     </div>
     <div class="form-actions">
       <button class="btn btn-outline" onclick="closeModal('delete-bike-modal')">Cancel</button>
-      <button class="btn btn-primary" style="background:#ef4444" onclick="closeModal('delete-bike-modal')">Delete</button>
+      <button class="btn btn-primary btn-danger" onclick="confirmDeleteBike()">Delete</button> {{-- gi add nako function lain sad --}}
     </div>
   </div>
 </div>

@@ -18,6 +18,19 @@
           <option>Staff</option><option>Manager</option><option>Technician</option>
         </select>
       </div>
+      <div class="form-group">
+        <label class="form-label">Privileges</label>
+        <div class="permission-grid">
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="View Inventory"> <span>View Inventory</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Add Inventory"> <span>Add Inventory</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Edit Inventory"> <span>Edit Inventory</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Delete Inventory"> <span>Delete Inventory</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Process Rentals"> <span>Process Rentals</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="View Reports"> <span>View Reports</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Manage Staff"> <span>Manage Staff</span></label>
+          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Handle Maintenance"> <span>Handle Maintenance</span></label>
+        </div>
+      </div>
       <div class="form-group"><label class="form-label">Password</label><input type="password" name="password" class="form-input" placeholder="Set initial password" required></div>
       <div class="form-actions">
         <button type="button" class="btn btn-outline" onclick="closeModal('add-staff-modal')">Cancel</button>
@@ -49,9 +62,22 @@
         <option>Active</option><option>On Leave</option>
       </select>
     </div>
+    <div class="form-group">
+      <label class="form-label">Privileges</label>
+      <div class="permission-grid">
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="View Inventory"> <span>View Inventory</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Add Inventory"> <span>Add Inventory</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Edit Inventory"> <span>Edit Inventory</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Delete Inventory"> <span>Delete Inventory</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Process Rentals"> <span>Process Rentals</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="View Reports"> <span>View Reports</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Manage Staff"> <span>Manage Staff</span></label>
+        <label class="permission-option"><input type="checkbox" class="permission-checkbox" value="Handle Maintenance"> <span>Handle Maintenance</span></label>
+      </div>
+    </div>
     <div class="form-actions">
       <button class="btn btn-outline" onclick="closeModal('edit-staff-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="closeModal('edit-staff-modal')">Save Changes</button>
+      <button class="btn btn-primary" onclick="saveEditStaff()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -61,14 +87,89 @@
   <div class="modal">
     <div class="delete-warning">
       <div class="delete-icon">
-        <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-triangle-alert-icon lucide-triangle-alert"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
       </div>
       <div class="delete-title">Remove Staff Member</div>
       <div class="delete-desc">Are you sure you want to remove <strong id="delete-staff-name-display"></strong>? This action cannot be undone.</div>
     </div>
     <div class="form-actions">
       <button class="btn btn-outline" onclick="closeModal('delete-staff-modal')">Cancel</button>
-      <button class="btn btn-primary" style="background:#ef4444" onclick="closeModal('delete-staff-modal')">Remove</button>
+      <button class="btn btn-primary btn-danger" onclick="confirmDeleteStaff()">Remove</button>
     </div>
   </div>
 </div>
+
+{{-- TOAST --}}
+<div id="toast" class="toast toast-hidden">
+  <svg class="toast-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+    <path d="M20 6 9 17l-5-5"/>
+  </svg>
+  <span id="toast-message"></span>
+</div>
+
+<style>
+.toast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #16a34a;
+  color: #fff;
+  padding: 16px 22px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  box-shadow: 0 8px 20px rgba(22,163,74,0.35);
+  z-index: 999;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.toast-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.2);
+  border-radius: 50%;
+  padding: 4px;
+  box-sizing: content-box;
+}
+.toast-hidden {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
+.action-btn {
+  transition: background-color 0.15s ease, color 0.15s ease;
+  border-radius: 6px;
+}
+.action-btn:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+.action-btn.delete-btn:hover {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+.warn-icon-green {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+/* Remove button (Delete confirmation modal) hover state */
+.btn-danger {
+  background: #ef4444;
+  transition: background-color 0.15s ease;
+}
+.btn-danger:hover {
+  background-color: #b91c1c; /* darker red on hover , for better visual feedback
+  kay lain kaau way hover plain af */ 
+}
+</style>

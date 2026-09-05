@@ -52,10 +52,12 @@
   </div>
 
   @if ($errors->any())
-    <div class="alert-error">Invalid email or password. Please try again.</div>
+    <div class="alert-error">
+        {{ $errors->first() }}
+    </div>
   @endif
 
-  <form class="login-form" method="POST" action="{{ route('login') }}">
+  <form class="login-form" method="POST" action="{{ route('admin.login.submit') }}">
     @csrf
 
     <div class="form-group">

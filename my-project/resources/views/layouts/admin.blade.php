@@ -8,7 +8,8 @@
 <title>RentaBike — Admin Portal</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-
+  
+  /* ── fixed thi shi ── */
   /* ── RESET ── */
   *, *::before, *::after {
     box-sizing: border-box;
@@ -58,7 +59,6 @@
   .logo-icon {
     width: 40px;
     height: 40px;
-    background: linear-gradient(135deg, #22c55e, #16a34a);
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -650,6 +650,56 @@
     justify-content: center;
   }
 
+  .permission-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    margin-top: 8px;
+  }
+
+  .permission-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #f9fafb;
+    font-size: 13px;
+    color: #374151;
+    cursor: pointer;
+  }
+
+  .permission-option input {
+    width: 16px;
+    height: 16px;
+    accent-color: #16a34a;
+    cursor: pointer;
+  }
+
+  .permission-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .permission-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    color: #166534;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .permission-pill.more {
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+
   /* ── DELETE WARNING ── */
   .delete-warning {
     display: flex;
@@ -780,6 +830,40 @@
     height: 128px;
   }
 
+  .logout-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    width: 32px;
+    height: 32px;
+
+    padding: 0;
+    margin: 0;
+
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+
+    color: #9ca3af;
+    cursor: pointer;
+
+    font-size: 0;
+    transition: all .15s;
+}
+
+.logout-btn:hover {
+    background: #f3f4f6;
+    color: #ef4444;
+}
+
+.logout-btn svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
   .qr-cell { border-radius: 1px; }
 
   /* ── ICONS ── */
@@ -797,11 +881,7 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-icon">
-        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/>
-          <path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/>
-          <path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/>
-        </svg>
+        <img src="{{ asset('images/system_logo.png') }}" alt="RentaBike Logo">
       </div>
       <div>
         <div class="logo-title">RentaBike</div>
@@ -853,15 +933,21 @@
     <div class="sidebar-user">
       <div class="avatar">{{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 2)) }}</div>
       <div style="flex:1;min-width:0">
-        <div class="user-name">{{ auth()->user()->name ?? 'Admin' }}</div>
+        <div class="user-name">{{ auth()->user()->full_name ?? 'Admin' }}</div>
         <div class="user-email">{{ auth()->user()->email ?? 'admin@rentabike.com' }}</div>
       </div>
-      <form method="POST" action="#">
-        @csrf
-        <button type="submit" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:4px">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        </button>
-      </form>
+      <form method="POST" action="{{ route('logout') }}">
+    @csrf
+
+    <button type="submit" class="logout-btn">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Logout
+    </button>
+  </form>
     </div>
   </aside>
 

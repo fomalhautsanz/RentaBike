@@ -5,18 +5,34 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StaffLoginController;
 use App\Http\Controllers\Admin\DashboardController;
 
-// Redirect root to login
+
+// ======================================================
+// ROOT
+// ======================================================
+
 Route::get('/', function () {
     return redirect()->route('login');
 });
 
-// Auth routes
-//Admin
-Route::get('/admin/login', [LoginController::class, 'showLogin'])->name('login');
-Route::post('/admin/login', [LoginController::class, 'login']);
-Route::post('/admin/logout', [LoginController::class, 'logout'])->name('logout');
 
-// Staff
+// ======================================================
+// ADMIN AUTHENTICATION
+// ======================================================
+
+Route::get('/admin/login', [LoginController::class, 'showLogin'])
+    ->name('login');
+
+Route::post('/admin/login', [LoginController::class, 'login'])
+    ->name('admin.login.submit');
+
+Route::post('/admin/logout', [LoginController::class, 'logout'])
+    ->name('logout');
+
+
+// ======================================================
+// STAFF AUTHENTICATION
+// ======================================================
+
 Route::get('/staff/login', [StaffLoginController::class, 'showLogin'])
     ->name('staff.login');
 
@@ -26,13 +42,34 @@ Route::post('/staff/login', [StaffLoginController::class, 'login'])
 Route::post('/staff/logout', [StaffLoginController::class, 'logout'])
     ->name('staff.logout');
 
-// Staff routes (protected)
-Route::prefix('staff')->middleware('staff.auth')->group(function () {
-    Route::get('/home', fn() => view('staff.home'))->name('staff.home');
+
+// ======================================================
+// ADMIN PROTECTED ROUTES
+// ======================================================
+
+Route::prefix('admin')->middleware('admin.auth')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->name('admin.dashboard');
+
+    Route::get('/dashboard/export', [DashboardController::class, 'exportAdminDashboardCsv'])
+        ->name('admin.dashboard.export');
+
+    Route::post('/bikes', [DashboardController::class, 'storeBike'])
+        ->name('admin.bikes.store');
 });
 
-// Admin routes (protected)
-Route::prefix('admin')->middleware('auth')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
-    Route::post('/bikes', [DashboardController::class, 'storeBike'])->name('admin.bikes.store');
-});
+
+// ======================================================
+// STAFF PROTECTED ROUTES
+// ======================================================
+
+Route::prefix('staff')
+    ->middleware('staff.auth')
+    ->group(function () {
+
+        Route::get('/home', fn () => view('staff.home'))
+            ->name('staff.home');
+
+        Route::get('/export', [DashboardController::class, 'exportStaffDashboardCsv'])
+            ->name('staff.export');
+    });

@@ -146,6 +146,29 @@ function openModal(type, data = {}) {
       </div>`;
   }
 
+  if (type === 'report-confirm') {
+    content.innerHTML = `
+      <div class="modal-bike-header">
+        <div class="bike-icon orange" style="width:48px;height:48px">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <div>
+          <div class="modal-bike-title">Submit Report?</div>
+        </div>
+      </div>
+      <p class="modal-confirmation-message">This report will be submitted to the Admin for review. Are you sure you want to continue?</p>
+      <div class="modal-actions">
+        <button class="primary-btn" onclick="confirmReport()">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Confirm Submit
+        </button>
+        <button class="primary-btn outline" onclick="closeModal()">Cancel</button>
+      </div>`;
+  }
+
   document.getElementById('modalBg').classList.add('open');
 }
 function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
@@ -167,6 +190,10 @@ function submitReport() {
   const bikeId = document.getElementById('reportBikeId').value.trim();
   const desc   = document.getElementById('reportDesc').value.trim();
   if (!bikeId || !desc) { showToast('Please fill in all required fields.'); return; }
+  openModal('report-confirm', { bikeId, description: desc });
+}
+function confirmReport() {
+  closeModal();
   goTo('home');
   showToast('Report submitted successfully!');
 }
@@ -186,7 +213,8 @@ function updateTime() {
   const m   = String(now.getMinutes()).padStart(2, '0');
   const suf = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
-  document.getElementById('liveTime').textContent = h + ':' + m + ' ' + suf;
+  const timeElement = document.querySelector('.screen.active #liveTime');
+  if (timeElement) timeElement.textContent = h + ':' + m + ' ' + suf;
 }
 setInterval(updateTime, 1000);
 updateTime();
