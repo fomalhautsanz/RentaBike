@@ -10,6 +10,7 @@ use App\Models\Bicycle;       // model sa bicycle table
 use App\Models\IssueReport;   // model sa issue report table
 use App\Models\Rental;        // model sa rental table
 use App\Models\Staff;         // model sa staff table 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon; // para sa pag-handle og dates/time
 
@@ -57,7 +58,7 @@ class DashboardController extends Controller
             'phone'       => $member->phone ?? 'N/A',
             'role'        => $member->role ?? 'Staff',
             'status'      => ucfirst(strtolower($member->status ?? 'active')),
-            'permissions' => $member->permissions ?? ['View Inventory', 'Process Rentals', 'View Reports'],
+            'permissions' => $this->normalizePermissions($member->permissions ?? null),
         ];
     });
 
@@ -90,6 +91,66 @@ class DashboardController extends Controller
         'weeklyRentals', 'revenueVsRentals', 'peakHours'
     ));
 }
+
+    public function storeBike(Request $request)
+    {
+        $validated = $request->validate([
+            'qr_code' => ['required', 'string', 'max:100', 'unique:bicycle,qr_code'],
+            'model' => ['required', 'string', 'max:100'],
+            'make' => ['required', 'string', 'max:100'],
+            'bike_type' => ['nullable', 'string', 'max:50'],
+            'status' => ['nullable', 'string', 'max:30'],
+            'condition' => ['nullable', 'string', 'max:30'],
+        ]);
+
+        Bicycle::create([
+            ...$validated,
+            'bike_type' => $validated['bike_type'] ?? 'Standard',
+            'status' => $validated['status'] ?? 'available',
+            'condition' => $validated['condition'] ?? 'good',
+        ]);
+
+        return back()->with('success', 'Bike added successfully.');
+    }
+
+    public function exportAdminDashboardCsv()
+    {
+        return response()->streamDownload(function () {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Bike ID', 'QR Code', 'Model', 'Make', 'Type', 'Status', 'Condition']);
+
+            Bicycle::orderBy('bike_id')->each(function (Bicycle $bike) use ($handle) {
+                fputcsv($handle, [
+                    $bike->bike_id,
+                    $bike->qr_code,
+                    $bike->model,
+                    $bike->make,
+                    $bike->bike_type,
+                    $bike->status,
+                    $bike->condition,
+                ]);
+            });
+
+            fclose($handle);
+        }, 'admin-dashboard.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    private function normalizePermissions(mixed $permissions): array
+    {
+        if (is_string($permissions)) {
+            $decoded = json_decode($permissions, true);
+            $permissions = is_array($decoded) ? $decoded : explode(',', $permissions);
+        }
+
+        if (!is_array($permissions)) {
+            return ['View Inventory', 'Process Rentals', 'View Reports'];
+        }
+
+        return array_values(array_filter(array_map(
+            static fn ($permission) => is_string($permission) ? trim($permission) : null,
+            $permissions
+        )));
+    }
 
     // Rental counts for the last 7 days, oldest first.
     protected function weeklyRentalCounts(): array
