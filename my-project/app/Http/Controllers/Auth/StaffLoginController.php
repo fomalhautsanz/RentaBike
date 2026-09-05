@@ -22,12 +22,50 @@ class StaffLoginController extends Controller
         return view('staff.pages._login');
     }
 
+
     public function login(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required',
         ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Rate Limiting Key
+        |--------------------------------------------------------------------------
+        |
+        | The email + IP address combination gets its own attempt counter.
+        |
+        */
+        $key = strtolower($request->email) . '|' . $request->ip();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Check if Login is Currently Locked
+        |--------------------------------------------------------------------------
+        */
+
+        if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
+
+            $seconds = RateLimiter::availableIn($key);
+
+            $minutes = ceil($seconds / 60);
+
+            return back()
+                ->withErrors([
+                    'email' => "Too many failed attempts. Please try again in {$minutes} minute(s).",
+                ])
+                ->onlyInput('email');
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Find Staff Account
+        |--------------------------------------------------------------------------
+        */
 
 
         $email = Str::lower(trim($request->input('email')));
@@ -51,29 +89,18 @@ class StaffLoginController extends Controller
             ->where('status', 'active')
             ->first();
 
-
         if ($staff && Hash::check($request->password, $staff->password_hash)) {
-
-        
-            RateLimiter::clear($key);
-
-            Session::put('staff_id', $staff->staff_id);
+            Session::put('staff_id',   $staff->staff_id);
             Session::put('staff_name', $staff->full_name);
             Session::put('staff_role', $staff->role);
-
-            $request->session()->regenerate();
-
             return redirect()->route('staff.home');
         }
-        
-        RateLimiter::hit($key, self::LOCKOUT_SECONDS);
 
-        return back()
-            ->withErrors([
-                'email' => 'Invalid email or password.',
-            ])
-            ->onlyInput('email');
+        return back()->withErrors([
+            'email' => 'Invalid email or password.',
+        ])->onlyInput('email');
     }
+
 
     public function logout(Request $request)
     {
