@@ -15,7 +15,14 @@ function applyStaffFilters() {
     r.style.display = roleOk && statusOk ? '' : 'none';
   });
 }
-function openEditStaff(name, role, status, permissions = []) {
+function openEditStaff(staffId) {
+  const row = document.querySelector(`#staff-tbody tr[data-id="${staffId}"]`);
+  if (!row) return;
+
+  const permissions = row.dataset.permissions || '';
+  const name = row.dataset.name;
+  const role = row.dataset.role;
+  const status = row.dataset.status;
   document.getElementById('edit-staff-name').value = name;
   document.getElementById('edit-staff-role').value = role;
   document.getElementById('edit-staff-status').value = status;
@@ -28,9 +35,7 @@ function openEditStaff(name, role, status, permissions = []) {
     cb.checked = selectedPermissions.includes(cb.value);
   });
 
-  // remember which record we're editing 
-  //temporary until we have IDs from the backend 
-  window._editingStaffOriginalName = name; 
+  document.getElementById('edit-staff-form').action = `/admin/staff/${staffId}`;
   openModal('edit-staff-modal');
 }
 function openDeleteStaff(name) {
@@ -101,36 +106,43 @@ function renderStaffTable() {
   document.querySelector('.table-footer p').textContent = `Showing ${staffData.length} staff members`;
 }
 
-// ADD STAFF FORM
-// Instead of letting it submit to action="#" (para d mag warning laravel uy duh)
-// stop it, validate, and save directly — no confirmation step anymore
-document.querySelector('#add-staff-modal form').addEventListener('submit', function (e) {
-  e.preventDefault(); // stops the real submit and btw no backend to send it to yet
+const addStaffForm = document.querySelector('#add-staff-modal form');
+addStaffForm.addEventListener('submit', function (event) {
+  if (addStaffForm.dataset.confirmed === 'true') return;
 
-  const form = e.target;
-  const name = form.name.value.trim();
-  const email = form.email.value.trim();
-  const phone = form.phone.value.trim();
-  const role = form.role.value;
-  const password = form.password.value.trim();
-
-  if (!name || !email || !password) {
-    showToast('Please fill in the required fields.');
+  event.preventDefault();
+  if (!addStaffForm.reportValidity()) return;
+  if (addStaffForm.password.value !== addStaffForm.password_confirmation.value) {
+    addStaffForm.password_confirmation.setCustomValidity('Passwords do not match.');
+    addStaffForm.password_confirmation.reportValidity();
+    addStaffForm.password_confirmation.setCustomValidity('');
     return;
   }
 
-  // TODO: once backend exists, replace the two lines below with:
-  // fetch('/staff', { method: 'POST', body: JSON.stringify({ name, email, phone, role, password }), headers: {...} })
-  //   .then(res => res.json())
-  //   .then(saved => { staffData.push(saved); renderStaffTable(); ... });
-
-  staffData.push({ id: nextStaffId++, name, email, phone, role, password });
-  renderStaffTable();
-
+  const image = addStaffForm.profile_picture.files[0];
+  const permissions = Array.from(addStaffForm.querySelectorAll('input[name="permissions[]"]:checked'))
+    .map(input => input.value);
+  document.getElementById('staff-confirmation-summary').innerHTML = `
+    <p><strong>Name:</strong> ${escapeHtml(addStaffForm.name.value.trim())}</p>
+    <p><strong>Email:</strong> ${escapeHtml(addStaffForm.email.value.trim())}</p>
+    <p><strong>Phone:</strong> ${escapeHtml(addStaffForm.phone.value.trim() || 'N/A')}</p>
+    <p><strong>Role:</strong> ${escapeHtml(addStaffForm.role.value)}</p>
+    <p><strong>Privileges:</strong> ${escapeHtml(permissions.join(', ') || 'None')}</p>
+    <p><strong>Profile picture:</strong> ${image ? escapeHtml(image.name) : 'None'}</p>`;
   closeModal('add-staff-modal');
-  form.reset();
-  showToast(`${name} was added successfully.`);
+  openModal('confirm-staff-modal');
 });
+
+function confirmStaffCreation() {
+  addStaffForm.dataset.confirmed = 'true';
+  addStaffForm.requestSubmit();
+}
+
+function escapeHtml(value) {
+  return value.replace(/[&<>'"]/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+  }[character]));
+}
 
 // pretty self-explanatory
 function saveEditStaff() {

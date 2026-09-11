@@ -1,6 +1,13 @@
 @extends('layouts.staff')
 
 @section('content'){{-- HOME SCREEN --}}
+@php($staffPermissions = $staffPermissions ?? [])
+@php($canViewInventory = in_array('View Inventory', $staffPermissions, true))
+@php($canAddInventory = in_array('Add Inventory', $staffPermissions, true))
+@php($canEditInventory = in_array('Edit Inventory', $staffPermissions, true))
+@php($canDeleteInventory = in_array('Delete Inventory', $staffPermissions, true))
+@php($canManageStaff = in_array('Manage Staff', $staffPermissions, true))
+@php($canHandleMaintenance = in_array('Handle Maintenance', $staffPermissions, true))
 <section class="screen" id="home">
   <div class="topbar">
     <div class="topbar-left">
@@ -80,6 +87,7 @@
     </div>
 
     {{-- BIKE LIST --}}
+    @if($canViewInventory)
     <div class="section-title">
       <h3>Bike Inventory</h3>
       <a onclick="goTo('inventory')">View all</a>
@@ -101,6 +109,7 @@
         <span class="badge badge-blue"><span class="badge-dot badge-dot-blue"></span>Rented</span>
         <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
       </div>
+      @if($canHandleMaintenance)
       <div class="bike-card" onclick="openModal('maintenance', { id:'BK-103', issue:'Flat rear tire', updatedBy:'Admin', date:'May 27, 2026' })">
         <div class="bike-icon orange">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
@@ -109,7 +118,9 @@
         <span class="badge badge-orange"><span class="badge-dot badge-dot-orange"></span>Repair</span>
         <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
       </div>
+      @endif
     </div>
+    @endif
   </div>
 
   {{-- BOTTOM NAV --}}
@@ -118,22 +129,43 @@
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
       <span>Home</span>
     </button>
+    @if($canViewInventory)
+    <button class="nav-btn" onclick="navActive(this); goTo('inventory')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
+      <span>Inventory</span>
+    </button>
+    @endif
     <button class="nav-btn nav-qr" onclick="navActive(this); goTo('scanner')">
       <div class="qr-pill">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx=".5"/><rect width="5" height="5" x="16" y="3" rx=".5"/><rect width="5" height="5" x="3" y="16" rx=".5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/></svg>
       </div>
       <span>Scan QR</span>
     </button>
+    @if($canHandleMaintenance)
     <button class="nav-btn" onclick="navActive(this); goTo('report')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       <span>Report</span>
     </button>
+    @endif
+    @if($canManageStaff)
+    <button class="nav-btn" onclick="navActive(this); goTo('staff-management')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Staff</span>
+    </button>
+    @endif
   </nav>
 </section>
     @include('staff.pages._home')
     @include('staff.pages._scanner')
-    @include('staff.pages._inventory')
-    @include('staff.pages._report')
+    @if($canViewInventory)
+      @include('staff.pages._inventory')
+    @endif
+    @if($canHandleMaintenance)
+      @include('staff.pages._report')
+    @endif
+    @if($canManageStaff)
+      @include('staff.pages._staff_management')
+    @endif
     @include('staff.pages._report_form')
     @include('staff.pages._rental_form')
     @include('staff.pages._success')
