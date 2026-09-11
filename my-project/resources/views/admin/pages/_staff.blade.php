@@ -38,7 +38,7 @@
       <tbody id="staff-tbody">
         @foreach($staff ?? [] as $member)
           @php($permissions = array_values(array_diff($member->permissions ?? ['View Inventory'], ['Process Rentals', 'View Reports'])))
-          <tr data-id="{{ $member->id }}" data-name="{{ $member->name }}" data-role="{{ $member->role }}" data-status="{{ $member->status }}" data-permissions="{{ implode(',', $permissions) }}">
+          <tr data-id="{{ $member->id }}" data-name="{{ $member->name }}" data-first-name="{{ $member->first_name ?? '' }}" data-last-name="{{ $member->last_name ?? '' }}" data-role="{{ $member->role }}" data-status="{{ $member->status }}" data-permissions="{{ implode(',', $permissions) }}">
             <td>
               <div style="display:flex;align-items:center;gap:12px">
                 @if(!empty($member->profile_picture))

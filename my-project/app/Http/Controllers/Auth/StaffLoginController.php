@@ -58,7 +58,7 @@ class StaffLoginController extends Controller
             RateLimiter::clear($key);
 
             Session::put('staff_id', $staff->staff_id);
-            Session::put('staff_name', $staff->full_name);
+            Session::put('staff_name', trim(($staff->first_name ?? '') . ' ' . ($staff->last_name ?? '')) ?: $staff->full_name);
             Session::put('staff_role', $staff->role);
 
             $request->session()->regenerate();

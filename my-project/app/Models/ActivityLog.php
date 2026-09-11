@@ -39,7 +39,9 @@ class ActivityLog extends Model
     {
         return match ($this->user_type) {
             'admin'  => Admin::find($this->user_id)?->full_name ?? 'Unknown Admin',
-            'staff'  => Staff::find($this->user_id)?->full_name ?? 'Unknown Staff',
+            'staff'  => ($staff = Staff::find($this->user_id))
+                ? (trim(($staff->first_name ?? '') . ' ' . ($staff->last_name ?? '')) ?: $staff->full_name)
+                : 'Unknown Staff',
             default  => 'System',
         };
     }
