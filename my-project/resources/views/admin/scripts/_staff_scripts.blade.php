@@ -20,10 +20,12 @@ function openEditStaff(staffId) {
   if (!row) return;
 
   const permissions = row.dataset.permissions || '';
-  const name = row.dataset.name;
+  const firstName = row.dataset.firstName;
+  const lastName = row.dataset.lastName;
   const role = row.dataset.role;
   const status = row.dataset.status;
-  document.getElementById('edit-staff-name').value = name;
+  document.getElementById('edit-staff-first-name').value = firstName;
+  document.getElementById('edit-staff-last-name').value = lastName;
   document.getElementById('edit-staff-role').value = role;
   document.getElementById('edit-staff-status').value = status;
 
@@ -123,7 +125,7 @@ addStaffForm.addEventListener('submit', function (event) {
   const permissions = Array.from(addStaffForm.querySelectorAll('input[name="permissions[]"]:checked'))
     .map(input => input.value);
   document.getElementById('staff-confirmation-summary').innerHTML = `
-    <p><strong>Name:</strong> ${escapeHtml(addStaffForm.name.value.trim())}</p>
+    <p><strong>Name:</strong> ${escapeHtml(`${addStaffForm.first_name.value.trim()} ${addStaffForm.last_name.value.trim()}`.trim())}</p>
     <p><strong>Email:</strong> ${escapeHtml(addStaffForm.email.value.trim())}</p>
     <p><strong>Phone:</strong> ${escapeHtml(addStaffForm.phone.value.trim() || 'N/A')}</p>
     <p><strong>Role:</strong> ${escapeHtml(addStaffForm.role.value)}</p>
@@ -150,7 +152,7 @@ function saveEditStaff() {
   const member = staffData.find(m => m.name === originalName);
   if (!member) return;
 
-  member.name = document.getElementById('edit-staff-name').value.trim();
+  member.name = `${document.getElementById('edit-staff-first-name').value.trim()} ${document.getElementById('edit-staff-last-name').value.trim()}`.trim();
   member.role = document.getElementById('edit-staff-role').value;
   member.statusValue = document.getElementById('edit-staff-status').value;
 

@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Http\Request;
 use Carbon\Carbon; // para sa pag-handle og dates/time
 
 class DashboardController extends Controller
@@ -23,7 +22,8 @@ class DashboardController extends Controller
     public function storeStaff(Request $request)
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:150'],
+            'first_name' => ['required', 'string', 'max:75'],
+            'last_name' => ['required', 'string', 'max:75'],
             'email' => ['required', 'email', 'max:150', 'unique:staff,email'],
             'phone' => ['nullable', 'string', 'max:30'],
             'role' => ['required', 'in:Staff,Admin'],
@@ -44,10 +44,14 @@ class DashboardController extends Controller
             ? $request->file('profile_picture')->store('staff-profiles', 'public')
             : null;
 
+        $fullName = trim($validated['first_name'] . ' ' . $validated['last_name']);
+
         Staff::create([
             'admin_id' => auth()->id(),
             'username' => $username,
-            'full_name' => $validated['name'],
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'full_name' => $fullName,
             'email' => Str::lower($validated['email']),
             'phone' => $validated['phone'] ?? null,
             'password_hash' => Hash::make($validated['password']),
@@ -63,7 +67,8 @@ class DashboardController extends Controller
     public function updateStaff(Request $request, Staff $staff)
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:150'],
+            'first_name' => ['required', 'string', 'max:75'],
+            'last_name' => ['required', 'string', 'max:75'],
             'role' => ['required', 'in:Staff,Admin'],
             'status' => ['required', 'in:Active,On Leave'],
             'permissions' => ['nullable', 'array'],
@@ -71,7 +76,9 @@ class DashboardController extends Controller
             'profile_picture' => ['nullable', 'image', 'max:2048'],
         ]);
 
-        $staff->full_name = $validated['name'];
+        $staff->first_name = $validated['first_name'];
+        $staff->last_name = $validated['last_name'];
+        $staff->full_name = trim($validated['first_name'] . ' ' . $validated['last_name']);
         $staff->role = $validated['role'];
         $staff->status = strtolower(str_replace(' ', '_', $validated['status']));
         $staff->permissions = $validated['permissions'] ?? [];
@@ -124,9 +131,13 @@ class DashboardController extends Controller
         ->toArray();
 
     $staff = Staff::orderBy('staff_id')->get()->map(function ($member) {
+        $name = trim(($member->first_name ?? '') . ' ' . ($member->last_name ?? '')) ?: $member->full_name;
+
         return (object) [
             'id'          => $member->staff_id,
-            'name'        => $member->full_name,
+            'name'        => $name,
+            'first_name'  => $member->first_name ?: Str::before($name, ' '),
+            'last_name'   => $member->last_name ?: Str::after($name, ' '),
             'email'       => $member->email ?? 'N/A',
             'phone'       => $member->phone ?? 'N/A',
             'role'        => $member->role ?? 'Staff',
@@ -143,6 +154,8 @@ class DashboardController extends Controller
         return (object) [
             'id'          => $admin->admin_id,
             'name'        => $admin->full_name,
+            'first_name'  => Str::before($admin->full_name, ' '),
+            'last_name'   => Str::after($admin->full_name, ' '),
             'email'       => $admin->email ?? 'N/A',
             'phone'       => $admin->phone ?? 'N/A',
             'role'        => 'Admin',
