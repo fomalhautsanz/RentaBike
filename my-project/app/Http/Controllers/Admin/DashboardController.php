@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Http\Request;
 use Carbon\Carbon; // para sa pag-handle og dates/time
 
 class DashboardController extends Controller
