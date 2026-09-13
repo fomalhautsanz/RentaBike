@@ -133,6 +133,7 @@
     @include('staff.pages._home')
     @include('staff.pages._scanner')
     @include('staff.pages._inventory')
+    @include('staff.pages._inventory_create')
     @include('staff.pages._report')
     @include('staff.pages._report_form')
     @include('staff.pages._rental_form')

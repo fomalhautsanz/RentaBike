@@ -19,7 +19,7 @@
       <div class="form-group">
         <label class="form-label">Condition</label>
         <select name="condition" class="form-select">
-          <option>Good</option><option>Needs Repair</option><option>Unusable</option>
+          <option>Good</option><option>Needs Repair</option><option>Missing</option>
         </select>
       </div>
       <div class="form-actions">
@@ -56,7 +56,7 @@
     <div class="form-group">
       <label class="form-label">Condition</label>
       <select id="edit-bike-condition" class="form-select">
-        <option>Good</option><option>Needs Repair</option><option>Unusable</option>
+        <option>Good</option><option>Needs Repair</option><option>Missing</option>
       </select>
     </div>
     <div class="form-actions">

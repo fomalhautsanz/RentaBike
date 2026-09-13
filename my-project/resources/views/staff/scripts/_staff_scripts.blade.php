@@ -34,6 +34,13 @@ function togglePw() {
 }
 
 // ── SCANNER ──────────────────────────────────────────────────────────────────
+let pendingBikeCode = null;
+
+function startScan(bikeCode) {
+  pendingBikeCode = bikeCode;
+  goTo('scanner');
+}
+
 function simulateScan() {
   const btn = document.querySelector('.scan-simulate-btn');
   btn.textContent = 'Scanning…';
@@ -41,8 +48,42 @@ function simulateScan() {
   setTimeout(() => {
     btn.textContent = 'Simulate QR Scan';
     btn.disabled = false;
-    goTo('rental-form');
+    if (pendingBikeCode) {
+      toggleBikeStatus(pendingBikeCode);
+    } else {
+      goTo('rental-form');
+    }
   }, 1200);
+}
+
+function toggleBikeStatus(bikeCode) {
+  fetch(`/staff/inventory/${encodeURIComponent(bikeCode)}/toggle-status`, {
+    method: 'PATCH',
+    headers: {
+      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+      'Accept': 'application/json',
+    },
+  })
+    .then(response => response.json().then(data => ({ ok: response.ok, data })))
+    .then(({ ok, data }) => {
+      if (!ok) {
+        showToast(data.message || 'This bike cannot be rented.');
+        return;
+      }
+
+      const row = document.querySelector(`[data-bike-code="${bikeCode}"]`);
+      if (row) {
+        row.dataset.status = data.status;
+        const badge = row.querySelector('[data-bike-status]');
+        badge.textContent = data.status;
+        badge.className = `badge ${data.status === 'Available' ? 'badge-green' : 'badge-blue'}`;
+      }
+
+      pendingBikeCode = null;
+      showToast(data.message);
+      goTo(data.status === 'Rented' ? 'rental-form' : 'inventory');
+    })
+    .catch(() => showToast('Could not update this bike.'));
 }
 
 // ── RENTAL ───────────────────────────────────────────────────────────────────
@@ -89,7 +130,7 @@ function openModal(type, data = {}) {
       <div class="modal-detail-row"><span class="label">Last Borrower</span><span class="value">${data.lastBorrower ?? '—'}</span></div>
       <div class="modal-detail-row"><span class="label">Last Returned</span><span class="value">${data.lastReturned ?? '—'}</span></div>
       <div class="modal-actions">
-        <button class="primary-btn" onclick="closeModal(); goTo('scanner')">
+        <button class="primary-btn" onclick="closeModal(); startScan('${data.id ?? ''}')">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx=".5"/><rect width="5" height="5" x="16" y="3" rx=".5"/><rect width="5" height="5" x="3" y="16" rx=".5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/></svg>
           Scan to Rent
         </button>
@@ -111,6 +152,10 @@ function openModal(type, data = {}) {
       <div class="modal-detail-row"><span class="label">Expected Return</span><span class="value">${data.returnTime ?? '—'}</span></div>
       <div class="modal-detail-row"><span class="label">Status</span><span class="value">Active Rental</span></div>
       <div class="modal-actions">
+        <button class="primary-btn" onclick="closeModal(); startScan('${data.id ?? ''}')">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx=".5"/><rect width="5" height="5" x="16" y="3" rx=".5"/><rect width="5" height="5" x="3" y="16" rx=".5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/></svg>
+          Scan to Return
+        </button>
         <button class="primary-btn" onclick="toggleID()">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>
           View Borrower ID
@@ -131,16 +176,16 @@ function openModal(type, data = {}) {
         ${bikeIconHtml('orange')}
         <div>
           <div class="modal-bike-title">${data.id ?? 'BK-103'}</div>
-          <span class="badge badge-orange"><span class="badge-dot badge-dot-orange"></span>Under Repair</span>
+          <span class="badge badge-orange"><span class="badge-dot badge-dot-orange"></span>Repair</span>
         </div>
       </div>
       <div class="modal-detail-row"><span class="label">Issue</span><span class="value">${data.issue ?? '—'}</span></div>
       <div class="modal-detail-row"><span class="label">Updated By</span><span class="value">${data.updatedBy ?? '—'}</span></div>
       <div class="modal-detail-row"><span class="label">Date Flagged</span><span class="value">${data.date ?? '—'}</span></div>
       <div class="modal-actions">
-        <button class="primary-btn" onclick="closeModal(); openReportForm('damage')">
+        <button class="primary-btn" data-report-type="${data.reportType ?? 'damage'}" data-bike-id="${data.id ?? ''}" onclick="closeModal(); openReportForm(this.dataset.reportType, this.dataset.bikeId)">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-          File Damage Report
+          ${data.reportType === 'missing' ? 'Report Missing Bike' : 'File Damage Report'}
         </button>
         <button class="primary-btn outline" onclick="closeModal()">Close</button>
       </div>`;
@@ -180,9 +225,9 @@ function toggleID() {
 
 // ── REPORT ───────────────────────────────────────────────────────────────────
 const reportTitles = { damage: 'Report Damage', missing: 'Report Missing Bike', other: 'Other Issue' };
-function openReportForm(type) {
+function openReportForm(type, bikeId = '') {
   document.getElementById('reportFormTitle').textContent = reportTitles[type] ?? 'Report Issue';
-  document.getElementById('reportBikeId').value = '';
+  document.getElementById('reportBikeId').value = bikeId;
   document.getElementById('reportDesc').value   = '';
   goTo('report-form');
 }
@@ -204,6 +249,12 @@ function showToast(msg) {
   document.getElementById('toastMsg').textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+if (document.getElementById('inventory') && !document.getElementById('login').classList.contains('active')) {
+  goTo('inventory');
+  const inventoryStatus = document.getElementById('inventory-status');
+  if (inventoryStatus) showToast(inventoryStatus.dataset.message);
 }
 
 // ── LIVE CLOCK ───────────────────────────────────────────────────────────────
