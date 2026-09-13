@@ -2,14 +2,18 @@
 <section class="screen {{ session('status') ? '' : 'active' }}" id="login">
   <div class="login-bg">
     <div class="login-logo-wrap">
-      <img src="../system_logo.png" alt="Logo" class="login-logo-img">
+      <img src="{{ asset('images/system_logo.png') }}" alt="Logo" class="login-logo-img">
       <div class="login-brand">RentaBike</div>
       <div class="login-sub">Staff Portal</div>
     </div>
     <div class="login-card">
-      <div class="login-error" id="loginError">Incorrect email or password. Please try again.</div>
+      <div class="login-error {{ $errors->any() ? 'show' : '' }}" id="loginError">
+        {{ $errors->first('email', 'Incorrect email or password. Please try again.') }}
+      </div>
 
-      <div class="login-field-group">
+      <form method="POST" action="{{ route('staff.login.submit') }}" id="staff-login-form">
+        @csrf
+        <div class="login-field-group">
         <label class="login-field-label">Email Address</label>
         <div class="login-input-wrap">
           <span class="login-input-icon">
@@ -18,12 +22,13 @@
               <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
             </svg>
           </span>
-          <input class="login-input" type="email" placeholder="staff@rentabike.com" id="loginEmail"
+          <input class="login-input" type="email" name="email" placeholder="staff@rentabike.com" id="loginEmail"
+            value="{{ old('email') }}" required
             onkeydown="if(event.key==='Enter') doLogin()">
         </div>
-      </div>
+        </div>
 
-      <div class="login-field-group">
+        <div class="login-field-group">
         <label class="login-field-label">Password</label>
         <div class="login-input-wrap">
           <span class="login-input-icon">
@@ -32,7 +37,8 @@
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
           </span>
-          <input class="login-input" type="password" placeholder="Enter your password" id="loginPw"
+          <input class="login-input" type="password" name="password" placeholder="Enter your password" id="loginPw"
+            required
             onkeydown="if(event.key==='Enter') doLogin()">
           <button class="login-pw-toggle" type="button" onclick="togglePw()">
             <svg id="pwEyeIcon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -41,7 +47,7 @@
             </svg>
           </button>
         </div>
-      </div>
+        </div>
 
       <div class="login-options">
         <label class="login-remember">
@@ -50,7 +56,8 @@
         <a href="#" class="login-forgot">Forgot password?</a>
       </div>
 
-      <button class="login-btn" onclick="doLogin()">Sign In</button>
+        <button class="login-btn" type="submit" onclick="return doLogin()">Sign In</button>
+      </form>
     </div>
 
     <div class="login-footer">

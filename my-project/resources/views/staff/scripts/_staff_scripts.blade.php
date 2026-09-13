@@ -15,11 +15,9 @@ function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pw    = document.getElementById('loginPw').value;
   const err   = document.getElementById('loginError');
-  if (!email || !pw) { err.classList.add('show'); return; }
+  if (!email || !pw) { err.classList.add('show'); return false; }
   err.classList.remove('show');
-  goTo('home');
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.nav-btn').classList.add('active');
+  return true;
 }
 function togglePw() {
   const inp  = document.getElementById('loginPw');
