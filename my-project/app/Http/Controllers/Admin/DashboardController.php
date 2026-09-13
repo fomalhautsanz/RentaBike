@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Carbon\Carbon; // para sa pag-handle og dates/time
 
+
 class DashboardController extends Controller
 {
     public function storeStaff(Request $request)
@@ -164,8 +165,23 @@ class DashboardController extends Controller
         ];
     })->toBase(); // downgrade to plain Support Collection so merge() doesn't call getKey() on stdClass
 
+
+    $staff = collect([]);
+    $bikes = Bicycle::orderBy('bike_id')->get()->map(function (Bicycle $bike) {
+        return (object) [
+            'bike_code' => $bike->qr_code,
+            'name' => trim($bike->model . ' · ' . $bike->make),
+            'type' => $bike->bike_type,
+            'qr_code' => $bike->qr_code,
+            'status' => ucfirst($bike->status),
+            'condition' => $bike->condition === 'repair' ? 'Needs Repair' : ucfirst($bike->condition),
+            'last_maintenance' => null,
+        ];
+    });
+    $reports  = collect([]);
+    $rentals  = collect([]);
+
     $staff = $staff->merge($admins);
-    $bikes    = collect([]);
     $reports  = collect([]);
     $rentals  = collect([]);
 
@@ -178,30 +194,30 @@ class DashboardController extends Controller
         'stats',
         'pendingReports', 'inProgressReports', 'resolvedReports',
         'recentActivity', 'bikeTypeDistribution',
-        'weeklyRentals', 'revenueVsRentals', 'peakHours'
+        'weeklyRentals', 'revenueVsRentals', 'peakHours', 'bikes'
     ));
 }
 
-    public function storeBike(Request $request)
-    {
-        $validated = $request->validate([
-            'qr_code' => ['required', 'string', 'max:100', 'unique:bicycle,qr_code'],
-            'model' => ['required', 'string', 'max:100'],
-            'make' => ['required', 'string', 'max:100'],
-            'bike_type' => ['nullable', 'string', 'max:50'],
-            'status' => ['nullable', 'string', 'max:30'],
-            'condition' => ['nullable', 'string', 'max:30'],
-        ]);
 
-        Bicycle::create([
-            ...$validated,
-            'bike_type' => $validated['bike_type'] ?? 'Standard',
-            'status' => $validated['status'] ?? 'available',
-            'condition' => $validated['condition'] ?? 'good',
-        ]);
+   public function storeBike(Request $request)
+{
+    $validated = $request->validate([
+        'qr_code' => ['required', 'string', 'max:100', 'unique:bicycle,qr_code'],
+        'model' => ['required', 'string', 'max:100'],
+        'make' => ['required', 'string', 'max:100'],
+        'bike_type' => ['required', 'string', 'max:50'],
+        'condition' => ['required', 'in:good,repair,missing'],
+    ]);
 
-        return back()->with('success', 'Bike added successfully.');
-    }
+    Bicycle::create([
+        ...$validated,
+        'status' => $validated['condition'] === 'good' ? 'available' : 'repair',
+    ]);
+
+    return redirect()
+        ->route('admin.dashboard')
+        ->with('success', 'Bike added successfully.');
+}
 
     public function exportAdminDashboardCsv()
     {
