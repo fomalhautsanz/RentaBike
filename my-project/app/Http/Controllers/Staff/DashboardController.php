@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bicycle;
+use App\Models\Staff;
+use Illuminate\Support\Facades\Session;
 
 class DashboardController extends Controller
 {
@@ -16,8 +18,15 @@ class DashboardController extends Controller
             'total'     => Bicycle::count(),
         ];
         $bikes = Bicycle::orderByDesc('bike_id')->limit(10)->get();
+        $bikeCategories = Bicycle::orderBy('bike_type')
+            ->orderBy('bike_id')
+            ->get()
+            ->groupBy('bike_type');
 
-        return view('staff.home', compact('stats', 'bikes'));
+        $staff = Staff::find(Session::get('staff_id'));
+        $staffPermissions = $staff?->permissions ?? [];
+
+        return view('staff.home', compact('stats', 'bikes', 'bikeCategories', 'staffPermissions'));
     }
 
     public function exportStaffDashboardCsv()

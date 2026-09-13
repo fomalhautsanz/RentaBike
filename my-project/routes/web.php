@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StaffLoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
+use App\Http\Controllers\Staff\InventoryController;
 
 
 // ======================================================
@@ -80,4 +81,7 @@ Route::prefix('staff')
 
         Route::get('/export', [StaffDashboardController::class, 'exportStaffDashboardCsv'])
             ->name('staff.export');
+
+        Route::post('/inventory', [InventoryController::class, 'store'])
+            ->name('staff.inventory.store');
     });
