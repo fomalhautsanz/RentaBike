@@ -1,5 +1,5 @@
 {{-- LOGIN SCREEN --}}
-<section class="screen active" id="login">
+<section class="screen {{ session('status') ? '' : 'active' }}" id="login">
   <div class="login-bg">
     <div class="login-logo-wrap">
       <img src="../system_logo.png" alt="Logo" class="login-logo-img">
