@@ -94,6 +94,7 @@ return [
     | are secure. You should do this prior to deploying the application.
     |
     */
+    'email_hash_key' => env('EMAIL_HASH_KEY', ''),
 
     'cipher' => 'AES-256-CBC',
 

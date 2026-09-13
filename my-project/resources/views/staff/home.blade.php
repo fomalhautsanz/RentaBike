@@ -1,12 +1,22 @@
 @extends('layouts.staff')
 
 @section('content')
-    @include('staff.pages._login')
+    @php($staffPermissions = $staffPermissions ?? [])
+    @php($canViewInventory = in_array('View Inventory', $staffPermissions, true))
+    @php($canManageStaff = in_array('Manage Staff', $staffPermissions, true))
+    @php($canHandleMaintenance = in_array('Handle Maintenance', $staffPermissions, true))
     @include('staff.pages._home')
     @include('staff.pages._scanner')
-    @include('staff.pages._inventory')
-    @include('staff.pages._inventory_create')
-    @include('staff.pages._report')
+    @if($canViewInventory ?? false)
+        @include('staff.pages._inventory')
+        @include('staff.pages._inventory_create')
+    @endif
+    @if($canHandleMaintenance ?? false)
+        @include('staff.pages._report')
+    @endif
+    @if($canManageStaff ?? false)
+        @include('staff.pages._staff_management')
+    @endif
     @include('staff.pages._report_form')
     @include('staff.pages._rental_form')
     @include('staff.pages._success')

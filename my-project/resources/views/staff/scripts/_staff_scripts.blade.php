@@ -1,8 +1,11 @@
 <script>
 // ── NAVIGATION ───────────────────────────────────────────────────────────────
 function goTo(id) {
+  const target = document.getElementById(id);
+  if (!target) return;
+
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  target.classList.add('active');
   window.scrollTo(0, 0);
 }
 function navActive(btn) {
@@ -57,6 +60,8 @@ function simulateScan() {
 }
 
 function toggleBikeStatus(bikeCode) {
+  const row = document.querySelector(`[data-bike-code="${bikeCode}"]`);
+
   fetch(`/staff/inventory/${encodeURIComponent(bikeCode)}/toggle-status`, {
     method: 'PATCH',
     headers: {
@@ -71,12 +76,26 @@ function toggleBikeStatus(bikeCode) {
         return;
       }
 
-      const row = document.querySelector(`[data-bike-code="${bikeCode}"]`);
       if (row) {
         row.dataset.status = data.status;
         const badge = row.querySelector('[data-bike-status]');
         badge.textContent = data.status;
         badge.className = `badge ${data.status === 'Available' ? 'badge-green' : 'badge-blue'}`;
+      }
+
+      const availableStat = document.getElementById('stat-available');
+      const rentedStat = document.getElementById('stat-rented');
+      if (availableStat && rentedStat) {
+        const available = Number(availableStat.textContent);
+        const rented = Number(rentedStat.textContent);
+        availableStat.textContent = data.status === 'Rented' ? available - 1 : available + 1;
+        rentedStat.textContent = data.status === 'Rented' ? rented + 1 : rented - 1;
+
+        const total = Number(document.getElementById('stat-total')?.textContent || 0);
+        if (total > 0) {
+          document.querySelector('.stat-fill-green').style.width = `${(Number(availableStat.textContent) / total) * 100}%`;
+          document.querySelector('.stat-fill-blue').style.width = `${(Number(rentedStat.textContent) / total) * 100}%`;
+        }
       }
 
       pendingBikeCode = null;
@@ -105,6 +124,30 @@ function startTimer() {
 function pad(n) { return String(n).padStart(2, '0'); }
 
 // ── MODALS ───────────────────────────────────────────────────────────────────
+function openBikeAction(action) {
+  const content = document.getElementById('modalContent');
+  const title = action === 'add' ? 'Add Bike' : action === 'edit' ? 'Edit Bike' : 'Delete Bike';
+  const body = action === 'delete'
+    ? `<p class="modal-confirmation-message">Are you sure you want to remove this bike from inventory?</p>`
+    : `<div class="form-group"><label class="form-label">Bike ID</label><input class="form-input" placeholder="e.g. RB-004"></div>
+       <div class="form-group"><label class="form-label">Bike Type</label><select class="form-select"><option>Road Bike</option><option>Sidecar Bike</option><option>Children's Bike</option></select></div>
+       <div class="form-group"><label class="form-label">Status</label><select class="form-select"><option>Available</option><option>Rented</option><option>Repair</option></select></div>`;
+  content.innerHTML = `<div class="modal-bike-title">${title}</div>${body}<div class="modal-actions"><button class="primary-btn" onclick="showToast('Bike ${action} action submitted'); closeModal()">${action === 'delete' ? 'Delete Bike' : 'Save Changes'}</button><button class="primary-btn outline" onclick="closeModal()">Cancel</button></div>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+
+function openStaffAction(action, name = '') {
+  const content = document.getElementById('modalContent');
+  const title = action === 'add' ? 'Add Staff Account' : action === 'edit' ? `Edit ${name}` : `Delete ${name}`;
+  const body = action === 'delete'
+    ? `<p class="modal-confirmation-message">Are you sure you want to remove this staff account?</p>`
+    : `<div class="form-group"><label class="form-label">Full Name</label><input class="form-input" value="${name}" placeholder="Enter full name"></div>
+       <div class="form-group"><label class="form-label">Email Address</label><input class="form-input" type="email" placeholder="staff@rentabike.com"></div>
+       <div class="form-group"><label class="form-label">Role</label><select class="form-select"><option>Staff</option><option>Admin</option></select></div>`;
+  content.innerHTML = `<div class="modal-bike-title">${title}</div>${body}<div class="modal-actions"><button class="primary-btn" onclick="showToast('Staff account ${action} action submitted'); closeModal()">${action === 'delete' ? 'Delete Account' : 'Save Account'}</button><button class="primary-btn outline" onclick="closeModal()">Cancel</button></div>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+
 function openModal(type, data = {}) {
   const bikeIconHtml = (cls) => `
     <div class="bike-icon ${cls}" style="width:48px;height:48px">
@@ -191,6 +234,29 @@ function openModal(type, data = {}) {
       </div>`;
   }
 
+  if (type === 'report-confirm') {
+    content.innerHTML = `
+      <div class="modal-bike-header">
+        <div class="bike-icon orange" style="width:48px;height:48px">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <div>
+          <div class="modal-bike-title">Submit Report?</div>
+        </div>
+      </div>
+      <p class="modal-confirmation-message">This report will be submitted to the Admin for review. Are you sure you want to continue?</p>
+      <div class="modal-actions">
+        <button class="primary-btn" onclick="confirmReport()">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Confirm Submit
+        </button>
+        <button class="primary-btn outline" onclick="closeModal()">Cancel</button>
+      </div>`;
+  }
+
   document.getElementById('modalBg').classList.add('open');
 }
 function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
@@ -212,6 +278,10 @@ function submitReport() {
   const bikeId = document.getElementById('reportBikeId').value.trim();
   const desc   = document.getElementById('reportDesc').value.trim();
   if (!bikeId || !desc) { showToast('Please fill in all required fields.'); return; }
+  openModal('report-confirm', { bikeId, description: desc });
+}
+function confirmReport() {
+  closeModal();
   goTo('home');
   showToast('Report submitted successfully!');
 }
@@ -223,6 +293,10 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
+
+document.querySelectorAll('[data-fill-width]').forEach(fill => {
+  fill.style.width = `${fill.dataset.fillWidth}%`;
+});
 
 if (document.getElementById('inventory') && !document.getElementById('login').classList.contains('active')) {
   goTo('inventory');
@@ -237,7 +311,8 @@ function updateTime() {
   const m   = String(now.getMinutes()).padStart(2, '0');
   const suf = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
-  document.getElementById('liveTime').textContent = h + ':' + m + ' ' + suf;
+  const timeElement = document.querySelector('.screen.active #liveTime');
+  if (timeElement) timeElement.textContent = h + ':' + m + ' ' + suf;
 }
 setInterval(updateTime, 1000);
 updateTime();
