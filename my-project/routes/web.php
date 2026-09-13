@@ -82,6 +82,9 @@ Route::prefix('staff')
         Route::get('/export', [StaffDashboardController::class, 'exportStaffDashboardCsv'])
             ->name('staff.export');
 
+        Route::get('/inventory', [InventoryController::class, 'index'])
+            ->name('staff.inventory');
+
         Route::post('/inventory', [InventoryController::class, 'store'])
             ->name('staff.inventory.store');
 
