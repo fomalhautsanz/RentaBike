@@ -9,13 +9,13 @@
     </div>
     <form method="POST" action="{{ route('admin.bikes.store') }}">
       @csrf
-      <div class="form-group"><label class="form-label">QR Code</label><input type="text" name="qr_code" class="form-input" placeholder="e.g. RB-004" required></div>
-      <div class="form-group"><label class="form-label">Model</label><input type="text" name="model" class="form-input" placeholder="e.g. City 300" required></div>
+      <div class="form-group"><label class="form-label">Bike ID</label><input type="text" name="qr_code" class="form-input" placeholder="e.g. RB-004" required></div>
+      <div class="form-group"><label class="form-label">Bike Name</label><input type="text" name="model" class="form-input" placeholder="e.g. City 300" required></div>
       <div class="form-group"><label class="form-label">Make</label><input type="text" name="make" class="form-input" placeholder="e.g. Trek" required></div>
       <div class="form-group">
         <label class="form-label">Bike Type</label>
         <select name="bike_type" class="form-select" required>
-          <option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
+          <option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
         </select>
       </div>
       <div class="form-group">
@@ -46,7 +46,7 @@
     <div class="form-group">
       <label class="form-label">Type</label>
       <select id="edit-bike-type" class="form-select">
-        <option>Mountain Bike</option><option>City Bike</option><option>Lady's/Men's Bike</option><option>E-Scooter</option><option>Kiddie Bikes</option>
+        <option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
       </select>
     </div>
     <div class="form-group">

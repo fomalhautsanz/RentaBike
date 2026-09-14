@@ -166,7 +166,6 @@ class DashboardController extends Controller
     })->toBase(); // downgrade to plain Support Collection so merge() doesn't call getKey() on stdClass
 
 
-    $staff = collect([]);
     $bikes = Bicycle::orderBy('bike_id')->get()->map(function (Bicycle $bike) {
         return (object) [
             'bike_code' => $bike->qr_code,
