@@ -62,7 +62,7 @@ class DashboardController extends Controller
             'permissions' => $validated['permissions'] ?? [],
         ]);
 
-        return redirect()->route('admin.dashboard')->with('success', 'Staff member added successfully.');
+        return back()->with('success', 'Staff member added successfully.');
     }
 
     public function updateStaff(Request $request, Staff $staff)
@@ -94,7 +94,7 @@ class DashboardController extends Controller
 
         $staff->save();
 
-        return redirect()->route('admin.dashboard')->with('success', 'Staff member updated successfully.');
+        return back()->with('success', 'Staff member updated successfully.');
     }
 
     // kini ang function nga ma-run pag adto ka sa admin dashboard
@@ -213,9 +213,7 @@ class DashboardController extends Controller
         'status' => $validated['condition'] === 'good' ? 'available' : 'repair',
     ]);
 
-    return redirect()
-        ->route('admin.dashboard')
-        ->with('success', 'Bike added successfully.');
+    return back()->with('success', 'Bike added successfully.');
 }
 
     public function exportAdminDashboardCsv()
