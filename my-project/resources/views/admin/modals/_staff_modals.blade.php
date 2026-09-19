@@ -9,6 +9,7 @@
     </div>
     <form method="POST" action="{{ route('admin.staff.store') }}" enctype="multipart/form-data">
       @csrf
+      <input type="hidden" name="current_tab" value="staff">
       <div class="form-group"><label class="form-label">First Name</label><input type="text" name="first_name" class="form-input" placeholder="e.g. Juan" required></div>
       <div class="form-group"><label class="form-label">Last Name</label><input type="text" name="last_name" class="form-input" placeholder="e.g. dela Cruz" required></div>
       <div class="form-group"><label class="form-label">Email Address</label><input type="email" name="email" class="form-input" placeholder="staff@rentabike.com" required></div>
@@ -90,6 +91,7 @@
     <form method="POST" action="" enctype="multipart/form-data" id="edit-staff-form">
       @csrf
       @method('PATCH')
+      <input type="hidden" name="current_tab" value="staff">
       <div class="form-group"><label class="form-label">First Name</label><input type="text" name="first_name" id="edit-staff-first-name" class="form-input" required></div>
       <div class="form-group"><label class="form-label">Last Name</label><input type="text" name="last_name" id="edit-staff-last-name" class="form-input" required></div>
       <div class="form-group"><label class="form-label">Profile Picture</label><input type="file" name="profile_picture" class="form-input" accept="image/jpeg,image/png,image/webp"></div>
