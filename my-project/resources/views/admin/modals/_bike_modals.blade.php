@@ -9,6 +9,7 @@
     </div>
     <form method="POST" action="{{ route('admin.bikes.store') }}">
       @csrf
+      <input type="hidden" name="current_tab" value="bikes">
       <div class="form-group"><label class="form-label">Bike ID</label><input type="text" name="qr_code" class="form-input" placeholder="e.g. RB-004" required></div>
       <div class="form-group"><label class="form-label">Bike Name</label><input type="text" name="model" class="form-input" placeholder="e.g. City 300" required></div>
       <div class="form-group"><label class="form-label">Make</label><input type="text" name="make" class="form-input" placeholder="e.g. Trek" required></div>

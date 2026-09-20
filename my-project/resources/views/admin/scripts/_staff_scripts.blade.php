@@ -109,6 +109,24 @@ function renderStaffTable() {
 }
 
 const addStaffForm = document.querySelector('#add-staff-modal form');
+
+function resetAddStaffForm() {
+  if (!addStaffForm) return;
+
+  addStaffForm.reset();
+  addStaffForm.dataset.confirmed = 'false';
+  addStaffForm.querySelectorAll('.permission-checkbox').forEach(cb => cb.checked = false);
+}
+
+function showDuplicateStaffModal(message = 'A staff member with this email is already registered.') {
+  const duplicateMessage = document.getElementById('duplicate-staff-message');
+  if (duplicateMessage) {
+    duplicateMessage.textContent = message;
+  }
+  resetAddStaffForm();
+  openModal('duplicate-staff-modal');
+}
+
 addStaffForm.addEventListener('submit', function (event) {
   if (addStaffForm.dataset.confirmed === 'true') return;
 
@@ -139,6 +157,13 @@ function confirmStaffCreation() {
   addStaffForm.dataset.confirmed = 'true';
   addStaffForm.requestSubmit();
 }
+
+window.addEventListener('DOMContentLoaded', function () {
+  const duplicateMessage = @json($errors->first('email') ?? '');
+  if (duplicateMessage) {
+    showDuplicateStaffModal(duplicateMessage);
+  }
+});
 
 function escapeHtml(value) {
   return value.replace(/[&<>'"]/g, character => ({

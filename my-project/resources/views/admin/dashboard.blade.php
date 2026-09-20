@@ -20,4 +20,24 @@
     @include('admin.scripts._bike_scripts')
     @include('admin.scripts._dashboard_charts')
     @include('admin.scripts._reports_charts')
+
+    @if(session('active_tab'))
+        <script>
+            window.addEventListener('DOMContentLoaded', function () {
+                var tab = @json(session('active_tab'));
+                var btn = document.getElementById('nav-' + tab);
+                if (btn) {
+                    nav(tab, btn);
+                }
+            });
+        </script>
+    @endif
+
+    @if(session('success'))
+        <script>
+            window.addEventListener('DOMContentLoaded', function () {
+                showToast(@json(session('success')));
+            });
+        </script>
+    @endif
 @endsection
