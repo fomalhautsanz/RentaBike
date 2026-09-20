@@ -36,6 +36,31 @@ class InventoryController extends Controller
         return redirect()->route('staff.home')->with('status', 'Bike added to inventory.');
     }
 
+    public function update(Request $request, Bike $bike): RedirectResponse
+    {
+        $validated = $request->validate([
+            'type' => ['required', 'in:E-Scooter,Lady\'s/Men\'s Bike,Mountain Bike,City Bike,Kiddie Bikes'],
+            'condition' => ['required', 'in:Good,Needs Repair,Missing'],
+        ]);
+
+        $bike->update([
+            ...$validated,
+            'name' => $validated['type'],
+            'status' => $validated['condition'] === 'Good'
+                ? ($bike->status === 'Rented' ? 'Rented' : 'Available')
+                : 'Maintenance',
+        ]);
+
+        return redirect()->route('staff.home')->with('status', 'Bike updated in inventory.');
+    }
+
+    public function destroy(Bike $bike): RedirectResponse
+    {
+        $bike->delete();
+
+        return redirect()->route('staff.home')->with('status', 'Bike removed from inventory.');
+    }
+
     public function toggleStatus(Bike $bike): JsonResponse
     {
         if ($bike->condition !== 'Good') {

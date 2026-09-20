@@ -88,6 +88,12 @@ Route::prefix('staff')
         Route::post('/inventory', [InventoryController::class, 'store'])
             ->name('staff.inventory.store');
 
+        Route::patch('/inventory/{bike}', [InventoryController::class, 'update'])
+            ->name('staff.inventory.update');
+
+        Route::delete('/inventory/{bike}', [InventoryController::class, 'destroy'])
+            ->name('staff.inventory.destroy');
+
         Route::patch('/inventory/{bike}/toggle-status', [InventoryController::class, 'toggleStatus'])
             ->name('staff.inventory.toggle-status');
     });
