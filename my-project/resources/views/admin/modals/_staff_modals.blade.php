@@ -3,12 +3,13 @@
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">Add Staff Member</span>
-      <button class="modal-close" onclick="closeModal('add-staff-modal')">
+      <button class="modal-close" onclick="resetAddStaffForm(); closeModal('add-staff-modal')">
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <form method="POST" action="{{ route('admin.staff.store') }}" enctype="multipart/form-data">
       @csrf
+      <input type="hidden" name="current_tab" value="staff">
       <div class="form-group"><label class="form-label">First Name</label><input type="text" name="first_name" class="form-input" placeholder="e.g. Juan" required></div>
       <div class="form-group"><label class="form-label">Last Name</label><input type="text" name="last_name" class="form-input" placeholder="e.g. dela Cruz" required></div>
       <div class="form-group"><label class="form-label">Email Address</label><input type="email" name="email" class="form-input" placeholder="staff@rentabike.com" required></div>
@@ -33,10 +34,32 @@
       <div class="form-group"><label class="form-label">Password</label><input type="password" name="password" class="form-input" placeholder="At least 9 characters" minlength="9" required></div>
       <div class="form-group"><label class="form-label">Confirm Password</label><input type="password" name="password_confirmation" class="form-input" placeholder="Re-enter password" minlength="9" required></div>
       <div class="form-actions">
-        <button type="button" class="btn btn-outline" onclick="closeModal('add-staff-modal')">Cancel</button>
+        <button type="button" class="btn btn-outline" onclick="resetAddStaffForm(); closeModal('add-staff-modal')">Cancel</button>
         <button type="submit" class="btn btn-primary">Add Staff</button>
       </div>
     </form>
+  </div>
+</div>
+
+{{-- DUPLICATE STAFF MODAL --}}
+<div class="modal-backdrop" id="duplicate-staff-modal" onclick="closeModalOutside(event,'duplicate-staff-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Duplicate Staff Entry</span>
+      <button class="modal-close" type="button" onclick="resetAddStaffForm(); closeModal('duplicate-staff-modal')">
+        <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="delete-warning">
+      <div class="delete-icon" style="color:#dc2626;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-triangle-alert-icon lucide-triangle-alert"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      </div>
+      <div class="delete-title">This staff account already exists.</div>
+      <div class="delete-desc" id="duplicate-staff-message">Check the staff list to find the existing record.</div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary" onclick="resetAddStaffForm(); closeModal('duplicate-staff-modal')">Okay</button>
+    </div>
   </div>
 </div>
 
@@ -68,6 +91,7 @@
     <form method="POST" action="" enctype="multipart/form-data" id="edit-staff-form">
       @csrf
       @method('PATCH')
+      <input type="hidden" name="current_tab" value="staff">
       <div class="form-group"><label class="form-label">First Name</label><input type="text" name="first_name" id="edit-staff-first-name" class="form-input" required></div>
       <div class="form-group"><label class="form-label">Last Name</label><input type="text" name="last_name" id="edit-staff-last-name" class="form-input" required></div>
       <div class="form-group"><label class="form-label">Profile Picture</label><input type="file" name="profile_picture" class="form-input" accept="image/jpeg,image/png,image/webp"></div>

@@ -7,13 +7,16 @@
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <form method="POST" action="#">
+    <form method="POST" action="{{ route('admin.bikes.store') }}">
       @csrf
-      <div class="form-group"><label class="form-label">Bike Name</label><input type="text" name="name" class="form-input" placeholder="e.g. Mountain Pro X1" required></div>
+      <input type="hidden" name="current_tab" value="bikes">
+      <div class="form-group"><label class="form-label">Bike ID</label><input type="text" name="qr_code" class="form-input" placeholder="e.g. RB-004" required></div>
+      <div class="form-group"><label class="form-label">Bike Name</label><input type="text" name="model" class="form-input" placeholder="e.g. City 300" required></div>
+      <div class="form-group"><label class="form-label">Make</label><input type="text" name="make" class="form-input" placeholder="e.g. Trek" required></div>
       <div class="form-group">
-        <label class="form-label">Type</label>
-        <select name="type" class="form-select">
-          <option>Mountain Bike</option><option>City Bike</option><option>Lady's/Men's Bike</option><option>E-Scooter</option><option>Kiddie Bikes</option>
+        <label class="form-label">Bike Type</label>
+        <select name="bike_type" class="form-select" required>
+          <option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
         </select>
       </div>
       <div class="form-group">
@@ -44,7 +47,7 @@
     <div class="form-group">
       <label class="form-label">Type</label>
       <select id="edit-bike-type" class="form-select">
-        <option>Mountain Bike</option><option>City Bike</option><option>Lady's/Men's Bike</option><option>E-Scooter</option><option>Kiddie Bikes</option>
+        <option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
       </select>
     </div>
     <div class="form-group">

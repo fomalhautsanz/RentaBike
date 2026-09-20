@@ -127,10 +127,19 @@ function openBikeAction(action) {
   const title = action === 'add' ? 'Add Bike' : action === 'edit' ? 'Edit Bike' : 'Delete Bike';
   const body = action === 'delete'
     ? `<p class="modal-confirmation-message">Are you sure you want to remove this bike from inventory?</p>`
-    : `<div class="form-group"><label class="form-label">Bike ID</label><input class="form-input" placeholder="e.g. RB-004"></div>
-       <div class="form-group"><label class="form-label">Bike Type</label><select class="form-select"><option>Road Bike</option><option>Sidecar Bike</option><option>Children's Bike</option></select></div>
-       <div class="form-group"><label class="form-label">Status</label><select class="form-select"><option>Available</option><option>Rented</option><option>Repair</option></select></div>`;
-  content.innerHTML = `<div class="modal-bike-title">${title}</div>${body}<div class="modal-actions"><button class="primary-btn" onclick="showToast('Bike ${action} action submitted'); closeModal()">${action === 'delete' ? 'Delete Bike' : 'Save Changes'}</button><button class="primary-btn outline" onclick="closeModal()">Cancel</button></div>`;
+    : `<form method="POST" action="{{ route('staff.inventory.store') }}">
+         @csrf
+         <div class="modal-bike-title">${title}</div>
+         <div class="form-group"><label class="form-label" for="bike-qr-code">QR Code</label><input id="bike-qr-code" name="qr_code" class="form-input" placeholder="e.g. RB-004" required></div>
+         <div class="form-group"><label class="form-label" for="bike-model">Model</label><input id="bike-model" name="model" class="form-input" placeholder="e.g. City 300" required></div>
+         <div class="form-group"><label class="form-label" for="bike-make">Make</label><input id="bike-make" name="make" class="form-input" placeholder="e.g. Trek" required></div>
+         <div class="form-group"><label class="form-label" for="bike-type">Bike Type</label><select id="bike-type" name="bike_type" class="form-select" required><option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option></select></div>
+         <div class="form-group"><label class="form-label" for="bike-condition">Condition</label><select id="bike-condition" name="condition" class="form-select" required><option value="good">Good</option><option value="repair">Repair</option><option value="missing">Missing</option></select></div>
+         <div class="modal-actions"><button type="submit" class="primary-btn">Add Bike</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
+       </form>`;
+  content.innerHTML = action === 'delete'
+    ? `<div class="modal-bike-title">${title}</div>${body}<div class="modal-actions"><button class="primary-btn" onclick="closeModal()">Delete Bike</button><button class="primary-btn outline" onclick="closeModal()">Cancel</button></div>`
+    : body;
   document.getElementById('modalBg').classList.add('open');
 }
 

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use App\Models\Bike;
 use App\Models\Bicycle;
+use App\Models\Staff;
+use Illuminate\Support\Facades\Session;
 
 class DashboardController extends Controller
 {
@@ -18,7 +20,10 @@ class DashboardController extends Controller
         ];
         $bikes = Bike::query()->latest()->get();
 
-        return view('staff.home', compact('stats', 'bikes'));
+        $staff = Staff::find(Session::get('staff_id'));
+        $staffPermissions = $staff?->permissions ?? [];
+
+        return view('staff.home', compact('stats', 'bikes', 'staffPermissions'));
     }
 
     public function exportStaffDashboardCsv()
