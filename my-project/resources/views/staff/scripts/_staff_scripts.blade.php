@@ -1,8 +1,11 @@
 <script>
 // ── NAVIGATION ───────────────────────────────────────────────────────────────
 function goTo(id) {
+  const target = document.getElementById(id);
+  if (!target) return;
+
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  target.classList.add('active');
   window.scrollTo(0, 0);
 }
 function navActive(btn) {
@@ -15,13 +18,11 @@ function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pw    = document.getElementById('loginPw').value;
   const err   = document.getElementById('loginError');
-  if (!email || !pw) { err.classList.add('show'); return; }
+  if (!email || !pw) { err.classList.add('show'); return false; }
   err.classList.remove('show');
-  goTo('home');
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.nav-btn').classList.add('active');
+  return true;
 }
-function togglePw() {
+function toggleDashboardPassword() {
   const inp  = document.getElementById('loginPw');
   const icon = document.getElementById('pwEyeIcon');
   if (inp.type === 'password') {
@@ -34,6 +35,13 @@ function togglePw() {
 }
 
 // ── SCANNER ──────────────────────────────────────────────────────────────────
+let pendingBikeCode = null;
+
+function startScan(bikeCode) {
+  pendingBikeCode = bikeCode;
+  goTo('scanner');
+}
+
 function simulateScan() {
   const btn = document.querySelector('.scan-simulate-btn');
   btn.textContent = 'Scanning…';
@@ -41,8 +49,58 @@ function simulateScan() {
   setTimeout(() => {
     btn.textContent = 'Simulate QR Scan';
     btn.disabled = false;
-    goTo('rental-form');
+    if (pendingBikeCode) {
+      toggleBikeStatus(pendingBikeCode);
+    } else {
+      goTo('rental-form');
+    }
   }, 1200);
+}
+
+function toggleBikeStatus(bikeCode) {
+  const row = document.querySelector(`[data-bike-code="${bikeCode}"]`);
+
+  fetch(`/staff/inventory/${encodeURIComponent(bikeCode)}/toggle-status`, {
+    method: 'PATCH',
+    headers: {
+      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+      'Accept': 'application/json',
+    },
+  })
+    .then(response => response.json().then(data => ({ ok: response.ok, data })))
+    .then(({ ok, data }) => {
+      if (!ok) {
+        showToast(data.message || 'This bike cannot be rented.');
+        return;
+      }
+
+      if (row) {
+        row.dataset.status = data.status;
+        const badge = row.querySelector('[data-bike-status]');
+        badge.textContent = data.status;
+        badge.className = `badge ${data.status === 'Available' ? 'badge-green' : 'badge-blue'}`;
+      }
+
+      const availableStat = document.getElementById('stat-available');
+      const rentedStat = document.getElementById('stat-rented');
+      if (availableStat && rentedStat) {
+        const available = Number(availableStat.textContent);
+        const rented = Number(rentedStat.textContent);
+        availableStat.textContent = data.status === 'Rented' ? available - 1 : available + 1;
+        rentedStat.textContent = data.status === 'Rented' ? rented + 1 : rented - 1;
+
+        const total = Number(document.getElementById('stat-total')?.textContent || 0);
+        if (total > 0) {
+          document.querySelector('.stat-fill-green').style.width = `${(Number(availableStat.textContent) / total) * 100}%`;
+          document.querySelector('.stat-fill-blue').style.width = `${(Number(rentedStat.textContent) / total) * 100}%`;
+        }
+      }
+
+      pendingBikeCode = null;
+      showToast(data.message);
+      goTo(data.status === 'Rented' ? 'rental-form' : 'inventory');
+    })
+    .catch(() => showToast('Could not update this bike.'));
 }
 
 // ── RENTAL ───────────────────────────────────────────────────────────────────
@@ -64,24 +122,24 @@ function startTimer() {
 function pad(n) { return String(n).padStart(2, '0'); }
 
 // ── MODALS ───────────────────────────────────────────────────────────────────
-function openBikeAction(action) {
+function openBikeAction(action, data = {}) {
   const content = document.getElementById('modalContent');
-  const title = action === 'add' ? 'Add Bike' : action === 'edit' ? 'Edit Bike' : 'Delete Bike';
+  const title = action === 'edit' ? `Edit ${data.id ?? 'Bike'}` : 'Delete Bike';
   const body = action === 'delete'
-    ? `<p class="modal-confirmation-message">Are you sure you want to remove this bike from inventory?</p>`
-    : `<form method="POST" action="{{ route('staff.inventory.store') }}">
+    ? `<p class="modal-confirmation-message">Are you sure you want to remove ${data.id ?? 'this bike'} from inventory?</p>
+       <form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}">
          @csrf
-         <div class="modal-bike-title">${title}</div>
-         <div class="form-group"><label class="form-label" for="bike-qr-code">QR Code</label><input id="bike-qr-code" name="qr_code" class="form-input" placeholder="e.g. RB-004" required></div>
-         <div class="form-group"><label class="form-label" for="bike-model">Model</label><input id="bike-model" name="model" class="form-input" placeholder="e.g. City 300" required></div>
-         <div class="form-group"><label class="form-label" for="bike-make">Make</label><input id="bike-make" name="make" class="form-input" placeholder="e.g. Trek" required></div>
-         <div class="form-group"><label class="form-label" for="bike-type">Bike Type</label><select id="bike-type" name="bike_type" class="form-select" required><option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option></select></div>
-         <div class="form-group"><label class="form-label" for="bike-condition">Condition</label><select id="bike-condition" name="condition" class="form-select" required><option value="good">Good</option><option value="repair">Repair</option><option value="missing">Missing</option></select></div>
-         <div class="modal-actions"><button type="submit" class="primary-btn">Add Bike</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
+         @method('DELETE')
+         <div class="modal-actions"><button type="submit" class="primary-btn">Delete Bike</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
+       </form>`
+    : `<form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}">
+         @csrf
+         @method('PATCH')
+         <div class="form-group"><label class="form-label" for="bike-type">Type</label><select id="bike-type" name="type" class="form-select" required><option ${data.type === 'Mountain Bike' ? 'selected' : ''}>Mountain Bike</option><option ${data.type === 'City Bike' ? 'selected' : ''}>City Bike</option><option ${data.type === "Lady's/Men's Bike" ? 'selected' : ''}>Lady's/Men's Bike</option><option ${data.type === 'E-Scooter' ? 'selected' : ''}>E-Scooter</option><option ${data.type === 'Kiddie Bikes' ? 'selected' : ''}>Kiddie Bikes</option></select></div>
+         <div class="form-group"><label class="form-label" for="bike-condition">Condition</label><select id="bike-condition" name="condition" class="form-select" required><option ${data.condition === 'Good' ? 'selected' : ''}>Good</option><option ${data.condition === 'Needs Repair' ? 'selected' : ''}>Needs Repair</option><option ${data.condition === 'Missing' ? 'selected' : ''}>Missing</option></select></div>
+         <div class="modal-actions"><button type="submit" class="primary-btn">Save Changes</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
        </form>`;
-  content.innerHTML = action === 'delete'
-    ? `<div class="modal-bike-title">${title}</div>${body}<div class="modal-actions"><button class="primary-btn" onclick="closeModal()">Delete Bike</button><button class="primary-btn outline" onclick="closeModal()">Cancel</button></div>`
-    : body;
+  content.innerHTML = `<div class="modal-bike-title">${title}</div>${body}`;
   document.getElementById('modalBg').classList.add('open');
 }
 
@@ -122,7 +180,7 @@ function openModal(type, data = {}) {
       <div class="modal-detail-row"><span class="label">Last Borrower</span><span class="value">${data.lastBorrower ?? '—'}</span></div>
       <div class="modal-detail-row"><span class="label">Last Returned</span><span class="value">${data.lastReturned ?? '—'}</span></div>
       <div class="modal-actions">
-        <button class="primary-btn" onclick="closeModal(); goTo('scanner')">
+        <button class="primary-btn" onclick="closeModal(); startScan('${data.id ?? ''}')">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx=".5"/><rect width="5" height="5" x="16" y="3" rx=".5"/><rect width="5" height="5" x="3" y="16" rx=".5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/></svg>
           Scan to Rent
         </button>
@@ -144,6 +202,10 @@ function openModal(type, data = {}) {
       <div class="modal-detail-row"><span class="label">Expected Return</span><span class="value">${data.returnTime ?? '—'}</span></div>
       <div class="modal-detail-row"><span class="label">Status</span><span class="value">Active Rental</span></div>
       <div class="modal-actions">
+        <button class="primary-btn" onclick="closeModal(); startScan('${data.id ?? ''}')">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx=".5"/><rect width="5" height="5" x="16" y="3" rx=".5"/><rect width="5" height="5" x="3" y="16" rx=".5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/></svg>
+          Scan to Return
+        </button>
         <button class="primary-btn" onclick="toggleID()">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>
           View Borrower ID
@@ -164,16 +226,16 @@ function openModal(type, data = {}) {
         ${bikeIconHtml('orange')}
         <div>
           <div class="modal-bike-title">${data.id ?? 'BK-103'}</div>
-          <span class="badge badge-orange"><span class="badge-dot badge-dot-orange"></span>Under Repair</span>
+          <span class="badge badge-orange"><span class="badge-dot badge-dot-orange"></span>Repair</span>
         </div>
       </div>
       <div class="modal-detail-row"><span class="label">Issue</span><span class="value">${data.issue ?? '—'}</span></div>
       <div class="modal-detail-row"><span class="label">Updated By</span><span class="value">${data.updatedBy ?? '—'}</span></div>
       <div class="modal-detail-row"><span class="label">Date Flagged</span><span class="value">${data.date ?? '—'}</span></div>
       <div class="modal-actions">
-        <button class="primary-btn" onclick="closeModal(); openReportForm('damage')">
+        <button class="primary-btn" data-report-type="${data.reportType ?? 'damage'}" data-bike-id="${data.id ?? ''}" onclick="closeModal(); openReportForm(this.dataset.reportType, this.dataset.bikeId)">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-          File Damage Report
+          ${data.reportType === 'missing' ? 'Report Missing Bike' : 'File Damage Report'}
         </button>
         <button class="primary-btn outline" onclick="closeModal()">Close</button>
       </div>`;
@@ -213,9 +275,9 @@ function toggleID() {
 
 // ── REPORT ───────────────────────────────────────────────────────────────────
 const reportTitles = { damage: 'Report Damage', missing: 'Report Missing Bike', other: 'Other Issue' };
-function openReportForm(type) {
+function openReportForm(type, bikeId = '') {
   document.getElementById('reportFormTitle').textContent = reportTitles[type] ?? 'Report Issue';
-  document.getElementById('reportBikeId').value = '';
+  document.getElementById('reportBikeId').value = bikeId;
   document.getElementById('reportDesc').value   = '';
   goTo('report-form');
 }
@@ -237,6 +299,16 @@ function showToast(msg) {
   document.getElementById('toastMsg').textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+document.querySelectorAll('[data-fill-width]').forEach(fill => {
+  fill.style.width = `${fill.dataset.fillWidth}%`;
+});
+
+if (document.getElementById('inventory') && !document.getElementById('login').classList.contains('active')) {
+  goTo('inventory');
+  const inventoryStatus = document.getElementById('inventory-status');
+  if (inventoryStatus) showToast(inventoryStatus.dataset.message);
 }
 
 // ── LIVE CLOCK ───────────────────────────────────────────────────────────────

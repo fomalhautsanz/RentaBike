@@ -19,7 +19,7 @@ class StaffLoginController extends Controller
 
     public function showLogin()
     {
-        return view('staff.pages._login');
+        return view('staff.login');
     }
 
 

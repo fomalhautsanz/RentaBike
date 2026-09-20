@@ -1,4 +1,10 @@
 {{-- HOME SCREEN --}}
+<?php
+$totalBikes = (int) ($stats['total'] ?? 0);
+$availablePercent = $totalBikes > 0 ? round(((int) ($stats['available'] ?? 0) / $totalBikes) * 100) : 0;
+$rentedPercent = $totalBikes > 0 ? round(((int) ($stats['rented'] ?? 0) / $totalBikes) * 100) : 0;
+$repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $totalBikes) * 100) : 0;
+?>
 <section class="screen active" id="home">
   <div class="topbar">
     <div class="topbar-left">
@@ -41,9 +47,9 @@
           </div>
           <span class="stat-change up">Ready</span>
         </div>
-        <div class="stat-value">{{ $stats['available'] ?? 161 }}</div>
+        <div class="stat-value" id="stat-available">{{ $stats['available'] ?? 0 }}</div>
         <div class="stat-label">Available</div>
-        <div class="stat-track"><div class="stat-fill-green" style="width:65%"></div></div>
+        <div class="stat-track"><div class="stat-fill-green" data-fill-width="{{ $availablePercent }}"></div></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-top">
@@ -55,9 +61,9 @@
           </div>
           <span class="stat-change neutral">Active</span>
         </div>
-        <div class="stat-value">{{ $stats['rented'] ?? 87 }}</div>
+        <div class="stat-value" id="stat-rented">{{ $stats['rented'] ?? 0 }}</div>
         <div class="stat-label">Rented</div>
-        <div class="stat-track"><div class="stat-fill-blue" style="width:35%"></div></div>
+        <div class="stat-track"><div class="stat-fill-blue" data-fill-width="{{ $rentedPercent }}"></div></div>
       </div>
     </div>
 
@@ -72,9 +78,9 @@
           </div>
           <span class="stat-change neutral">!</span>
         </div>
-        <div class="stat-value">{{ $stats['repair'] ?? 10 }}</div>
+        <div class="stat-value" id="stat-repair">{{ $stats['repair'] ?? 0 }}</div>
         <div class="stat-label">Repair</div>
-        <div class="stat-track"><div class="stat-fill-orange" style="width:4%"></div></div>
+        <div class="stat-track"><div class="stat-fill-orange" data-fill-width="{{ $repairPercent }}"></div></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-top">
@@ -85,9 +91,9 @@
           </div>
           <span class="stat-change up">Live</span>
         </div>
-        <div class="stat-value">{{ $stats['total'] ?? 248 }}</div>
+        <div class="stat-value" id="stat-total">{{ $stats['total'] ?? 0 }}</div>
         <div class="stat-label">Total Bikes</div>
-        <div class="stat-track"><div class="stat-fill-green" style="width:100%"></div></div>
+        <div class="stat-track"><div class="stat-fill-green" data-fill-width="100"></div></div>
       </div>
     </div>
 
@@ -97,26 +103,32 @@
       <a onclick="goTo('inventory')">View all</a>
     </div>
     <div class="bike-list">
-      @forelse ($bikes ?? [] as $bike)
-        @php
+      <?php if (!empty($bikes)): ?>
+      <?php foreach ($bikes as $bike): ?>
+        <?php
+          $condition = $bike->condition ?? 'Good';
           $status = strtolower($bike->status ?? 'available');
-          $statusLabel = ucfirst($status);
-          $statusType = $status === 'rented' ? 'rented' : ($status === 'repair' ? 'maintenance' : 'available');
-          $iconClass = $status === 'rented' ? 'blue' : ($status === 'repair' ? 'orange' : 'green');
-          $badgeClass = $status === 'rented' ? 'badge-blue' : ($status === 'repair' ? 'badge-orange' : 'badge-green');
-          $dotClass = $status === 'rented' ? 'badge-dot-blue' : ($status === 'repair' ? 'badge-dot-orange' : 'badge-dot-green');
-        @endphp
-        <div class="bike-card" onclick="openModal('{{ $statusType }}', @js(['id' => $bike->qr_code, 'condition' => ucfirst($bike->condition ?? 'good')]))">
+          $isRepair = $condition !== 'Good';
+          $statusLabel = $isRepair ? 'Repair' : ucfirst($status);
+          $statusType = $isRepair ? 'maintenance' : ($status === 'rented' ? 'rented' : 'available');
+          $iconClass = $isRepair ? 'orange' : ($status === 'rented' ? 'blue' : 'green');
+          $badgeClass = $isRepair ? 'badge-orange' : ($status === 'rented' ? 'badge-blue' : 'badge-green');
+          $dotClass = $isRepair ? 'badge-dot-orange' : ($status === 'rented' ? 'badge-dot-blue' : 'badge-dot-green');
+          $bikeId = $bike->bike_code;
+          $bikeLabel = $bike->name;
+        ?>
+        <div class="bike-card" data-status-type="{{ $statusType }}" data-bike-id="{{ $bikeId }}" data-condition="{{ $condition }}" data-issue="{{ $condition }}" data-report-type="{{ $condition === 'Missing' ? 'missing' : 'damage' }}" onclick="openModal(this.dataset.statusType, { id: this.dataset.bikeId, condition: this.dataset.condition, issue: this.dataset.issue, reportType: this.dataset.reportType })">
           <div class="bike-icon {{ $iconClass }}">
             <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
           </div>
-          <div class="bike-meta"><h4>{{ $bike->qr_code }}</h4><p>{{ $bike->make }} {{ $bike->model }}</p></div>
+          <div class="bike-meta"><h4>{{ $bikeId }}</h4><p>{{ $bikeLabel }}</p></div>
           <span class="badge {{ $badgeClass }}"><span class="badge-dot {{ $dotClass }}"></span>{{ $statusLabel }}</span>
           <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
         </div>
-      @empty
+      <?php endforeach; ?>
+      <?php else: ?>
         <p>No bikes found in the inventory.</p>
-      @endforelse
+      <?php endif; ?>
     </div>
   </div>
 

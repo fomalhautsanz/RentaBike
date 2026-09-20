@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Models\Bike;
 use App\Models\Bicycle;
 use App\Models\Staff;
 use Illuminate\Support\Facades\Session;
@@ -12,21 +13,17 @@ class DashboardController extends Controller
     public function index()
     {
         $stats = [
-            'available' => Bicycle::where('status', 'available')->count(),
-            'rented'    => Bicycle::where('status', 'rented')->count(),
-            'repair'    => Bicycle::where('status', 'repair')->count(),
-            'total'     => Bicycle::count(),
+            'available' => Bike::where('condition', 'Good')->where('status', 'Available')->count(),
+            'rented'    => Bike::where('condition', 'Good')->where('status', 'Rented')->count(),
+            'repair'    => Bike::where('condition', '!=', 'Good')->count(),
+            'total'     => Bike::count(),
         ];
-        $bikes = Bicycle::orderByDesc('bike_id')->limit(10)->get();
-        $bikeCategories = Bicycle::orderBy('bike_type')
-            ->orderBy('bike_id')
-            ->get()
-            ->groupBy('bike_type');
+        $bikes = Bike::query()->latest()->get();
 
         $staff = Staff::find(Session::get('staff_id'));
         $staffPermissions = $staff?->permissions ?? [];
 
-        return view('staff.home', compact('stats', 'bikes', 'bikeCategories', 'staffPermissions'));
+        return view('staff.home', compact('stats', 'bikes', 'staffPermissions'));
     }
 
     public function exportStaffDashboardCsv()
