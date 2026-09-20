@@ -77,8 +77,9 @@ function toggleBikeStatus(bikeCode) {
       if (row) {
         row.dataset.status = data.status;
         const badge = row.querySelector('[data-bike-status]');
-        badge.textContent = data.status;
-        badge.className = `badge ${data.status === 'Available' ? 'badge-green' : 'badge-blue'}`;
+        const status = data.status.charAt(0).toUpperCase() + data.status.slice(1);
+        badge.textContent = status;
+        badge.className = `badge ${data.status === 'available' ? 'badge-green' : 'badge-blue'}`;
       }
 
       const availableStat = document.getElementById('stat-available');
@@ -86,8 +87,8 @@ function toggleBikeStatus(bikeCode) {
       if (availableStat && rentedStat) {
         const available = Number(availableStat.textContent);
         const rented = Number(rentedStat.textContent);
-        availableStat.textContent = data.status === 'Rented' ? available - 1 : available + 1;
-        rentedStat.textContent = data.status === 'Rented' ? rented + 1 : rented - 1;
+        availableStat.textContent = data.status === 'rented' ? available - 1 : available + 1;
+        rentedStat.textContent = data.status === 'rented' ? rented + 1 : rented - 1;
 
         const total = Number(document.getElementById('stat-total')?.textContent || 0);
         if (total > 0) {
@@ -98,7 +99,7 @@ function toggleBikeStatus(bikeCode) {
 
       pendingBikeCode = null;
       showToast(data.message);
-      goTo(data.status === 'Rented' ? 'rental-form' : 'inventory');
+      goTo(data.status === 'rented' ? 'rental-form' : 'inventory');
     })
     .catch(() => showToast('Could not update this bike.'));
 }
@@ -135,8 +136,11 @@ function openBikeAction(action, data = {}) {
     : `<form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}">
          @csrf
          @method('PATCH')
-         <div class="form-group"><label class="form-label" for="bike-type">Type</label><select id="bike-type" name="type" class="form-select" required><option ${data.type === 'Mountain Bike' ? 'selected' : ''}>Mountain Bike</option><option ${data.type === 'City Bike' ? 'selected' : ''}>City Bike</option><option ${data.type === "Lady's/Men's Bike" ? 'selected' : ''}>Lady's/Men's Bike</option><option ${data.type === 'E-Scooter' ? 'selected' : ''}>E-Scooter</option><option ${data.type === 'Kiddie Bikes' ? 'selected' : ''}>Kiddie Bikes</option></select></div>
-         <div class="form-group"><label class="form-label" for="bike-condition">Condition</label><select id="bike-condition" name="condition" class="form-select" required><option ${data.condition === 'Good' ? 'selected' : ''}>Good</option><option ${data.condition === 'Needs Repair' ? 'selected' : ''}>Needs Repair</option><option ${data.condition === 'Missing' ? 'selected' : ''}>Missing</option></select></div>
+         <div class="form-group"><label class="form-label" for="edit-qr-code">QR Code</label><input id="edit-qr-code" name="qr_code" class="form-input" value="${data.qrCode ?? ''}" required></div>
+         <div class="form-group"><label class="form-label" for="edit-model">Model</label><input id="edit-model" name="model" class="form-input" value="${data.model ?? ''}" required></div>
+         <div class="form-group"><label class="form-label" for="edit-make">Make</label><input id="edit-make" name="make" class="form-input" value="${data.make ?? ''}" required></div>
+         <div class="form-group"><label class="form-label" for="edit-bike-type">Bike Type</label><select id="edit-bike-type" name="bike_type" class="form-select" required>${['Mountain Bike', 'City Bike', "Lady's/Men's Bike", 'E-Scooter', 'Road Bike', 'Sidecar Bike', "Children's Bike"].map(type => `<option ${data.type === type ? 'selected' : ''}>${type}</option>`).join('')}</select></div>
+         <div class="form-group"><label class="form-label" for="edit-condition">Condition</label><select id="edit-condition" name="condition" class="form-select" required><option ${data.condition === 'Good' ? 'selected' : ''}>Good</option><option ${data.condition === 'Needs Repair' ? 'selected' : ''}>Needs Repair</option><option ${data.condition === 'Missing' ? 'selected' : ''}>Missing</option></select></div>
          <div class="modal-actions"><button type="submit" class="primary-btn">Save Changes</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
        </form>`;
   content.innerHTML = `<div class="modal-bike-title">${title}</div>${body}`;
@@ -305,10 +309,9 @@ document.querySelectorAll('[data-fill-width]').forEach(fill => {
   fill.style.width = `${fill.dataset.fillWidth}%`;
 });
 
-if (document.getElementById('inventory') && !document.getElementById('login').classList.contains('active')) {
-  goTo('inventory');
+if (document.getElementById('inventory-status')) {
   const inventoryStatus = document.getElementById('inventory-status');
-  if (inventoryStatus) showToast(inventoryStatus.dataset.message);
+  showToast(inventoryStatus.dataset.message);
 }
 
 // ── LIVE CLOCK ───────────────────────────────────────────────────────────────

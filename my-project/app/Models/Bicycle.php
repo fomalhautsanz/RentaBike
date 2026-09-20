@@ -18,6 +18,26 @@ class Bicycle extends Model
     protected $primaryKey = 'bike_id';
     public $timestamps = false;
 
+    public function getRouteKeyName(): string
+    {
+        return 'qr_code';
+    }
+
+    public function getBikeCodeAttribute(): string
+    {
+        return $this->qr_code;
+    }
+
+    public function getNameAttribute(): string
+    {
+        return trim($this->model . ' · ' . $this->make);
+    }
+
+    public function getTypeAttribute(): string
+    {
+        return $this->bike_type;
+    }
+
     protected $fillable = [
         'qr_code',
         'model',

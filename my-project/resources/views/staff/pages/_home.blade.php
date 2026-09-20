@@ -106,9 +106,9 @@ $repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $total
       <?php if (!empty($bikes)): ?>
       <?php foreach ($bikes as $bike): ?>
         <?php
-          $condition = $bike->condition ?? 'Good';
+          $condition = ucfirst($bike->condition ?? 'good');
           $status = strtolower($bike->status ?? 'available');
-          $isRepair = $condition !== 'Good';
+          $isRepair = strtolower($condition) !== 'good';
           $statusLabel = $isRepair ? 'Repair' : ucfirst($status);
           $statusType = $isRepair ? 'maintenance' : ($status === 'rented' ? 'rented' : 'available');
           $iconClass = $isRepair ? 'orange' : ($status === 'rented' ? 'blue' : 'green');

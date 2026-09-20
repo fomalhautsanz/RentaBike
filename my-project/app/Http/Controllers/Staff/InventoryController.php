@@ -3,79 +3,98 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
-use App\Models\Bike;
+use App\Models\Bicycle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Illuminate\Validation\Rule;
 
 class InventoryController extends Controller
 {
-    public function index(): View
+    public function index(): RedirectResponse
     {
-        return view('staff.home', [
-            'bikes' => Bike::query()->latest()->get(),
-        ]);
+        return redirect()->route('staff.home');
     }
 
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'type' => ['required', 'in:E-Scooter,Lady\'s/Men\'s Bike,Mountain Bike,City Bike,Kiddie Bikes'],
+            'qr_code' => ['required', 'string', 'max:100', 'unique:bicycle,qr_code'],
+            'model' => ['required', 'string', 'max:100'],
+            'make' => ['required', 'string', 'max:100'],
+            'bike_type' => ['required', 'string', 'max:50'],
             'condition' => ['required', 'in:Good,Needs Repair,Missing'],
         ]);
 
-        Bike::create([
-            ...$validated,
-            'name' => $validated['type'],
-            'status' => $validated['condition'] === 'Good'
-                ? 'Available'
-                : 'Maintenance',
+        Bicycle::create([
+            'qr_code' => $validated['qr_code'],
+            'model' => $validated['model'],
+            'make' => $validated['make'],
+            'bike_type' => $validated['bike_type'],
+            'condition' => strtolower($validated['condition']) === 'good' ? 'good' : (strtolower($validated['condition']) === 'missing' ? 'missing' : 'repair'),
+            'status' => strtolower($validated['condition']) === 'good' ? 'available' : 'repair',
         ]);
 
         return redirect()->route('staff.home')->with('status', 'Bike added to inventory.');
     }
 
-    public function update(Request $request, Bike $bike): RedirectResponse
+    public function update(Request $request, Bicycle $bike): RedirectResponse
     {
         $validated = $request->validate([
-            'type' => ['required', 'in:E-Scooter,Lady\'s/Men\'s Bike,Mountain Bike,City Bike,Kiddie Bikes'],
+            'qr_code' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('bicycle', 'qr_code')->ignore($bike->bike_id, 'bike_id'),
+            ],
+            'model' => ['required', 'string', 'max:100'],
+            'make' => ['required', 'string', 'max:100'],
+            'bike_type' => ['required', 'string', 'max:50'],
             'condition' => ['required', 'in:Good,Needs Repair,Missing'],
         ]);
 
+        $condition = strtolower($validated['condition']);
         $bike->update([
-            ...$validated,
-            'name' => $validated['type'],
-            'status' => $validated['condition'] === 'Good'
-                ? ($bike->status === 'Rented' ? 'Rented' : 'Available')
-                : 'Maintenance',
+            'qr_code' => $validated['qr_code'],
+            'model' => $validated['model'],
+            'make' => $validated['make'],
+            'bike_type' => $validated['bike_type'],
+            'condition' => $condition === 'good' ? 'good' : ($condition === 'missing' ? 'missing' : 'repair'),
+            'status' => $condition === 'good'
+                ? ($bike->status === 'rented' ? 'rented' : 'available')
+                : 'repair',
         ]);
 
         return redirect()->route('staff.home')->with('status', 'Bike updated in inventory.');
     }
 
-    public function destroy(Bike $bike): RedirectResponse
+    public function destroy(Bicycle $bike): RedirectResponse
     {
+        if ($bike->status === 'rented') {
+            return redirect()->route('staff.home')
+                ->with('status', 'A rented bike cannot be removed from inventory.');
+        }
+
         $bike->delete();
 
         return redirect()->route('staff.home')->with('status', 'Bike removed from inventory.');
     }
 
-    public function toggleStatus(Bike $bike): JsonResponse
+    public function toggleStatus(Bicycle $bike): JsonResponse
     {
-        if ($bike->condition !== 'Good') {
+        if ($bike->condition !== 'good') {
             return response()->json([
                 'message' => 'This bike is marked Repair and cannot be rented.',
             ], 422);
         }
 
         $bike->update([
-            'status' => $bike->status === 'Rented' ? 'Available' : 'Rented',
+            'status' => $bike->status === 'rented' ? 'available' : 'rented',
         ]);
 
         return response()->json([
             'status' => $bike->status,
-            'message' => $bike->status === 'Rented' ? 'Bike marked as rented.' : 'Bike marked as available.',
+            'message' => $bike->status === 'rented' ? 'Bike marked as rented.' : 'Bike marked as available.',
         ]);
     }
 }
