@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
-use App\Models\Bike;
 use App\Models\Bicycle;
 use App\Models\Staff;
 use Illuminate\Support\Facades\Session;
@@ -13,12 +12,12 @@ class DashboardController extends Controller
     public function index()
     {
         $stats = [
-            'available' => Bike::where('condition', 'Good')->where('status', 'Available')->count(),
-            'rented'    => Bike::where('condition', 'Good')->where('status', 'Rented')->count(),
-            'repair'    => Bike::where('condition', '!=', 'Good')->count(),
-            'total'     => Bike::count(),
+            'available' => Bicycle::where('condition', 'good')->where('status', 'available')->count(),
+            'rented'    => Bicycle::where('condition', 'good')->where('status', 'rented')->count(),
+            'repair'    => Bicycle::where('condition', '!=', 'good')->count(),
+            'total'     => Bicycle::count(),
         ];
-        $bikes = Bike::query()->latest()->get();
+        $bikes = Bicycle::query()->orderByDesc('bike_id')->get();
 
         $staff = Staff::find(Session::get('staff_id'));
         $staffPermissions = $staff?->permissions ?? [];

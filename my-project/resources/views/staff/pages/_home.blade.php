@@ -106,18 +106,23 @@ $repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $total
       <?php if (!empty($bikes)): ?>
       <?php foreach ($bikes as $bike): ?>
         <?php
-          $condition = $bike->condition ?? 'Good';
+          $condition = strtolower($bike->condition ?? 'good');
+          $conditionLabel = match ($condition) {
+            'missing' => 'Missing',
+            'repair' => 'Needs Repair',
+            default => 'Good',
+          };
           $status = strtolower($bike->status ?? 'available');
-          $isRepair = $condition !== 'Good';
+          $isRepair = $condition !== 'good';
           $statusLabel = $isRepair ? 'Repair' : ucfirst($status);
           $statusType = $isRepair ? 'maintenance' : ($status === 'rented' ? 'rented' : 'available');
           $iconClass = $isRepair ? 'orange' : ($status === 'rented' ? 'blue' : 'green');
           $badgeClass = $isRepair ? 'badge-orange' : ($status === 'rented' ? 'badge-blue' : 'badge-green');
           $dotClass = $isRepair ? 'badge-dot-orange' : ($status === 'rented' ? 'badge-dot-blue' : 'badge-dot-green');
-          $bikeId = $bike->bike_code;
-          $bikeLabel = $bike->name;
+          $bikeId = $bike->qr_code;
+          $bikeLabel = $bike->model;
         ?>
-        <div class="bike-card" data-status-type="{{ $statusType }}" data-bike-id="{{ $bikeId }}" data-condition="{{ $condition }}" data-issue="{{ $condition }}" data-report-type="{{ $condition === 'Missing' ? 'missing' : 'damage' }}" onclick="openModal(this.dataset.statusType, { id: this.dataset.bikeId, condition: this.dataset.condition, issue: this.dataset.issue, reportType: this.dataset.reportType })">
+        <div class="bike-card" data-status-type="{{ $statusType }}" data-bike-id="{{ $bikeId }}" data-condition="{{ $conditionLabel }}" data-issue="{{ $conditionLabel }}" data-report-type="{{ $condition === 'missing' ? 'missing' : 'damage' }}" onclick="openModal(this.dataset.statusType, { id: this.dataset.bikeId, condition: this.dataset.condition, issue: this.dataset.issue, reportType: this.dataset.reportType })">
           <div class="bike-icon {{ $iconClass }}">
             <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
           </div>

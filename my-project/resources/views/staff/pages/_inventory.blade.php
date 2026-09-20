@@ -24,33 +24,39 @@
       <div class="inv-list">
         @forelse($bikes ?? [] as $bike)
           @php
-            $displayStatus = $bike->condition === 'Good' ? $bike->status : 'Repair';
+            $condition = strtolower($bike->condition ?? 'good');
+            $conditionLabel = match ($condition) {
+              'missing' => 'Missing',
+              'repair' => 'Needs Repair',
+              default => 'Good',
+            };
+            $displayStatus = $condition === 'good' ? ucfirst(strtolower($bike->status)) : 'Repair';
             $statusClass = match ($displayStatus) {
               'Available' => 'badge-green',
               'Rented' => 'badge-blue',
               default => 'badge-orange',
             };
-            $isReportable = $bike->condition !== 'Good';
-            $modalType = $bike->status === 'Rented' ? 'rented' : 'available';
+            $isReportable = $condition !== 'good';
+            $modalType = strtolower($bike->status) === 'rented' ? 'rented' : 'available';
           @endphp
           @if($isReportable)
-          <div class="inv-row" data-bike-code="{{ $bike->bike_code }}" data-id="{{ $bike->bike_code }}" data-issue="{{ $bike->condition }}" data-date="{{ optional($bike->created_at)->format('M d, Y') }}" data-report-type="{{ $bike->condition === 'Missing' ? 'missing' : 'damage' }}" onclick="openModal('maintenance', { id: this.dataset.id, issue: this.dataset.issue, date: this.dataset.date, reportType: this.dataset.reportType })" style="cursor:pointer">
+          <div class="inv-row" data-bike-code="{{ $bike->qr_code }}" data-id="{{ $bike->qr_code }}" data-issue="{{ $conditionLabel }}" data-date="{{ optional($bike->created_at)->format('M d, Y') }}" data-report-type="{{ $condition === 'missing' ? 'missing' : 'damage' }}" onclick="openModal('maintenance', { id: this.dataset.id, issue: this.dataset.issue, date: this.dataset.date, reportType: this.dataset.reportType })" style="cursor:pointer">
           @else
-          <div class="inv-row" data-bike-code="{{ $bike->bike_code }}" data-status="{{ $bike->status }}" onclick="openModal('{{ $modalType }}', { id: '{{ $bike->bike_code }}' })" style="cursor:pointer">
+          <div class="inv-row" data-bike-code="{{ $bike->qr_code }}" data-status="{{ $bike->status }}" onclick="openModal('{{ $modalType }}', { id: '{{ $bike->qr_code }}' })" style="cursor:pointer">
           @endif
             <div>
-              <div class="inv-row-id">{{ $bike->bike_code }}</div>
-              <div class="inv-row-name">{{ $bike->type }} · {{ $bike->condition }}</div>
+              <div class="inv-row-id">{{ $bike->qr_code }}</div>
+              <div class="inv-row-name">{{ $bike->bike_type }} · {{ $conditionLabel }}</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <span class="badge {{ $statusClass }}" data-bike-status>{{ $displayStatus }}</span>
               @if($isReportable)
                 <span style="color:var(--gray-400);font-size:16px" aria-label="Report issue">›</span>
               @endif
-              <button type="button" class="back-btn" title="Edit bike" aria-label="Edit {{ $bike->bike_code }}" data-bike-id="{{ $bike->bike_code }}" data-bike-type="{{ $bike->type }}" data-bike-condition="{{ $bike->condition }}" onclick="event.preventDefault(); event.stopPropagation(); openBikeAction('edit', { id: this.dataset.bikeId, type: this.dataset.bikeType, condition: this.dataset.bikeCondition })">
+              <button type="button" class="back-btn" title="Edit bike" aria-label="Edit {{ $bike->qr_code }}" data-bike-id="{{ $bike->qr_code }}" data-bike-type="{{ $bike->bike_type }}" data-bike-condition="{{ $conditionLabel }}" onclick="event.preventDefault(); event.stopPropagation(); openBikeAction('edit', { id: this.dataset.bikeId, type: this.dataset.bikeType, condition: this.dataset.bikeCondition })">
                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
               </button>
-              <button type="button" class="back-btn" title="Delete bike" aria-label="Delete {{ $bike->bike_code }}" data-bike-id="{{ $bike->bike_code }}" onclick="event.preventDefault(); event.stopPropagation(); openBikeAction('delete', { id: this.dataset.bikeId })">
+              <button type="button" class="back-btn" title="Delete bike" aria-label="Delete {{ $bike->qr_code }}" data-bike-id="{{ $bike->qr_code }}" onclick="event.preventDefault(); event.stopPropagation(); openBikeAction('delete', { id: this.dataset.bikeId })">
                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14H5V6"/><path d="M10 11v5M14 11v5"/></svg>
               </button>
             </div>

@@ -18,6 +18,11 @@ class Bicycle extends Model
     protected $primaryKey = 'bike_id';
     public $timestamps = false;
 
+    public function getRouteKeyName(): string
+    {
+        return 'qr_code';
+    }
+
     protected $fillable = [
         'qr_code',
         'model',
@@ -26,6 +31,13 @@ class Bicycle extends Model
         'status',
         'condition',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'created_at' => 'datetime',
+        ];
+    }
 
     public function rentals()
     {
