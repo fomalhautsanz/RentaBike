@@ -135,7 +135,6 @@ function openBikeAction(action, data = {}) {
     : `<form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}">
          @csrf
          @method('PATCH')
-         <div class="modal-bike-title">${title}</div>
          <div class="form-group"><label class="form-label" for="bike-type">Type</label><select id="bike-type" name="type" class="form-select" required><option ${data.type === 'Mountain Bike' ? 'selected' : ''}>Mountain Bike</option><option ${data.type === 'City Bike' ? 'selected' : ''}>City Bike</option><option ${data.type === "Lady's/Men's Bike" ? 'selected' : ''}>Lady's/Men's Bike</option><option ${data.type === 'E-Scooter' ? 'selected' : ''}>E-Scooter</option><option ${data.type === 'Kiddie Bikes' ? 'selected' : ''}>Kiddie Bikes</option></select></div>
          <div class="form-group"><label class="form-label" for="bike-condition">Condition</label><select id="bike-condition" name="condition" class="form-select" required><option ${data.condition === 'Good' ? 'selected' : ''}>Good</option><option ${data.condition === 'Needs Repair' ? 'selected' : ''}>Needs Repair</option><option ${data.condition === 'Missing' ? 'selected' : ''}>Missing</option></select></div>
          <div class="modal-actions"><button type="submit" class="primary-btn">Save Changes</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
