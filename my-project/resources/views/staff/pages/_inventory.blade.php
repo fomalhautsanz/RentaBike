@@ -40,7 +40,7 @@
           @endif
             <div>
               <div class="inv-row-id">{{ $bike->bike_code }}</div>
-              <div class="inv-row-name">{{ $bike->name }} · {{ $bike->type }} · {{ $bike->condition }}</div>
+              <div class="inv-row-name">{{ $bike->type }} · {{ $bike->condition }}</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <span class="badge {{ $statusClass }}" data-bike-status>{{ $displayStatus }}</span>
