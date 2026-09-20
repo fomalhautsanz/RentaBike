@@ -74,7 +74,7 @@
       <div class="input-icon-wrap">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         <input type="password" name="password" id="pw-input" class="form-input" placeholder="••••••••" required>
-        <button type="button" class="eye-btn" onclick="togglePw()">
+        <button type="button" class="eye-btn" onclick="togglePasswordVisibility()" aria-label="Show password">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" id="pwEyeIcon">
             <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>
           </svg>
@@ -102,7 +102,7 @@
 </div>
 
 <script>
-function togglePw() {
+function togglePasswordVisibility() {
   const inp = document.getElementById('pw-input');
   const icon = document.getElementById('pwEyeIcon');
   if (inp.type === 'password') {

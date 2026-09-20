@@ -22,7 +22,7 @@ function doLogin() {
   err.classList.remove('show');
   return true;
 }
-function togglePw() {
+function toggleDashboardPassword() {
   const inp  = document.getElementById('loginPw');
   const icon = document.getElementById('pwEyeIcon');
   if (inp.type === 'password') {

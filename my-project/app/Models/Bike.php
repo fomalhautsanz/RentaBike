@@ -22,6 +22,11 @@ class Bike extends Model
         ];
     }
 
+    public function getRouteKeyName(): string
+    {
+        return 'bike_code';
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Bike $bike): void {
