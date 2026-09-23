@@ -1,19 +1,27 @@
 <script>
+let bikeSearchFilter = '', bikeTypeFilter = '', bikeStatusFilter = '';
+
 function filterBikes(q) {
-  q = q.toLowerCase();
-  document.querySelectorAll('#bikes-tbody tr').forEach(r => {
-    r.style.display = (r.dataset.id.toLowerCase().includes(q) || r.dataset.name.toLowerCase().includes(q)) ? '' : 'none';
-  });
+  bikeSearchFilter = q.toLowerCase();
+  applyBikeFilters();
 }
-let bikeTypeFilter = '', bikeStatusFilter = '';
 function filterBikeType(v) { bikeTypeFilter = v; applyBikeFilters(); }
 function filterBikeStatus(v) { bikeStatusFilter = v; applyBikeFilters(); }
 function applyBikeFilters() {
-  document.querySelectorAll('#bikes-tbody tr').forEach(r => {
+  const rows = document.querySelectorAll('#bikes-tbody tr');
+  let visibleCount = 0;
+
+  rows.forEach(r => {
+    const searchOk = !bikeSearchFilter || r.dataset.id.toLowerCase().includes(bikeSearchFilter) || r.dataset.name.toLowerCase().includes(bikeSearchFilter);
     const typeOk = !bikeTypeFilter || r.dataset.type === bikeTypeFilter;
     const statusOk = !bikeStatusFilter || r.dataset.status === bikeStatusFilter;
-    r.style.display = typeOk && statusOk ? '' : 'none';
+    const isVisible = searchOk && typeOk && statusOk;
+
+    r.style.display = isVisible ? '' : 'none';
+    if (isVisible) visibleCount++;
   });
+
+  document.getElementById('bikes-footer-count').textContent = `Showing ${visibleCount} bikes`;
 }
 function openEditBike(id, name, type, status, condition) {
   document.getElementById('edit-bike-id').value = id;

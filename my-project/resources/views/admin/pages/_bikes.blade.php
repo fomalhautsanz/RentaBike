@@ -23,7 +23,7 @@
       </div>
       <select class="filter-select" onchange="filterBikeType(this.value)">
         <option value="">All Types</option>
-        <option>E-Scooter</option><option>Lady's/Men's Bike</option><option>Mountain Bike</option><option>City Bike</option><option>Kiddie Bikes</option>
+        <option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
       </select>
       <select class="filter-select" onchange="filterBikeStatus(this.value)">
         <option value="">All Status</option>
@@ -70,7 +70,7 @@
       </tbody>
     </table>
     <div class="table-footer">
-      <p>Showing {{ count($bikes ?? []) }} bikes</p>
+      <p id="bikes-footer-count">Showing {{ count($bikes ?? []) }} bikes</p>
       <div class="pagination"></div>
     </div>
   </div>

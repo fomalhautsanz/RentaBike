@@ -22,7 +22,7 @@
       <div class="form-group">
         <label class="form-label">Condition</label>
         <select name="condition" class="form-select">
-          <option>Good</option><option>Needs Repair</option><option>Missing</option>
+          <option value="good">Good</option><option value="repair">Needs Repair</option><option value="missing">Missing</option>
         </select>
       </div>
       <div class="form-actions">
