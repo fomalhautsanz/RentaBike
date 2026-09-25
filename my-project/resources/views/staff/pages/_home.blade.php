@@ -97,30 +97,26 @@
       <a onclick="goTo('inventory')">View all</a>
     </div>
     <div class="bike-list">
-      <div class="bike-card" onclick="openModal('available', { id:'BK-101', condition:'Ready for Rental', lastBorrower:'Joshua Rivera', lastReturned:'Today, 12:30 PM' })">
-        <div class="bike-icon green">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
+      @forelse ($bikes ?? [] as $bike)
+        @php
+          $status = strtolower($bike->status ?? 'available');
+          $statusLabel = ucfirst($status);
+          $statusType = $status === 'rented' ? 'rented' : ($status === 'repair' ? 'maintenance' : 'available');
+          $iconClass = $status === 'rented' ? 'blue' : ($status === 'repair' ? 'orange' : 'green');
+          $badgeClass = $status === 'rented' ? 'badge-blue' : ($status === 'repair' ? 'badge-orange' : 'badge-green');
+          $dotClass = $status === 'rented' ? 'badge-dot-blue' : ($status === 'repair' ? 'badge-dot-orange' : 'badge-dot-green');
+        @endphp
+        <div class="bike-card" onclick="openModal('{{ $statusType }}', @js(['id' => $bike->qr_code, 'condition' => ucfirst($bike->condition ?? 'good')]))">
+          <div class="bike-icon {{ $iconClass }}">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
+          </div>
+          <div class="bike-meta"><h4>{{ $bike->qr_code }}</h4><p>{{ $bike->make }} {{ $bike->model }}</p></div>
+          <span class="badge {{ $badgeClass }}"><span class="badge-dot {{ $dotClass }}"></span>{{ $statusLabel }}</span>
+          <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
         </div>
-        <div class="bike-meta"><h4>BK-101</h4><p>Available for rental</p></div>
-        <span class="badge badge-green"><span class="badge-dot badge-dot-green"></span>Available</span>
-        <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
-      </div>
-      <div class="bike-card" onclick="openModal('rented', { id:'BK-102', borrower:'Ashley Mendoza', borrowTime:'2:00 PM', returnTime:'4:00 PM' })">
-        <div class="bike-icon blue">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
-        </div>
-        <div class="bike-meta"><h4>BK-102</h4><p>Borrowed by Ashley</p></div>
-        <span class="badge badge-blue"><span class="badge-dot badge-dot-blue"></span>Rented</span>
-        <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
-      </div>
-      <div class="bike-card" onclick="openModal('maintenance', { id:'BK-103', issue:'Flat rear tire', updatedBy:'Admin', date:'May 27, 2026' })">
-        <div class="bike-icon orange">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
-        </div>
-        <div class="bike-meta"><h4>BK-103</h4><p>Needs maintenance</p></div>
-        <span class="badge badge-orange"><span class="badge-dot badge-dot-orange"></span>Repair</span>
-        <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
-      </div>
+      @empty
+        <p>No bikes found in the inventory.</p>
+      @endforelse
     </div>
   </div>
 

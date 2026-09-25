@@ -7,6 +7,7 @@
       </svg>
     </button>
     <h2>Inventory</h2>
+    <a href="{{ route('staff.export') }}" class="btn btn-sm btn-primary" style="padding:8px 12px; border-radius:10px; margin-left:auto;">Export CSV</a>
   </div>
 
   <div class="content">

@@ -4,14 +4,14 @@
       <div class="page-title">Reports &amp; Analytics</div>
       <div class="page-sub">Track performance and gain insights into your business</div>
     </div>
-    <div style="display:flex;gap:10px">
+    <div style="display:flex;gap:12px">
       <select class="filter-select" onchange="filterReportsRange(this.value)">
         <option value="ytd">Year to Date</option>
         <option value="30">Last 30 Days</option>
         <option value="90">Last 90 Days</option>
         <option value="12m">Last 12 Months</option>
       </select>
-      <button class="btn btn-outline" onclick="exportReports()">
+      <button class="btn btn-primary" onclick="exportReports()">
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Export Data
       </button>
@@ -86,7 +86,7 @@
       <thead>
         <tr><th>Bike Type</th><th>Total Rentals</th><th>Revenue</th><th>Avg. Duration</th><th>Utilization</th></tr>
       </thead>
-      <tbody>
+      <tbody id="reports-tbody">
         @forelse($bikeTypePerformance ?? [] as $row)
         <tr>
           <td style="font-weight:500">{{ $row->type }}</td>

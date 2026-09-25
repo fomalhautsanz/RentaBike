@@ -8,7 +8,8 @@
 <title>RentaBike — Admin Portal</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-
+  
+  /* ── fixed thi shi ── */
   /* ── RESET ── */
   *, *::before, *::after {
     box-sizing: border-box;

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StaffLoginController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
 
 
 // ======================================================
@@ -43,6 +44,7 @@ Route::post('/staff/logout', [StaffLoginController::class, 'logout'])
     ->name('staff.logout');
 
 
+
 // ======================================================
 // ADMIN PROTECTED ROUTES
 // ======================================================
@@ -50,6 +52,9 @@ Route::post('/staff/logout', [StaffLoginController::class, 'logout'])
 Route::prefix('admin')->middleware('admin.auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('admin.dashboard');
+
+    Route::get('/dashboard/export', [DashboardController::class, 'exportAdminDashboardCsv'])
+        ->name('admin.dashboard.export');
 
     Route::post('/bikes', [DashboardController::class, 'storeBike'])
         ->name('admin.bikes.store');
@@ -64,6 +69,9 @@ Route::prefix('staff')
     ->middleware('staff.auth')
     ->group(function () {
 
-        Route::get('/home', fn () => view('staff.home'))
+        Route::get('/home', [StaffDashboardController::class, 'index'])
             ->name('staff.home');
+
+        Route::get('/export', [StaffDashboardController::class, 'exportStaffDashboardCsv'])
+            ->name('staff.export');
     });
