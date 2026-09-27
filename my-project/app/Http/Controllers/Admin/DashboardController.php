@@ -324,6 +324,61 @@ class DashboardController extends Controller
         ->with('success', 'Bike added successfully.');
 }
 
+    public function updateBike(Request $request, Bicycle $bike)
+    {
+        $validator = Validator::make($request->all(), [
+            'model' => ['required', 'string', 'max:100'],
+            'make' => ['required', 'string', 'max:100'],
+            'bike_type' => ['required', 'string', 'max:50'],
+            'status' => ['required', 'in:Available,Rented,Maintenance'],
+            'condition' => ['required', 'in:Good,Needs Repair,Missing'],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->backToTab($request, 'bikes')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $validated = $validator->validated();
+        $status = strtolower($validated['status']);
+        $condition = match ($validated['condition']) {
+            'Needs Repair' => 'repair',
+            'Missing' => 'missing',
+            default => 'good',
+        };
+        $hasActiveRental = $bike->rentals()->where('status', 'active')->exists();
+
+        if ($status === 'available' && $hasActiveRental) {
+            return $this->backToTab($request, 'bikes')
+                ->withErrors(['status' => 'This bike has an active rental and cannot be marked as available.']);
+        }
+
+        if ($status === 'rented' && !$hasActiveRental) {
+            return $this->backToTab($request, 'bikes')
+                ->withErrors(['status' => 'A bike cannot be marked as rented without an active rental.']);
+        }
+
+        // gi-update sa database ang bike details; ang status/condition procedure
+        // naa pud activity log para makita kinsa ang nag-edit sa bike.
+        DB::statement('CALL sp_update_bike_status(?, ?, ?, ?, ?)', [
+            $bike->bike_id,
+            $status,
+            $condition,
+            auth()->id(),
+            'admin',
+        ]);
+
+        $bike->update([
+            'model' => $validated['model'],
+            'make' => $validated['make'],
+            'bike_type' => $validated['bike_type'],
+        ]);
+
+        return $this->backToTab($request, 'bikes')
+            ->with('success', 'Bike updated successfully.');
+    }
+
     public function exportAdminDashboardCsv() {
         return response()->streamDownload(function () {
             $handle = fopen('php://output', 'w');

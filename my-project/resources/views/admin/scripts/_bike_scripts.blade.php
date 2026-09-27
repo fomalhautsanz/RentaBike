@@ -25,7 +25,12 @@ function applyBikeFilters() {
 }
 function openEditBike(id, name, type, status, condition) {
   document.getElementById('edit-bike-id').value = id;
-  document.getElementById('edit-bike-name').value = name;
+
+  // gi-separate nako ang model ug make kay mao na ang actual fields sa bicycle table
+  const nameParts = name.split(' · ');
+  document.getElementById('edit-bike-name').value = nameParts.shift() || name;
+  document.getElementById('edit-bike-make').value = nameParts.join(' · ');
+
   document.getElementById('edit-bike-type').value = type;
   document.getElementById('edit-bike-status').value = status;
   document.getElementById('edit-bike-condition').value = condition;
@@ -58,21 +63,13 @@ function openQR(id, name, code) {
 }
 function saveEditBike() {
   const idBeingEdited = window._editingBikeId;
-  const bikeId = 'BK' + String(idBeingEdited).replace('BK', '').padStart(4, '0');
-  const bike = bikeData.find(b => ('BK' + String(b.id).padStart(4, '0')) === idBeingEdited);
-  if (!bike) return;
-
-  bike.name = document.getElementById('edit-bike-name').value.trim();
-  bike.type = document.getElementById('edit-bike-type').value;
-  bike.status = document.getElementById('edit-bike-status').value;
-  bike.condition = document.getElementById('edit-bike-condition').value;
+  if (!idBeingEdited) return;
 
   // TODO: kung naa nay backend, ilisan ni og:
   // fetch(`/bikes/${bike.id}`, { method: 'PUT', body: JSON.stringify(bike), headers: {...} })
 
-  renderBikesTable();
-  closeModal('edit-bike-modal');
-  showToast(`${bike.name} was updated successfully.`);
+  document.getElementById('edit-bike-form').action = `{{ url('/admin/bikes') }}/${encodeURIComponent(idBeingEdited)}`;
+  document.getElementById('edit-bike-form').submit();
 }
 
 

@@ -43,29 +43,35 @@
       </button>
     </div>
     <div class="form-group"><label class="form-label">Bike ID</label><input type="text" id="edit-bike-id" class="form-input" readonly></div>
-    <div class="form-group"><label class="form-label">Bike Name</label><input type="text" id="edit-bike-name" class="form-input"></div>
-    <div class="form-group">
+    <form method="POST" id="edit-bike-form" action="{{ url('/admin/bikes') }}">
+      @csrf
+      @method('PATCH')
+      <input type="hidden" name="current_tab" value="bikes">
+      <div class="form-group"><label class="form-label">Bike Name</label><input type="text" id="edit-bike-name" name="model" class="form-input" required></div>
+      <div class="form-group"><label class="form-label">Make</label><input type="text" id="edit-bike-make" name="make" class="form-input" required></div>
+      <div class="form-group">
       <label class="form-label">Type</label>
-      <select id="edit-bike-type" class="form-select">
+      <select id="edit-bike-type" name="bike_type" class="form-select" required>
         <option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
       </select>
     </div>
-    <div class="form-group">
+      <div class="form-group">
       <label class="form-label">Status</label>
-      <select id="edit-bike-status" class="form-select">
+      <select id="edit-bike-status" name="status" class="form-select" required>
         <option>Available</option><option>Rented</option><option>Maintenance</option>
       </select>
     </div>
-    <div class="form-group">
+      <div class="form-group">
       <label class="form-label">Condition</label>
-      <select id="edit-bike-condition" class="form-select">
+      <select id="edit-bike-condition" name="condition" class="form-select" required>
         <option>Good</option><option>Needs Repair</option><option>Missing</option>
       </select>
     </div>
-    <div class="form-actions">
-      <button class="btn btn-outline" onclick="closeModal('edit-bike-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEditBike()">Save Changes</button>
-    </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('edit-bike-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
   </div>
 </div>
 

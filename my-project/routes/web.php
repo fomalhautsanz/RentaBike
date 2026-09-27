@@ -59,6 +59,8 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
 
     Route::post('/bikes', [DashboardController::class, 'storeBike'])
         ->name('admin.bikes.store');
+    Route::patch('/bikes/{bike}', [DashboardController::class, 'updateBike'])
+        ->name('admin.bikes.update');
 
     Route::post('/staff', [DashboardController::class, 'storeStaff'])
         ->name('admin.staff.store');
