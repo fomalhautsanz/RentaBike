@@ -58,6 +58,14 @@ function filterReportsRange(range) {
 function exportReports() {
   const rows = [];
 
+  rows.push(['RENTABIKE']);
+  rows.push(['Reports Summary Report']);
+  rows.push([new Date().toLocaleString('en-US', { 
+    month: 'long', day: 'numeric', year: 'numeric', 
+    hour: '2-digit', minute: '2-digit', hour12: true 
+  })]);
+  rows.push(['']);
+
   rows.push(['Reports Summary', '']);
   document.querySelectorAll('#page-reports .stat-card').forEach(card => {
     const value = card.querySelector('.stat-value').textContent.trim();
