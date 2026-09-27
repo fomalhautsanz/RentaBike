@@ -196,6 +196,9 @@ class DashboardController extends Controller
 {
     $stats = [
         'total_bikes'       => Bicycle::count(),
+        'available_bikes'   => Bicycle::where('condition', 'good')
+            ->where('status', 'available')
+            ->count(),
         'active_rentals'    => Rental::where('status', 'active')->count(),
         'under_maintenance' => Bicycle::whereIn('status', ['maintenance', 'repair'])->count(),
         'revenue'           => (float) Rental::where('status', 'completed')
@@ -321,10 +324,15 @@ class DashboardController extends Controller
         ->with('success', 'Bike added successfully.');
 }
 
-    public function exportAdminDashboardCsv()
-    {
+    public function exportAdminDashboardCsv() {
         return response()->streamDownload(function () {
             $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, ['RENTABIKE']);
+            fputcsv($handle, ['Bike Inventory Report']);
+            fputcsv($handle, [now('Asia/Manila')->format('F j, Y h:i A')]);
+            fputcsv($handle, []);
+
             fputcsv($handle, ['Bike ID', 'QR Code', 'Model', 'Make', 'Type', 'Status', 'Condition']);
 
             Bicycle::orderBy('bike_id')->each(function (Bicycle $bike) use ($handle) {
@@ -339,7 +347,7 @@ class DashboardController extends Controller
                 ]);
             });
 
-            fclose($handle);
+                fclose($handle);
         }, 'admin-dashboard.csv', ['Content-Type' => 'text/csv']);
     }
 

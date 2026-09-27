@@ -170,7 +170,18 @@ document.addEventListener('DOMContentLoaded', applyLogFilters);
 // export logs to csv 
 function exportLogsCSV() {
   const rows = document.querySelectorAll('#rentals-tbody tr');
-  const csvRows = [['Rental ID', 'Borrower', 'Bike', 'Staff', 'Borrow Time', 'Return Time', 'Duration', 'Status']];
+  
+  const csvRows = [
+    ['RENTABIKE'],
+    ['Activity Logs Report'],
+    [new Date().toLocaleString('en-US', {
+      timeZone: 'Asia/Manila',
+      month: 'long', day: 'numeric', year: 'numeric', 
+      hour: '2-digit', minute: '2-digit', hour12: true 
+    })],
+    [],
+    ['Rental ID', 'Borrower', 'Bike', 'Staff', 'Borrow Time', 'Return Time', 'Duration', 'Status']
+  ];
 
   rows.forEach(row => {
     if (row.style.display === 'none') return; 
@@ -200,6 +211,6 @@ function exportLogsCSV() {
   link.click();
   URL.revokeObjectURL(url);
 
-  showToast('Logs exported successfully.');
+  showToast('Activity logs CSV exported successfully.');
 }
 </script>

@@ -19,7 +19,7 @@
   </div>
 
   {{-- STAT CARDS --}}
-  <div class="stats-grid">
+  <div class="stats-grid reports-stats-grid">
     <div class="stat-card">
       <div class="stat-top">
         <div class="stat-icon" style="background:#f0fdf4">

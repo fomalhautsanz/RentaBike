@@ -9,7 +9,7 @@
     </div>
 
     {{-- Export CSV button, upper right --}}
-    <a href="{{ route('admin.dashboard.export') }}" class="btn btn-primary">
+    <a href="{{ route('admin.dashboard.export') }}" class="btn btn-primary" onclick="showToast('Inventory report exported successfully.')">
       <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
         <polyline points="7 10 12 15 17 10"/>
@@ -48,6 +48,21 @@
       </div>
       <div class="stat-value">{{ $stats['under_maintenance'] }}</div>
       <div class="stat-label">Under Maintenance</div>
+    </div>
+    <!-- newly added, available bikes -->
+      <div class="stat-card">
+      <div class="stat-top">
+        <div class="stat-icon" style="background:rgba(20, 184, 166, 0.1)">
+          <svg width="22" height="22" fill="none" stroke="#14b8a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+            <circle cx="18.5" cy="17.5" r="3.5"/>
+            <circle cx="5.5" cy="17.5" r="3.5"/>
+            <circle cx="15" cy="5" r="1"/>
+            <path d="M12 17.5V14l-3-3 4-3 2 3h2"/>
+          </svg>
+        </div>
+      </div>
+      <div class="stat-value">{{ $stats['available_bikes'] }}</div>
+      <div class="stat-label">Available Bikes</div>
     </div>
     <div class="stat-card">
       <div class="stat-top">
