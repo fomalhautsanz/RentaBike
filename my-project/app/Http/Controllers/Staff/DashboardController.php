@@ -22,9 +22,7 @@ class DashboardController extends Controller
 
         $staff = Staff::find(Session::get('staff_id'));
         $staffPermissions = $staff?->permissions ?? [];
-        $canAddInventory = in_array('Manage Inventory', $staffPermissions, true)
-            || in_array('Add Inventory', $staffPermissions, true)
-            || in_array('View Inventory', $staffPermissions, true);
+        $canAddInventory = in_array('Add Inventory', $staffPermissions, true);
         $canEditInventory = in_array('Manage Inventory', $staffPermissions, true)
             || in_array('Edit Inventory', $staffPermissions, true);
         $canDeleteInventory = in_array('Manage Inventory', $staffPermissions, true)

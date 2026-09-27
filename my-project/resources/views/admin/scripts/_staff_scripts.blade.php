@@ -15,17 +15,21 @@ function applyStaffFilters() {
     r.style.display = roleOk && statusOk ? '' : 'none';
   });
 }
-function openEditStaff(staffId) {
+function populateEditStaff(staffId) {
   const row = document.querySelector(`#staff-tbody tr[data-id="${staffId}"]`);
   if (!row) return;
 
   const permissions = row.dataset.permissions || '';
   const firstName = row.dataset.firstName;
   const lastName = row.dataset.lastName;
+  const email = row.dataset.email;
+  const phone = row.dataset.phone;
   const role = row.dataset.role;
   const status = row.dataset.status;
   document.getElementById('edit-staff-first-name').value = firstName;
   document.getElementById('edit-staff-last-name').value = lastName;
+  document.getElementById('edit-staff-email').value = email;
+  document.getElementById('edit-staff-phone').value = phone;
   document.getElementById('edit-staff-role').value = role;
   document.getElementById('edit-staff-status').value = status;
 
@@ -38,15 +42,72 @@ function openEditStaff(staffId) {
   });
 
   document.getElementById('edit-staff-form').action = `/admin/staff/${staffId}`;
-  openModal('edit-staff-modal');
 }
-function openDeleteStaff(name) {
-  document.getElementById('delete-staff-name-display').textContent = name;
-  // remember which record we're editing 
-  //temporary until we have IDs from the backend 
-  window._deletingStaffName = name; 
-  openModal('delete-staff-modal');
+
+let pendingStaffAction = null;
+
+function requestStaffAction(staffId, action, name = '') {
+  pendingStaffAction = { staffId, action, name };
+  const prompt = action === 'edit'
+    ? 'Enter your admin password before editing this account.'
+    : `Enter your admin password before removing ${name}.`;
+  document.getElementById('staff-password-prompt').textContent = prompt;
+  document.getElementById('staff-password-error').hidden = true;
+  document.getElementById('staff-password-form').reset();
+  openModal('staff-password-modal');
+  document.getElementById('staff-action-password').focus();
 }
+
+function openEditStaff(staffId) {
+  requestStaffAction(staffId, 'edit');
+}
+
+function openDeleteStaff(staffId) {
+  const row = document.querySelector(`#staff-tbody tr[data-id="${staffId}"]`);
+  if (row) requestStaffAction(staffId, 'delete', row.dataset.name);
+}
+
+document.getElementById('staff-password-form').addEventListener('submit', async function (event) {
+  event.preventDefault();
+  if (!pendingStaffAction) return;
+
+  const form = event.currentTarget;
+  const error = document.getElementById('staff-password-error');
+  const submit = form.querySelector('[type="submit"]');
+  const verifyUrl = form.dataset.verifyUrl.replace('__STAFF_ID__', pendingStaffAction.staffId);
+  const body = new URLSearchParams(new FormData(form));
+  body.set('action', pendingStaffAction.action);
+  submit.disabled = true;
+  error.hidden = true;
+
+  try {
+    const response = await fetch(verifyUrl, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'Password verification failed.');
+
+    const action = pendingStaffAction;
+    pendingStaffAction = null;
+    closeModal('staff-password-modal');
+    if (action.action === 'edit') {
+      populateEditStaff(action.staffId);
+      openModal('edit-staff-modal');
+    } else {
+      document.getElementById('delete-staff-name-display').textContent = action.name;
+      window._deletingStaffId = action.staffId;
+      openModal('delete-staff-modal');
+    }
+  } catch (verificationError) {
+    error.textContent = verificationError.message;
+    error.hidden = false;
+  } finally {
+    submit.disabled = false;
+    document.getElementById('staff-action-password').value = '';
+  }
+});
 // basta teh same ranis bike mga func sa filter 
 // tas modals function 
 
@@ -189,20 +250,32 @@ function saveEditStaff() {
   showToast(`${member.name} was updated successfully.`);
 }
 
-// self-explanatory 
-function confirmDeleteStaff() {
-  const name = window._deletingStaffName;
-  if (!name) return;
+async function confirmDeleteStaff() {
+  const staffId = window._deletingStaffId;
+  if (!staffId) return;
 
-  // TODO: once backend exists, replace the line below with:
-  // fetch(`/staff/${id}`, { method: 'DELETE' })
+  const token = document.querySelector('#staff-password-form [name="_token"]').value;
+  const button = document.querySelector('#delete-staff-modal .btn-danger');
+  button.disabled = true;
 
-  staffData = staffData.filter(m => m.name !== name);
+  try {
+    const response = await fetch(`/admin/staff/${staffId}`, {
+      method: 'DELETE',
+      headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': token }
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'Unable to remove this account.');
 
-  renderStaffTable();
-  closeModal('delete-staff-modal');
-  showToast(`${name} was removed.`);
-  window._deletingStaffName = null;
+    document.querySelector(`#staff-tbody tr[data-id="${staffId}"]`)?.remove();
+    document.querySelector('.table-footer p').textContent = `Showing ${document.querySelectorAll('#staff-tbody tr').length} staff members`;
+    closeModal('delete-staff-modal');
+    showToast(result.message);
+    window._deletingStaffId = null;
+  } catch (deleteError) {
+    showToast(deleteError.message);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 // toast

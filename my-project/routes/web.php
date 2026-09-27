@@ -63,8 +63,14 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
     Route::post('/staff', [DashboardController::class, 'storeStaff'])
         ->name('admin.staff.store');
 
+    Route::post('/staff/{staff}/verify', [DashboardController::class, 'verifyStaffAction'])
+        ->name('admin.staff.verify');
+
     Route::patch('/staff/{staff}', [DashboardController::class, 'updateStaff'])
         ->name('admin.staff.update');
+
+    Route::delete('/staff/{staff}', [DashboardController::class, 'destroyStaff'])
+        ->name('admin.staff.destroy');
 });
 
 

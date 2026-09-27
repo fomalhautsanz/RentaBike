@@ -79,12 +79,35 @@
   </div>
 </div>
 
+{{-- STAFF PASSWORD VERIFICATION MODAL --}}
+<div class="modal-backdrop" id="staff-password-modal" onclick="closeModalOutside(event,'staff-password-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Verify Your Password</span>
+      <button type="button" class="modal-close" onclick="closeModal('staff-password-modal')" aria-label="Close">&times;</button>
+    </div>
+    <p id="staff-password-prompt">Enter your admin password to continue.</p>
+    <form id="staff-password-form" data-verify-url="{{ route('admin.staff.verify', ['staff' => '__STAFF_ID__']) }}">
+      @csrf
+      <div class="form-group">
+        <label class="form-label" for="staff-action-password">Admin Password</label>
+        <input type="password" id="staff-action-password" name="password" class="form-input" autocomplete="current-password" required>
+      </div>
+      <p id="staff-password-error" role="alert" hidden></p>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('staff-password-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Verify</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 {{-- EDIT STAFF MODAL --}}
 <div class="modal-backdrop" id="edit-staff-modal" onclick="closeModalOutside(event,'edit-staff-modal')">
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">Edit Staff Member</span>
-      <button class="modal-close" onclick="closeModal('edit-staff-modal')">
+      <button type="button" class="modal-close" onclick="closeModal('edit-staff-modal')">
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -94,6 +117,10 @@
       <input type="hidden" name="current_tab" value="staff">
       <div class="form-group"><label class="form-label">First Name</label><input type="text" name="first_name" id="edit-staff-first-name" class="form-input" required></div>
       <div class="form-group"><label class="form-label">Last Name</label><input type="text" name="last_name" id="edit-staff-last-name" class="form-input" required></div>
+      <div class="form-group"><label class="form-label">Email Address</label><input type="email" name="email" id="edit-staff-email" class="form-input" required></div>
+      <div class="form-group"><label class="form-label">Phone Number</label><input type="text" name="phone" id="edit-staff-phone" class="form-input" maxlength="30"></div>
+      <div class="form-group"><label class="form-label">New Password</label><input type="password" name="password" class="form-input" placeholder="Leave blank to keep current password" minlength="9" autocomplete="new-password"></div>
+      <div class="form-group"><label class="form-label">Confirm New Password</label><input type="password" name="password_confirmation" class="form-input" placeholder="Re-enter the new password" minlength="9" autocomplete="new-password"></div>
       <div class="form-group"><label class="form-label">Profile Picture</label><input type="file" name="profile_picture" class="form-input" accept="image/jpeg,image/png,image/webp"></div>
     <div class="form-group">
       <label class="form-label">Role</label>
@@ -119,7 +146,7 @@
       </div>
     </div>
     <div class="form-actions">
-      <button class="btn btn-outline" onclick="closeModal('edit-staff-modal')">Cancel</button>
+      <button type="button" class="btn btn-outline" onclick="closeModal('edit-staff-modal')">Cancel</button>
       <button type="submit" class="btn btn-primary">Save Changes</button>
     </div>
     </form>
@@ -137,8 +164,8 @@
       <div class="delete-desc">Are you sure you want to remove <strong id="delete-staff-name-display"></strong>? This action cannot be undone.</div>
     </div>
     <div class="form-actions">
-      <button class="btn btn-outline" onclick="closeModal('delete-staff-modal')">Cancel</button>
-      <button class="btn btn-primary btn-danger" onclick="confirmDeleteStaff()">Remove</button>
+      <button type="button" class="btn btn-outline" onclick="closeModal('delete-staff-modal')">Cancel</button>
+      <button type="button" class="btn btn-primary btn-danger" onclick="confirmDeleteStaff()">Remove</button>
     </div>
   </div>
 </div>

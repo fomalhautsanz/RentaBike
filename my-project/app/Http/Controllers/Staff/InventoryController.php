@@ -18,6 +18,11 @@ class InventoryController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        abort_unless(
+            in_array('Add Inventory', $request->attributes->get('staffPermissions', []), true),
+            403
+        );
+
         $validated = $request->validate([
             'qr_code' => ['required', 'string', 'max:100', 'unique:bicycle,qr_code'],
             'model' => ['required', 'string', 'max:100'],

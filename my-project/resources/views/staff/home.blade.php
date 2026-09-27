@@ -9,6 +9,8 @@
     @include('staff.pages._scanner')
     @if($canViewInventory ?? false)
         @include('staff.pages._inventory')
+    @endif
+    @if($canAddInventory ?? false)
         @include('staff.pages._inventory_create')
     @endif
     @if($canHandleMaintenance ?? false)

@@ -41,6 +41,7 @@ class EnsureStaffLoggedIn
             ->values()
             ->all();
         view()->share('staffPermissions', $staffPermissions);
+        $request->attributes->set('staffPermissions', $staffPermissions);
 
         if (in_array('Manage Staff', $staffPermissions, true)) {
             view()->share('staffMembers', Staff::orderBy('staff_id')->get());

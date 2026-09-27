@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Carbon\Carbon; // para sa pag-handle og dates/time
 
 
@@ -95,11 +96,16 @@ class DashboardController extends Controller
         $validator = Validator::make($request->all(), [
             'first_name' => ['required', 'string', 'max:75'],
             'last_name' => ['required', 'string', 'max:75'],
+            'email' => ['required', 'email', 'max:150', Rule::unique('staff', 'email')->ignore($staff->staff_id, 'staff_id')],
+            'phone' => ['nullable', 'string', 'max:30'],
             'role' => ['required', 'in:Staff,Admin'],
             'status' => ['required', 'in:Active,On Leave'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', 'max:100'],
+            'password' => ['nullable', 'string', 'min:9', 'confirmed'],
             'profile_picture' => ['nullable', 'image', 'max:2048'],
+        ], [
+            'email.unique' => 'That email address is already assigned to another staff account.',
         ]);
 
         if ($validator->fails()) {
@@ -108,14 +114,25 @@ class DashboardController extends Controller
                 ->withInput();
         }
 
+            if (!$this->consumeStaffConfirmation($request, $staff, 'edit')) {
+                return $this->backToTab($request, 'staff')
+                    ->withErrors(['staff_confirmation' => 'Confirm your password before editing this account.']);
+            }
+
         $validated = $validator->validated();
 
         $staff->first_name = $validated['first_name'];
         $staff->last_name = $validated['last_name'];
         $staff->full_name = trim($validated['first_name'] . ' ' . $validated['last_name']);
+        $staff->email = Str::lower($validated['email']);
+        $staff->phone = $validated['phone'] ?? null;
         $staff->role = $validated['role'];
         $staff->status = strtolower(str_replace(' ', '_', $validated['status']));
         $staff->permissions = $validated['permissions'] ?? [];
+
+        if (!empty($validated['password'])) {
+            $staff->password_hash = Hash::make($validated['password']);
+        }
 
         if ($request->hasFile('profile_picture')) {
             if ($staff->profile_picture) {
@@ -129,6 +146,49 @@ class DashboardController extends Controller
 
         return $this->backToTab($request, 'staff')
             ->with('success', 'Staff member updated successfully.');
+    }
+
+    public function verifyStaffAction(Request $request, Staff $staff)
+    {
+        $validated = $request->validate([
+            'action' => ['required', 'in:edit,delete'],
+            'password' => ['required', 'string'],
+        ]);
+
+        if (!Hash::check($validated['password'], $request->user()->password_hash)) {
+            return response()->json(['message' => 'The password is incorrect.'], 422);
+        }
+
+        $request->session()->put(
+            $this->staffConfirmationKey($staff, $validated['action']),
+            now()->addMinutes(5)->timestamp
+        );
+
+        return response()->json(['message' => 'Password confirmed.']);
+    }
+
+    public function destroyStaff(Request $request, Staff $staff)
+    {
+        if (!$this->consumeStaffConfirmation($request, $staff, 'delete')) {
+            return response()->json(['message' => 'Confirm your password before removing this account.'], 403);
+        }
+
+        $staff->status = 'inactive';
+        $staff->save();
+
+        return response()->json(['message' => 'Staff member removed successfully.']);
+    }
+
+    private function staffConfirmationKey(Staff $staff, string $action): string
+    {
+        return "staff_action_confirmations.{$staff->getKey()}.{$action}";
+    }
+
+    private function consumeStaffConfirmation(Request $request, Staff $staff, string $action): bool
+    {
+        $expiresAt = $request->session()->pull($this->staffConfirmationKey($staff, $action));
+
+        return is_numeric($expiresAt) && (int) $expiresAt >= now()->timestamp;
     }
 
     // kini ang function nga ma-run pag adto ka sa admin dashboard
@@ -165,7 +225,7 @@ class DashboardController extends Controller
         ->pluck('count', 'bike_type')
         ->toArray();
 
-    $staff = Staff::orderBy('staff_id')->get()->map(function ($member) {
+    $staff = Staff::where('status', '!=', 'inactive')->orderBy('staff_id')->get()->map(function ($member) {
         $name = trim(($member->first_name ?? '') . ' ' . ($member->last_name ?? '')) ?: $member->full_name;
 
         return (object) [
@@ -182,6 +242,7 @@ class DashboardController extends Controller
                 $member->permissions ?? ['View Inventory'],
                 ['Process Rentals', 'View Reports']
             )),
+            'is_staff'    => true,
         ];
     })->toBase(); // downgrade to plain Support Collection so merge() doesn't call getKey() on stdClass
 
@@ -196,6 +257,7 @@ class DashboardController extends Controller
             'role'        => 'Admin',
             'status'      => 'Active',
             'permissions' => ['Manage Staff', 'View Inventory'],
+            'is_staff'    => false,
         ];
     })->toBase(); // downgrade to plain Support Collection so merge() doesn't call getKey() on stdClass
 
