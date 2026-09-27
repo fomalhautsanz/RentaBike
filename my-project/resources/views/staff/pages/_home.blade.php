@@ -100,7 +100,10 @@ $repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $total
     {{-- BIKE LIST --}}
     <div class="section-title">
       <h3>Bike Inventory</h3>
-      <a onclick="goTo('inventory')">View all</a>
+      <button type="button" class="inventory-open-button" onclick="openInventory()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        View Inventory
+      </button>
     </div>
     <div class="bike-list">
       <?php if (!empty($bikes)): ?>
