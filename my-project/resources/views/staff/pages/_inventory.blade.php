@@ -1,6 +1,6 @@
 {{-- INVENTORY SCREEN --}}
 <section class="screen" id="inventory">
-  <div class="page-header">
+  <div class="page-header inventory-flat-header">
     <button class="back-btn" onclick="goTo('home')" aria-label="Back to home">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <polyline points="15 18 9 12 15 6"/>
@@ -8,9 +8,9 @@
     </button>
     <h2>Bike Inventory</h2>
 
-    <div style="display:flex;gap:6px;margin-left:auto;align-items:center">
+    <div class="inventory-flat-actions">
       <a href="{{ route('staff.export') }}"
-        style="display:inline-flex;align-items:center;gap:5px;padding:8px 12px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-md);font-size:12.5px;font-weight:600;color:var(--gray-700);text-decoration:none;box-shadow:var(--shadow-sm)">
+        class="inventory-flat-button"
         <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
@@ -19,8 +19,7 @@
         Export
       </a>
       @if($canAddInventory ?? false)
-        <button type="button" onclick="goTo('inventory-create')"
-          style="display:inline-flex;align-items:center;gap:5px;padding:8px 12px;background:var(--green-600);border:none;border-radius:var(--radius-md);font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;box-shadow:0 2px 8px rgba(22,163,74,.25)">
+        <button type="button" class="inventory-flat-button inventory-flat-button-primary" onclick="goTo('inventory-create')">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
@@ -30,7 +29,7 @@
     </div>
   </div>
 
-  <div class="content">
+  <div class="content inventory-flat-content">
 
     {{-- View-only notice --}}
     @if(!($canEditInventory ?? false) && !($canDeleteInventory ?? false) && !($canAddInventory ?? false))
@@ -44,97 +43,138 @@
       </div>
     @endif
 
-    @php
-      $bikeEmojis = [
-        'Mountain Bike'     => '🚵',
-        'City Bike'         => '🚲',
-        "Lady's/Men's Bike" => '🚲',
-        'E-Scooter'         => '🛴',
-        'Road Bike'         => '🚴',
-        'Sidecar Bike'      => '🛺',
-        "Children's Bike"   => '🚲',
-      ];
-
-      $categoryColors = [
-        'Mountain Bike'     => '#f0fdf4',
-        'City Bike'         => '#eff6ff',
-        "Lady's/Men's Bike" => '#faf5ff',
-        'E-Scooter'         => '#fff7ed',
-        'Road Bike'         => '#f0fdf4',
-        'Sidecar Bike'      => '#fefce8',
-        "Children's Bike"   => '#fdf4ff',
-      ];
-    @endphp
-
-    {{-- Live categories from the bicycle table --}}
-    @forelse($bikeCategories as $category => $bikes)
-    <div class="inv-category" style="margin-bottom:12px">
-      <div class="inv-cat-header">
-        <div class="inv-cat-icon" style="background:{{ $categoryColors[$category] ?? '#f9fafb' }};font-size:20px">
-          {{ $bikeEmojis[$category] ?? '🚲' }}
-        </div>
-        <h3>{{ $category }}</h3>
-        <span class="cat-count">{{ count($bikes) }} {{ Str::plural('unit', count($bikes)) }}</span>
-      </div>
-      <div class="inv-list">
-        @foreach($bikes as $bike)
-        @php
-          $statusBadge = match($bike->status) {
-            'available' => ['class' => 'badge-green', 'label' => 'Available'],
-            'rented'    => ['class' => 'badge-blue',  'label' => 'Rented'],
-            'repair'    => ['class' => 'badge-orange','label' => 'Repair'],
-            default     => ['class' => 'badge-gray',  'label' => ucfirst($bike->status)],
-          };
-        @endphp
-        <div class="inv-row" style="gap:8px;align-items:center">
-          <div style="flex:1;min-width:0">
-            <div class="inv-row-id">{{ $bike->qr_code }}</div>
-            <div class="inv-row-name">{{ $bike->model }} · {{ $bike->make }}</div>
+    <div class="inventory-flat-search-row">
+      <label class="inventory-flat-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="inventorySearch" type="search" placeholder="Search by ID or model..." autocomplete="off">
+      </label>
+      <div class="inventory-filter-wrap">
+        <button type="button" class="inventory-filter-button" id="inventoryFilterButton" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+          Filter <span id="inventoryFilterCount" hidden>0</span>
+        </button>
+        <div class="inventory-filter-popover" id="inventoryFilterPopover" hidden>
+          <label>Bike type
+            <select id="inventoryTypeFilter">
+              <option value="">All types</option>
+              @foreach($bikeCategories->keys() as $bikeType)
+                <option value="{{ $bikeType }}">{{ $bikeType }}</option>
+              @endforeach
+            </select>
+          </label>
+          <label>Status
+            <select id="inventoryStatusFilter">
+              <option value="">All status</option>
+              <option value="available">Available</option>
+              <option value="rented">Rented</option>
+              <option value="repair">Maintenance</option>
+            </select>
+          </label>
+          <div class="inventory-filter-actions">
+            <button type="button" id="inventoryFilterClear">Clear</button>
+            <button type="button" id="inventoryFilterApply">Apply</button>
           </div>
-          <span class="badge {{ $statusBadge['class'] }}" style="flex-shrink:0;font-size:11px">
-            {{ $statusBadge['label'] }}
-          </span>
-          @if(($canEditInventory ?? false) || ($canDeleteInventory ?? false))
-            <div style="display:flex;gap:4px;flex-shrink:0">
-              @if($canEditInventory ?? false)
-                <button type="button"
-                  onclick="event.stopPropagation(); openBikeAction('edit', { id: this.dataset.bikeId, qrCode: this.dataset.qrCode, model: this.dataset.model, make: this.dataset.make, type: this.dataset.type, condition: this.dataset.condition })"
-                  data-bike-id="{{ $bike->qr_code }}"
-                  data-qr-code="{{ $bike->qr_code }}"
-                  data-model="{{ $bike->model }}"
-                  data-make="{{ $bike->make }}"
-                  data-type="{{ $bike->bike_type }}"
-                  data-condition="{{ strtolower($bike->condition) === 'good' ? 'Good' : (strtolower($bike->condition) === 'missing' ? 'Missing' : 'Needs Repair') }}"
-                  class="action-btn" style="width:30px;height:30px" title="Edit {{ $bike->qr_code }}">
-                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                </button>
-              @endif
-              @if(($canDeleteInventory ?? false) && $bike->status !== 'rented')
-                <button type="button"
-                  onclick="event.stopPropagation(); openBikeAction('delete', { id: this.dataset.bikeId })"
-                  data-bike-id="{{ $bike->qr_code }}"
-                  class="action-btn" style="width:30px;height:30px;color:#ef4444" title="Delete {{ $bike->qr_code }}">
-                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                    <path d="M10 11v6M14 11v6"/>
-                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                  </svg>
-                </button>
-              @endif
-            </div>
-          @endif
         </div>
-        @endforeach
       </div>
     </div>
+    <p class="inventory-result-count" id="inventoryResultCount"></p>
 
-    @empty
-      <div class="empty-state">No bikes have been added yet.</div>
-    @endforelse
+    <div class="inventory-flat-list" id="inventoryFlatList">
+      @forelse($bikes as $bike)
+        @php
+          $conditionLabel = strtolower((string) $bike->condition) === 'good' ? 'Good' : (strtolower((string) $bike->condition) === 'missing' ? 'Missing' : 'Fair');
+          $statusLabel = $bike->status === 'repair' ? 'Maintenance' : ucfirst($bike->status);
+        @endphp
+        <div class="inventory-flat-row" data-bike-row data-type="{{ $bike->bike_type }}" data-status="{{ $bike->status }}" data-search="{{ strtolower($bike->qr_code . ' ' . $bike->model . ' ' . $bike->make . ' ' . $bike->bike_type) }}">
+          <div class="inventory-flat-bike-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+          </div>
+          <div class="inventory-flat-description">
+            <p class="inventory-flat-id">{{ $bike->qr_code }}</p>
+            <p class="inventory-flat-meta"><strong>{{ $bike->bike_type }}</strong> · {{ $bike->model }} · {{ $bike->make }}</p>
+          </div>
+          <span class="inventory-pill condition">{{ $conditionLabel }}</span>
+          <span class="inventory-pill {{ $bike->status === 'available' ? 'available' : ($bike->status === 'rented' ? 'rented' : 'maintenance') }}">{{ $statusLabel }}</span>
+          @if($canEditInventory ?? false)
+            <button type="button" class="inventory-icon-button edit" title="Edit {{ $bike->qr_code }}"
+              onclick="event.stopPropagation(); openBikeAction('edit', { id: this.dataset.bikeId, qrCode: this.dataset.qrCode, model: this.dataset.model, make: this.dataset.make, type: this.dataset.type, condition: this.dataset.condition })"
+              data-bike-id="{{ $bike->qr_code }}" data-qr-code="{{ $bike->qr_code }}" data-model="{{ $bike->model }}" data-make="{{ $bike->make }}" data-type="{{ $bike->bike_type }}" data-condition="{{ $conditionLabel === 'Good' ? 'Good' : ($conditionLabel === 'Missing' ? 'Missing' : 'Needs Repair') }}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+            </button>
+          @endif
+          @if(($canDeleteInventory ?? false) && $bike->status !== 'rented')
+            <button type="button" class="inventory-icon-button delete" title="Delete {{ $bike->qr_code }}"
+              onclick="event.stopPropagation(); openBikeAction('delete', { id: this.dataset.bikeId })" data-bike-id="{{ $bike->qr_code }}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a1 1 0 01-1 1H7a1 1 0 01-1-1V6h12z"/></svg>
+            </button>
+          @endif
+        </div>
+      @empty
+        <div class="inventory-flat-empty">No bikes have been added yet.</div>
+      @endforelse
+    </div>
 
   </div>
 </section>
+
+<script>
+(() => {
+  const search = document.getElementById('inventorySearch');
+  const resultCount = document.getElementById('inventoryResultCount');
+  const rows = [...document.querySelectorAll('[data-bike-row]')];
+  const filterButton = document.getElementById('inventoryFilterButton');
+  const filterPopover = document.getElementById('inventoryFilterPopover');
+  const filterCount = document.getElementById('inventoryFilterCount');
+  const typeFilter = document.getElementById('inventoryTypeFilter');
+  const statusFilter = document.getElementById('inventoryStatusFilter');
+
+  if (!search || !resultCount || !filterButton || !filterPopover) return;
+
+  const render = () => {
+    const query = search.value.trim().toLowerCase();
+    const type = typeFilter.value;
+    const status = statusFilter.value;
+    let visible = 0;
+
+    rows.forEach((row) => {
+      const matches = (!query || row.dataset.search.includes(query))
+        && (!type || row.dataset.type === type)
+        && (!status || row.dataset.status === status);
+      row.hidden = !matches;
+      if (matches) visible += 1;
+    });
+
+    resultCount.textContent = `${visible} bike${visible === 1 ? '' : 's'}`;
+    const active = Number(Boolean(type)) + Number(Boolean(status));
+    filterCount.hidden = active === 0;
+    filterCount.textContent = active;
+    filterButton.classList.toggle('active', active > 0);
+  };
+
+  search.addEventListener('input', render);
+  filterButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const isOpen = !filterPopover.hidden;
+    filterPopover.hidden = isOpen;
+    filterButton.setAttribute('aria-expanded', String(!isOpen));
+  });
+  document.addEventListener('click', (event) => {
+    if (!filterPopover.contains(event.target) && event.target !== filterButton) {
+      filterPopover.hidden = true;
+      filterButton.setAttribute('aria-expanded', 'false');
+    }
+  });
+  document.getElementById('inventoryFilterClear').addEventListener('click', () => {
+    typeFilter.value = '';
+    statusFilter.value = '';
+    render();
+  });
+  document.getElementById('inventoryFilterApply').addEventListener('click', () => {
+    filterPopover.hidden = true;
+    filterButton.setAttribute('aria-expanded', 'false');
+    render();
+  });
+
+  render();
+})();
+</script>

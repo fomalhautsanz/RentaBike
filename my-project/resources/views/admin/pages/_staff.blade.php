@@ -20,7 +20,7 @@
         <option>Staff</option><option>Admin</option>
       </select>
       <select class="filter-select" onchange="filterStaffStatus(this.value)">
-        <option value="">All Status</option>
+        <option value="">All status</option>
         <option>Active</option><option>On Leave</option>
       </select>
     </div>

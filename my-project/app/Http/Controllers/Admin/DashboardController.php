@@ -271,7 +271,7 @@ class DashboardController extends Controller
             'name' => trim($bike->model . ' · ' . $bike->make),
             'type' => $bike->bike_type,
             'qr_code' => $bike->qr_code,
-            'status' => ucfirst($bike->status),
+            'status' => $bike->status === 'repair' ? 'Maintenance' : ucfirst($bike->status),
             'condition' => $bike->condition === 'repair' ? 'Needs Repair' : ucfirst($bike->condition),
             'last_maintenance' => null,
         ];
