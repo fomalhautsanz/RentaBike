@@ -19,6 +19,23 @@ class DashboardController extends Controller
         ];
         $bikes = Bicycle::query()->latest('created_at')->get();
         $bikeCategories = $bikes->groupBy('bike_type');
+        $dashboardBikes = collect([
+            'available' => Bicycle::query()
+                ->where('status', 'available')
+                ->latest('created_at')
+                ->latest('bike_id')
+                ->first(),
+            'rented' => Bicycle::query()
+                ->where('status', 'rented')
+                ->latest('created_at')
+                ->latest('bike_id')
+                ->first(),
+            'maintenance' => Bicycle::query()
+                ->whereIn('status', ['repair', 'maintenance'])
+                ->latest('created_at')
+                ->latest('bike_id')
+                ->first(),
+        ])->filter();
 
         $staff = Staff::find(Session::get('staff_id'));
         $staffPermissions = $staff?->permissions ?? [];
@@ -32,6 +49,7 @@ class DashboardController extends Controller
             'stats',
             'bikes',
             'bikeCategories',
+            'dashboardBikes',
             'staffPermissions',
             'canAddInventory',
             'canEditInventory',

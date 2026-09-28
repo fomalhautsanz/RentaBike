@@ -26,7 +26,7 @@
         <option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
       </select>
       <select class="filter-select" onchange="filterBikeStatus(this.value)">
-        <option value="">All Status</option>
+        <option value="">All status</option>
         <option>Available</option><option>Rented</option><option>Maintenance</option>
       </select>
     </div>

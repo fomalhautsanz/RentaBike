@@ -99,36 +99,35 @@ $repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $total
 
     {{-- BIKE LIST --}}
     <div class="section-title">
-      <h3>Bike Inventory</h3>
-      <a onclick="goTo('inventory')">View all</a>
+      <div class="dashboard-section-heading">
+        <h3>Bike Inventory</h3>
+        <p>Latest bike shown for each status</p>
+      </div>
+      <a class="dashboard-view-all" onclick="goTo('inventory')">
+        View all
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </a>
     </div>
-    <div class="bike-list">
-      <?php if (!empty($bikes)): ?>
-      <?php foreach ($bikes as $bike): ?>
-        <?php
-          $condition = ucfirst($bike->condition ?? 'good');
-          $status = strtolower($bike->status ?? 'available');
-          $isRepair = strtolower($condition) !== 'good';
-          $statusLabel = $isRepair ? 'Repair' : ucfirst($status);
-          $statusType = $isRepair ? 'maintenance' : ($status === 'rented' ? 'rented' : 'available');
-          $iconClass = $isRepair ? 'orange' : ($status === 'rented' ? 'blue' : 'green');
-          $badgeClass = $isRepair ? 'badge-orange' : ($status === 'rented' ? 'badge-blue' : 'badge-green');
-          $dotClass = $isRepair ? 'badge-dot-orange' : ($status === 'rented' ? 'badge-dot-blue' : 'badge-dot-green');
-          $bikeId = $bike->bike_code;
-          $bikeLabel = $bike->name;
-        ?>
-        <div class="bike-card" data-status-type="{{ $statusType }}" data-bike-id="{{ $bikeId }}" data-condition="{{ $condition }}" data-issue="{{ $condition }}" data-report-type="{{ $condition === 'Missing' ? 'missing' : 'damage' }}" onclick="openModal(this.dataset.statusType, { id: this.dataset.bikeId, condition: this.dataset.condition, issue: this.dataset.issue, reportType: this.dataset.reportType })">
-          <div class="bike-icon {{ $iconClass }}">
-            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
-          </div>
-          <div class="bike-meta"><h4>{{ $bikeId }}</h4><p>{{ $bikeLabel }}</p></div>
-          <span class="badge {{ $badgeClass }}"><span class="badge-dot {{ $dotClass }}"></span>{{ $statusLabel }}</span>
-          <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+    <div class="dashboard-category-list dashboard-status-list">
+      @forelse($dashboardBikes as $statusType => $bike)
+        @php
+          $statusInfo = [
+            'available' => ['label' => 'Available', 'detail' => 'Available for rental', 'class' => 'available'],
+            'rented' => ['label' => 'Rented', 'detail' => 'Currently borrowed', 'class' => 'rented'],
+            'maintenance' => ['label' => 'Maintenance', 'detail' => 'Needs maintenance', 'class' => 'maintenance'],
+          ][$statusType];
+        @endphp
+        <div class="dashboard-category-bike" data-status-type="{{ $statusType }}" data-bike-id="{{ $bike->qr_code }}" data-condition="{{ ucfirst($bike->condition ?? 'good') }}" data-issue="{{ ucfirst($bike->condition ?? 'good') }}" data-report-type="damage" onclick="openModal(this.dataset.statusType, { id: this.dataset.bikeId, condition: this.dataset.condition, issue: this.dataset.issue, reportType: this.dataset.reportType })">
+            <div class="dashboard-bike-icon dashboard-status-icon {{ $statusInfo['class'] }}" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+            </div>
+            <div class="dashboard-bike-row-copy"><h4>{{ $bike->qr_code }}</h4><p>{{ $statusInfo['detail'] }}</p></div>
+            <span class="badge {{ $statusInfo['class'] === 'available' ? 'badge-green' : ($statusInfo['class'] === 'rented' ? 'badge-blue' : 'badge-orange') }}"><span class="badge-dot {{ $statusInfo['class'] === 'available' ? 'badge-dot-green' : ($statusInfo['class'] === 'rented' ? 'badge-dot-blue' : 'badge-dot-orange') }}"></span>{{ $statusInfo['label'] }}</span>
+            <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
         </div>
-      <?php endforeach; ?>
-      <?php else: ?>
-        <p>No bikes found in the inventory.</p>
-      <?php endif; ?>
+      @empty
+        <p class="dashboard-bike-empty">No available bikes found in the inventory.</p>
+      @endforelse
     </div>
   </div>
 
