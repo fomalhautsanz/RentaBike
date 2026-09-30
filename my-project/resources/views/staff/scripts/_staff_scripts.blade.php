@@ -5,6 +5,8 @@ function goTo(id) {
   if (!target) {
     if (id === 'inventory') {
       showToast('You do not have access to inventory.\nPlease contact your administrator.');
+    } else if (id === 'report') {
+      showToast('You do not have access to maintenance reports.\nPlease contact your administrator.');
     }
     return;
   }
