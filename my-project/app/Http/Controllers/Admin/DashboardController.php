@@ -58,6 +58,10 @@ class DashboardController extends Controller
         }
 
         $validated = $validator->validated();
+        $permissions = $validated['permissions'] ?? [];
+        if ($validated['role'] === 'Staff') {
+            $permissions = array_values(array_diff($permissions, ['Manage Staff']));
+        }
 
         $username = Str::before($validated['email'], '@');
         $baseUsername = $username;
@@ -84,7 +88,7 @@ class DashboardController extends Controller
             'role' => $validated['role'],
             'status' => 'active',
             'profile_picture' => $profilePicture,
-            'permissions' => $validated['permissions'] ?? [],
+            'permissions' => $permissions,
         ]);
 
         return $this->backToTab($request, 'staff')
@@ -120,6 +124,10 @@ class DashboardController extends Controller
             }
 
         $validated = $validator->validated();
+        $permissions = $validated['permissions'] ?? [];
+        if ($validated['role'] === 'Staff') {
+            $permissions = array_values(array_diff($permissions, ['Manage Staff']));
+        }
 
         $staff->first_name = $validated['first_name'];
         $staff->last_name = $validated['last_name'];
@@ -128,7 +136,7 @@ class DashboardController extends Controller
         $staff->phone = $validated['phone'] ?? null;
         $staff->role = $validated['role'];
         $staff->status = strtolower(str_replace(' ', '_', $validated['status']));
-        $staff->permissions = $validated['permissions'] ?? [];
+        $staff->permissions = $permissions;
 
         if (!empty($validated['password'])) {
             $staff->password_hash = Hash::make($validated['password']);

@@ -128,3 +128,49 @@ test('a confirmed removal deactivates the selected staff account', function () {
 
     expect($this->staff->fresh()->status)->toBe('inactive');
 });
+
+test('staff role cannot receive the Manage Staff permission when created or updated', function () {
+    $this->post(route('admin.staff.store'), [
+        'first_name' => 'New',
+        'last_name' => 'Staff',
+        'email' => 'new-staff@example.test',
+        'role' => 'Staff',
+        'password' => 'staff-password',
+        'password_confirmation' => 'staff-password',
+        'permissions' => ['Manage Staff', 'View Inventory'],
+    ])->assertSessionHas('success');
+
+    $createdStaff = Staff::where('email', 'new-staff@example.test')->firstOrFail();
+    expect($createdStaff->permissions)->toBe(['View Inventory']);
+
+    $this->post(route('admin.staff.verify', $this->staff), [
+        'action' => 'edit',
+        'password' => 'correct-password',
+    ])->assertOk();
+
+    $this->patch(route('admin.staff.update', $this->staff), [
+        'first_name' => 'Original',
+        'last_name' => 'Name',
+        'email' => 'staff@example.test',
+        'role' => 'Staff',
+        'status' => 'Active',
+        'permissions' => ['Manage Staff', 'View Inventory'],
+    ])->assertSessionHas('success');
+
+    expect($this->staff->fresh()->permissions)->toBe(['View Inventory']);
+});
+
+test('admin role can retain the Manage Staff permission', function () {
+    $this->post(route('admin.staff.store'), [
+        'first_name' => 'New',
+        'last_name' => 'Admin',
+        'email' => 'new-admin@example.test',
+        'role' => 'Admin',
+        'password' => 'admin-password',
+        'password_confirmation' => 'admin-password',
+        'permissions' => ['Manage Staff'],
+    ])->assertSessionHas('success');
+
+    $createdAdmin = Staff::where('email', 'new-admin@example.test')->firstOrFail();
+    expect($createdAdmin->permissions)->toBe(['Manage Staff']);
+});

@@ -17,7 +17,7 @@
       <div class="form-group"><label class="form-label">Profile Picture</label><input type="file" name="profile_picture" class="form-input" accept="image/jpeg,image/png,image/webp"></div>
       <div class="form-group">
         <label class="form-label">Role</label>
-        <select name="role" class="form-select">
+        <select name="role" id="add-staff-role" class="form-select" onchange="toggleManageStaffPermission(this, 'add-staff-modal')">
           <option>Staff</option><option>Admin</option>
         </select>
       </div>
@@ -28,6 +28,7 @@
           <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Add Inventory"> <span>Add Inventory</span></label>
           <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Edit Inventory"> <span>Edit Inventory</span></label>
           <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Delete Inventory"> <span>Delete Inventory</span></label>
+          <label class="permission-option" data-admin-only-permission style="display:none"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Manage Staff"> <span>Manage Staff</span></label>
           <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Handle Maintenance"> <span>Handle Maintenance</span></label>
         </div>
       </div>
@@ -124,7 +125,7 @@
       <div class="form-group"><label class="form-label">Profile Picture</label><input type="file" name="profile_picture" class="form-input" accept="image/jpeg,image/png,image/webp"></div>
     <div class="form-group">
       <label class="form-label">Role</label>
-      <select name="role" id="edit-staff-role" class="form-select">
+      <select name="role" id="edit-staff-role" class="form-select" onchange="toggleManageStaffPermission(this, 'edit-staff-modal')">
         <option>Staff</option><option>Admin</option>
       </select>
     </div>
@@ -141,7 +142,7 @@
         <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Add Inventory"> <span>Add Inventory</span></label>
         <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Edit Inventory"> <span>Edit Inventory</span></label>
         <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Delete Inventory"> <span>Delete Inventory</span></label>
-        <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Manage Staff"> <span>Manage Staff</span></label>
+        <label class="permission-option" data-admin-only-permission style="display:none"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Manage Staff"> <span>Manage Staff</span></label>
         <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Handle Maintenance"> <span>Handle Maintenance</span></label>
       </div>
     </div>

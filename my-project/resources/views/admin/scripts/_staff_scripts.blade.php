@@ -15,6 +15,14 @@ function applyStaffFilters() {
     r.style.display = roleOk && statusOk ? '' : 'none';
   });
 }
+function toggleManageStaffPermission(roleSelect, modalId) {
+  const option = document.querySelector(`#${modalId} [data-admin-only-permission]`);
+  if (!option) return;
+
+  const isAdmin = roleSelect.value === 'Admin';
+  option.style.display = isAdmin ? '' : 'none';
+  if (!isAdmin) option.querySelector('input').checked = false;
+}
 function populateEditStaff(staffId) {
   const row = document.querySelector(`#staff-tbody tr[data-id="${staffId}"]`);
   if (!row) return;
@@ -40,6 +48,7 @@ function populateEditStaff(staffId) {
   document.querySelectorAll('#edit-staff-modal .permission-checkbox').forEach(cb => {
     cb.checked = selectedPermissions.includes(cb.value);
   });
+  toggleManageStaffPermission(document.getElementById('edit-staff-role'), 'edit-staff-modal');
 
   document.getElementById('edit-staff-form').action = `/admin/staff/${staffId}`;
 }
@@ -183,6 +192,7 @@ function resetAddStaffForm() {
   addStaffForm.reset();
   addStaffForm.dataset.confirmed = 'false';
   addStaffForm.querySelectorAll('.permission-checkbox').forEach(cb => cb.checked = false);
+  toggleManageStaffPermission(document.getElementById('add-staff-role'), 'add-staff-modal');
 }
 
 function showDuplicateStaffModal(message = 'A staff member with this email is already registered.') {
