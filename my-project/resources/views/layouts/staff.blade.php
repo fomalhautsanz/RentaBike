@@ -329,7 +329,7 @@ body{background:#f9fafb;color:#111827;font-family:'DM Sans',sans-serif;-webkit-f
 .id-preview-box p{font-size:12px;color:var(--gray-400)}
 
 /* ── TOAST ── */
-.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--gray-900);color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;white-space:nowrap;z-index:300;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.2);}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);width:max-content;max-width:calc(100vw - 32px);background:var(--gray-900);color:#fff;padding:10px 16px;border-radius:12px;font-size:13px;font-weight:600;line-height:1.4;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;white-space:pre-line;z-index:300;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.2);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast svg{width:16px;height:16px;color:var(--green-400)}
 

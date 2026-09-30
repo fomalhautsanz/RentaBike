@@ -324,6 +324,58 @@ class DashboardController extends Controller
         ->with('success', 'Bike added successfully.');
 }
 
+    public function updateBike(Request $request, Bicycle $bike)
+    {
+        $validator = Validator::make($request->all(), [
+            'qr_code' => ['required', 'string', 'max:100', Rule::unique('bicycle', 'qr_code')->ignore($bike->bike_id, 'bike_id')],
+            'model' => ['required', 'string', 'max:100'],
+            'make' => ['required', 'string', 'max:100'],
+            'bike_type' => ['required', 'string', 'max:50'],
+            'status' => ['nullable', 'in:available,rented,repair'],
+            'condition' => ['required', 'in:good,repair,missing'],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->backToTab($request, 'bikes')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $validated = $validator->validated();
+        $status = $validated['status'] ?? ($bike->status === 'rented' ? 'rented' : 'available');
+
+        if ($validated['condition'] !== 'good') {
+            $status = 'repair';
+        } elseif ($status === 'repair') {
+            $status = $bike->status === 'rented' ? 'rented' : 'available';
+        }
+
+        $bike->update([
+            'qr_code' => $validated['qr_code'],
+            'model' => $validated['model'],
+            'make' => $validated['make'],
+            'bike_type' => $validated['bike_type'],
+            'status' => $status,
+            'condition' => $validated['condition'],
+        ]);
+
+        return $this->backToTab($request, 'bikes')
+            ->with('success', 'Bike updated successfully.');
+    }
+
+    public function destroyBike(Request $request, Bicycle $bike)
+    {
+        if ($bike->status === 'rented') {
+            return $this->backToTab($request, 'bikes')
+                ->with('error', 'A rented bike cannot be removed from inventory.');
+        }
+
+        $bike->delete();
+
+        return $this->backToTab($request, 'bikes')
+            ->with('success', 'Bike removed from inventory.');
+    }
+
     public function exportAdminDashboardCsv() {
         return response()->streamDownload(function () {
             $handle = fopen('php://output', 'w');

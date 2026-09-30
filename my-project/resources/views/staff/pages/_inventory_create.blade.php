@@ -23,7 +23,7 @@
         </div>
       @endif
 
-      <form method="POST" action="{{ route('staff.inventory.store') }}">
+      <form id="inventory-create-form" method="POST" action="{{ route('staff.inventory.store') }}" data-live-form="create">
         @csrf
 
         {{-- QR Code --}}

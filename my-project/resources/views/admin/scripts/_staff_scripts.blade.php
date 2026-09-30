@@ -86,6 +86,12 @@ document.getElementById('staff-password-form').addEventListener('submit', async 
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
       body
     });
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error(response.redirected
+        ? 'Your admin session has expired. Please log in again.'
+        : 'The server returned an unexpected response. Please refresh and try again.');
+    }
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || 'Password verification failed.');
 

@@ -154,7 +154,15 @@
           @if(($canEditInventory ?? false) || ($canDeleteInventory ?? false))
             <div style="display:flex;gap:4px;flex-shrink:0">
               @if($canEditInventory ?? false)
-                <button type="button" onclick="goTo('inventory-edit')"
+                <button type="button"
+                  onclick="openBikeAction('edit', {
+                    id: '{{ addslashes($bike->qr_code) }}',
+                    qrCode: '{{ addslashes($bike->qr_code) }}',
+                    model: '{{ addslashes($bike->model) }}',
+                    make: '{{ addslashes($bike->make) }}',
+                    type: '{{ addslashes($bike->bike_type) }}',
+                    condition: '{{ $bike->condition === 'repair' ? 'Needs Repair' : ($bike->condition === 'missing' ? 'Missing' : 'Good') }}'
+                  })"
                   class="action-btn" style="width:30px;height:30px" title="Edit {{ $bike->qr_code }}">
                   <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -164,7 +172,7 @@
               @endif
               @if(($canDeleteInventory ?? false) && $statusVal !== 'rented')
                 <button type="button"
-                  onclick="confirmDeleteBike('{{ $bike->bike_id }}','{{ addslashes($bike->qr_code) }}')"
+                  onclick="openBikeAction('delete', { id: '{{ addslashes($bike->qr_code) }}' })"
                   class="action-btn" style="width:30px;height:30px;color:#ef4444" title="Delete {{ $bike->qr_code }}">
                   <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <polyline points="3 6 5 6 21 6"/>

@@ -24,20 +24,27 @@ function applyBikeFilters() {
   document.getElementById('bikes-footer-count').textContent = `Showing ${visibleCount} bikes`;
 }
 function openEditBike(id, name, type, status, condition) {
+  const form = document.getElementById('edit-bike-form');
+  const selectedName = String(name || '').split(' · ')[0] || name;
+  const make = String(name || '').split(' · ').slice(1).join(' · ') || '';
+  const normalizedStatus = status === 'Maintenance' ? 'repair' : (status === 'Rented' ? 'rented' : 'available');
+  const normalizedCondition = condition === 'Needs Repair' ? 'repair' : (condition === 'Missing' ? 'missing' : 'good');
+
   document.getElementById('edit-bike-id').value = id;
-  document.getElementById('edit-bike-name').value = name;
+  document.getElementById('edit-bike-name').value = selectedName;
+  document.getElementById('edit-bike-make').value = make;
   document.getElementById('edit-bike-type').value = type;
-  document.getElementById('edit-bike-status').value = status;
-  document.getElementById('edit-bike-condition').value = condition;
-  // gi add nako para: 
-  // i-remember kinsa nga bike ang gi-edit (gamit ang id, dili name,
-  // kay pwede man magsama og name ang duha ka bike unlike sa staff)
+  document.getElementById('edit-bike-status').value = normalizedStatus;
+  document.getElementById('edit-bike-condition').value = normalizedCondition;
+  if (form) form.action = '/admin/bikes/' + encodeURIComponent(id);
+
   window._editingBikeId = id;
   openModal('edit-bike-modal');
 }
 function openDeleteBike(id, name) {
   document.getElementById('delete-bike-name-display').textContent = name + ' (' + id + ')';
-  // same sa taas 
+  const form = document.getElementById('delete-bike-form');
+  if (form) form.action = '/admin/bikes/' + encodeURIComponent(id);
   window._deletingBikeId = id;
   openModal('delete-bike-modal');
 }
@@ -57,37 +64,13 @@ function openQR(id, name, code) {
   openModal('qr-modal');
 }
 function saveEditBike() {
-  const idBeingEdited = window._editingBikeId;
-  const bikeId = 'BK' + String(idBeingEdited).replace('BK', '').padStart(4, '0');
-  const bike = bikeData.find(b => ('BK' + String(b.id).padStart(4, '0')) === idBeingEdited);
-  if (!bike) return;
-
-  bike.name = document.getElementById('edit-bike-name').value.trim();
-  bike.type = document.getElementById('edit-bike-type').value;
-  bike.status = document.getElementById('edit-bike-status').value;
-  bike.condition = document.getElementById('edit-bike-condition').value;
-
-  // TODO: kung naa nay backend, ilisan ni og:
-  // fetch(`/bikes/${bike.id}`, { method: 'PUT', body: JSON.stringify(bike), headers: {...} })
-
-  renderBikesTable();
-  closeModal('edit-bike-modal');
-  showToast(`${bike.name} was updated successfully.`);
+  const form = document.getElementById('edit-bike-form');
+  if (form) form.requestSubmit();
 }
 
-
 function confirmDeleteBike() {
-  const idBeingDeleted = window._deletingBikeId;
-  if (!idBeingDeleted) return;
-
-  // TODO: kung naa nay backend, ilisan ni og: 
-  // fetch(`/bikes/${id}`, { method: 'DELETE' })
-
-  bikeData = bikeData.filter(b => ('BK' + String(b.id).padStart(4, '0')) !== idBeingDeleted);
-
-  renderBikesTable();
-  closeModal('delete-bike-modal');
-  showToast('Bike was removed from inventory.');
+  const form = document.getElementById('delete-bike-form');
+  if (form) form.requestSubmit();
   window._deletingBikeId = null;
 }
 </script>
