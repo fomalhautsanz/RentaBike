@@ -326,6 +326,12 @@ class DashboardController extends Controller
 
     public function updateBike(Request $request, Bicycle $bike)
     {
+        // kinahanglan naka-verify daan ang password sa admin before ma-edit ang bike
+        if (!$this->hasBikeConfirmation($request, $bike, 'edit')) {
+            return $this->backToTab($request, 'bikes')
+                ->withErrors(['bike_confirmation' => 'Confirm your password before editing this bike.']);
+        }
+
         $validator = Validator::make($request->all(), [
             'model' => ['required', 'string', 'max:100'],
             'make' => ['required', 'string', 'max:100'],
@@ -375,8 +381,91 @@ class DashboardController extends Controller
             'bike_type' => $validated['bike_type'],
         ]);
 
+        // gamit na ang verification, kuhaa para kinahanglan balik og password sa sunod nga edit
+        $this->clearBikeConfirmation($request, $bike, 'edit');
+
         return $this->backToTab($request, 'bikes')
             ->with('success', 'Bike updated successfully.');
+    }
+
+    // DELETE sa bike. JSON ang response kay fetch() ang mo-tawag gikan sa _bike_scripts.
+    // Hard delete ni (parehas sa Staff inventory), pero ang rental ug issue_report
+    // naay foreign key (restrict) sa bicycle, so dili pwede i-delete ang bike nga
+    // naay history. Gi-check nato daan para klaro ang error message, dili 500.
+    public function destroyBike(Request $request, Bicycle $bike)
+    {
+        // password verification daan, dili mo-proceed kung wala pa na-verify
+        if (!$this->hasBikeConfirmation($request, $bike, 'delete')) {
+            return response()->json(['message' => 'Confirm your password before deleting this bike.'], 403);
+        }
+
+        // dili pwede i-delete ang bike nga gi-rent karon
+        if ($bike->status === 'rented' || $bike->rentals()->where('status', 'active')->exists()) {
+            return response()->json([
+                'message' => 'A rented bike cannot be deleted. Wait until it is returned.',
+            ], 422);
+        }
+
+        // naay rental o issue report history = protected sa foreign key, i-block nato
+        if ($bike->rentals()->exists() || IssueReport::where('bike_id', $bike->bike_id)->exists()) {
+            return response()->json([
+                'message' => 'This bike has rental or issue report history and cannot be deleted. Mark it as Maintenance or Missing instead.',
+            ], 422);
+        }
+
+        try {
+            $bike->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            // backup lang ni kung naay lain nga table nga naka-link sa bike (FK)
+            report($e);
+
+            return response()->json([
+                'message' => 'Unable to delete this bike because it is still linked to other records.',
+            ], 409);
+        }
+
+        $this->clearBikeConfirmation($request, $bike, 'delete');
+
+        return response()->json(['message' => 'Bike deleted successfully.']);
+    }
+
+    // Gi-check ang password sa naka-login nga admin; kung sakto, i-save sa session
+    // nga verified siya for 5 minutes para sa specific nga bike ug action (edit/delete).
+    public function verifyBikeAction(Request $request, Bicycle $bike)
+    {
+        $validated = $request->validate([
+            'action' => ['required', 'in:edit,delete'],
+            'password' => ['required', 'string'],
+        ]);
+
+        if (!Hash::check($validated['password'], $request->user()->password_hash)) {
+            return response()->json(['message' => 'The password is incorrect.'], 422);
+        }
+
+        $request->session()->put(
+            $this->bikeConfirmationKey($bike, $validated['action']),
+            now()->addMinutes(5)->timestamp
+        );
+
+        return response()->json(['message' => 'Password confirmed.']);
+    }
+
+    private function bikeConfirmationKey(Bicycle $bike, string $action): string
+    {
+        return "bike_action_confirmations.{$bike->getKey()}.{$action}";
+    }
+
+    // true kung naay valid (wala pa expire) nga verification para ani nga bike ug action
+    private function hasBikeConfirmation(Request $request, Bicycle $bike, string $action): bool
+    {
+        $expiresAt = $request->session()->get($this->bikeConfirmationKey($bike, $action));
+
+        return is_numeric($expiresAt) && (int) $expiresAt >= now()->timestamp;
+    }
+
+    private function clearBikeConfirmation(Request $request, Bicycle $bike, string $action): void
+    {
+        $request->session()->forget($this->bikeConfirmationKey($bike, $action));
     }
 
     public function exportAdminDashboardCsv() {

@@ -61,6 +61,10 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
         ->name('admin.bikes.store');
     Route::patch('/bikes/{bike}', [DashboardController::class, 'updateBike'])
         ->name('admin.bikes.update');
+    Route::post('/bikes/{bike}/verify', [DashboardController::class, 'verifyBikeAction'])
+        ->name('admin.bikes.verify');
+    Route::delete('/bikes/{bike}', [DashboardController::class, 'destroyBike'])
+        ->name('admin.bikes.destroy');
 
     Route::post('/staff', [DashboardController::class, 'storeStaff'])
         ->name('admin.staff.store');
