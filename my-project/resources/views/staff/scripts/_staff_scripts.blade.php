@@ -13,6 +13,11 @@ function goTo(id) {
 
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   target.classList.add('active');
+  const navScreen = { home: 'home', scanner: 'scanner', report: 'report', 'report-form': 'report' }[id];
+  if (navScreen) {
+    const navButton = document.querySelector(`.nav-btn[data-screen="${navScreen}"]`);
+    if (navButton) navActive(navButton);
+  }
   window.scrollTo(0, 0);
 }
 function navActive(btn) {
@@ -138,6 +143,8 @@ function openBikeAction(action, data = {}) {
        <form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}" data-live-form="delete">
          @csrf
          @method('DELETE')
+         <div class="form-group"><label class="form-label" for="delete-bike-password">Enter your password to confirm</label><input id="delete-bike-password" name="password" type="password" class="form-input" autocomplete="current-password" required></div>
+         <p id="delete-bike-error" role="alert" style="display:none;color:var(--red-600);font-size:13px;margin-top:-4px"></p>
          <div class="modal-actions"><button type="submit" class="primary-btn">Delete Bike</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
        </form>`
     : `<form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}" data-live-form="edit">
@@ -151,6 +158,9 @@ function openBikeAction(action, data = {}) {
          <div class="modal-actions"><button type="submit" class="primary-btn">Save Changes</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
        </form>`;
   content.innerHTML = `<div class="modal-bike-title">${title}</div>${body}`;
+  if (action === 'delete') {
+    content.querySelector('form').addEventListener('submit', submitBikeDeletion);
+  }
   document.getElementById('modalBg').classList.add('open');
 }
 
@@ -469,6 +479,10 @@ function toggleID() {
 // ── REPORT ───────────────────────────────────────────────────────────────────
 const reportTitles = { damage: 'Report Damage', missing: 'Report Missing Bike', other: 'Other Issue' };
 function openReportForm(type, bikeId = '') {
+  if (!document.getElementById('report-form')) {
+    showToast('You do not have access to maintenance reports.\nPlease contact your administrator.');
+    return;
+  }
   document.getElementById('reportFormTitle').textContent = reportTitles[type] ?? 'Report Issue';
   document.getElementById('reportBikeId').value = bikeId;
   document.getElementById('reportDesc').value   = '';
@@ -493,6 +507,51 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
+
+function submitBikeDeletion(event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const form = event.currentTarget;
+  const submitButton = form.querySelector('[type="submit"]');
+  const passwordInput = form.querySelector('[name="password"]');
+  const errorMessage = form.querySelector('#delete-bike-error');
+  submitButton.disabled = true;
+  errorMessage.style.display = 'none';
+  errorMessage.textContent = '';
+
+  fetch(form.action, {
+    method: 'POST',
+    body: new FormData(form),
+    headers: {
+      'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+  })
+    .then(async response => {
+      const data = await response.json();
+      if (!response.ok) {
+        errorMessage.textContent = data.message || 'The bike could not be deleted.';
+        errorMessage.style.display = 'block';
+        passwordInput.value = '';
+        passwordInput.focus();
+        return;
+      }
+
+      window.location.reload();
+    })
+    .catch(() => {
+      errorMessage.textContent = 'Could not verify your password. Please try again.';
+      errorMessage.style.display = 'block';
+    })
+    .finally(() => {
+      submitButton.disabled = false;
+    });
+}
+
+@if(session('status'))
+showToast(@json(session('status')));
+@endif
 
 document.querySelectorAll('[data-fill-width]').forEach(fill => {
   fill.style.width = `${fill.dataset.fillWidth}%`;

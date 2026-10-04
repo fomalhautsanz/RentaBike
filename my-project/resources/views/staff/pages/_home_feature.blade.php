@@ -1,0 +1,134 @@
+{{-- HOME SCREEN --}}
+<?php
+$totalBikes = (int) ($stats['total'] ?? 0);
+$availablePercent = $totalBikes > 0 ? round(((int) ($stats['available'] ?? 0) / $totalBikes) * 100) : 0;
+$rentedPercent = $totalBikes > 0 ? round(((int) ($stats['rented'] ?? 0) / $totalBikes) * 100) : 0;
+$repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $totalBikes) * 100) : 0;
+?>
+<section class="screen active" id="home">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">
+        <img src="{{ asset('images/system_logo.png') }}" alt="RentaBike Logo">
+      </div>
+      <div>
+        <div class="topbar-brand">RentaBike</div>
+        <div class="topbar-sub">Energy Park · Staff View</div>
+      </div>
+    </div>
+   <div class="topbar-actions">
+    <div class="time-chip" id="liveTime">--:-- --</div>
+
+    <form method="POST" action="{{ route('staff.logout') }}">
+        @csrf
+        <button type="submit" class="logout-btn" title="Logout">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span>Logout</span>
+        </button>
+    </form>
+</div>
+  </div>
+
+  <div class="content">
+    {{-- STAT CARDS ROW 1 --}}
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <div class="stat-icon" style="background:#f0fdf4">
+            <svg fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/>
+              <path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/>
+              <path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/>
+            </svg>
+          </div>
+          <span class="stat-change up">Ready</span>
+        </div>
+        <div class="stat-value" id="stat-available">{{ $stats['available'] ?? 0 }}</div>
+        <div class="stat-label">Available</div>
+        <div class="stat-track"><div class="stat-fill-green" data-fill-width="{{ $availablePercent }}"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <div class="stat-icon" style="background:#eff6ff">
+            <svg fill="none" stroke="#2563eb" stroke-width="2" viewBox="0 0 24 24">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+              <polyline points="16 7 22 7 22 13"/>
+            </svg>
+          </div>
+          <span class="stat-change neutral">Active</span>
+        </div>
+        <div class="stat-value" id="stat-rented">{{ $stats['rented'] ?? 0 }}</div>
+        <div class="stat-label">Rented</div>
+        <div class="stat-track"><div class="stat-fill-blue" data-fill-width="{{ $rentedPercent }}"></div></div>
+      </div>
+    </div>
+
+    {{-- STAT CARDS ROW 2 --}}
+    <div class="stat-row" style="margin-top:-8px">
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <div class="stat-icon" style="background:#fff7ed">
+            <svg fill="none" stroke="#ea580c" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+            </svg>
+          </div>
+          <span class="stat-change neutral">!</span>
+        </div>
+        <div class="stat-value" id="stat-repair">{{ $stats['repair'] ?? 0 }}</div>
+        <div class="stat-label">Repair</div>
+        <div class="stat-track"><div class="stat-fill-orange" data-fill-width="{{ $repairPercent }}"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <div class="stat-icon" style="background:#f0fdf4">
+            <svg fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <span class="stat-change up">Live</span>
+        </div>
+        <div class="stat-value" id="stat-total">{{ $stats['total'] ?? 0 }}</div>
+        <div class="stat-label">Total Bikes</div>
+        <div class="stat-track"><div class="stat-fill-green" data-fill-width="100"></div></div>
+      </div>
+    </div>
+
+    {{-- BIKE LIST --}}
+    <div class="section-title">
+      <div class="dashboard-section-heading">
+        <h3>Bike Inventory</h3>
+        <p>Latest bike shown for each status</p>
+      </div>
+      <a class="dashboard-view-all" onclick="goTo('inventory')">
+        View all
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </a>
+    </div>
+    <div class="dashboard-category-list dashboard-status-list">
+      @forelse($dashboardBikes as $statusType => $bike)
+        @php
+          $statusInfo = [
+            'available' => ['label' => 'Available', 'detail' => 'Available for rental', 'class' => 'available'],
+            'rented' => ['label' => 'Rented', 'detail' => 'Currently borrowed', 'class' => 'rented'],
+            'maintenance' => ['label' => 'Maintenance', 'detail' => 'Needs maintenance', 'class' => 'maintenance'],
+          ][$statusType];
+        @endphp
+        <div class="dashboard-category-bike" data-status-type="{{ $statusType }}" data-bike-id="{{ $bike->qr_code }}" data-condition="{{ ucfirst($bike->condition ?? 'good') }}" data-issue="{{ ucfirst($bike->condition ?? 'good') }}" data-report-type="damage" onclick="openModal(this.dataset.statusType, { id: this.dataset.bikeId, condition: this.dataset.condition, issue: this.dataset.issue, reportType: this.dataset.reportType })">
+          <div class="dashboard-bike-icon dashboard-status-icon {{ $statusInfo['class'] }}" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+          </div>
+          <div class="dashboard-bike-row-copy"><h4>{{ $bike->qr_code }}</h4><p>{{ $statusInfo['detail'] }}</p></div>
+          <span class="badge {{ $statusInfo['class'] === 'available' ? 'badge-green' : ($statusInfo['class'] === 'rented' ? 'badge-blue' : 'badge-orange') }}"><span class="badge-dot {{ $statusInfo['class'] === 'available' ? 'badge-dot-green' : ($statusInfo['class'] === 'rented' ? 'badge-dot-blue' : 'badge-dot-orange') }}"></span>{{ $statusInfo['label'] }}</span>
+          <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      @empty
+        <p class="dashboard-bike-empty">No available bikes found in the inventory.</p>
+      @endforelse
+    </div>
+  </div>
+
+</section>

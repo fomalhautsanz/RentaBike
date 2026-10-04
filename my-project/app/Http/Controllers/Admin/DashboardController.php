@@ -238,6 +238,13 @@ class DashboardController extends Controller
 
     $staff = Staff::where('status', '!=', 'inactive')->orderBy('staff_id')->get()->map(function ($member) {
         $name = trim(($member->first_name ?? '') . ' ' . ($member->last_name ?? '')) ?: $member->full_name;
+        $permissions = array_map(
+            static fn ($permission) => is_string($permission)
+                && strtolower(trim($permission)) === 'view reports'
+                    ? 'Handle Maintenance'
+                    : $permission,
+            $member->permissions ?? ['View Inventory']
+        );
 
         return (object) [
             'id'          => $member->staff_id,
@@ -249,10 +256,7 @@ class DashboardController extends Controller
             'role'        => $member->role ?? 'Staff',
             'status'      => ucwords(str_replace('_', ' ', strtolower($member->status ?? 'active'))),
             'profile_picture' => $member->profile_picture,
-            'permissions' => array_values(array_diff(
-                $member->permissions ?? ['View Inventory'],
-                ['Process Rentals', 'View Reports']
-            )),
+            'permissions' => array_values(array_diff(array_unique($permissions), ['Process Rentals'])),
             'is_staff'    => true,
         ];
     })->toBase(); // downgrade to plain Support Collection so merge() doesn't call getKey() on stdClass

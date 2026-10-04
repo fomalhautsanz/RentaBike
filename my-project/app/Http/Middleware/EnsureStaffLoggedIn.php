@@ -31,8 +31,10 @@ class EnsureStaffLoggedIn
             'add inventory' => 'Add Inventory',
             'edit inventory' => 'Edit Inventory',
             'delete inventory' => 'Delete Inventory',
+            'manage inventory' => 'Manage Inventory',
             'manage staff' => 'Manage Staff',
             'handle maintenance' => 'Handle Maintenance',
+            'view reports' => 'Handle Maintenance',
         ];
         $staffPermissions = collect(is_array($staff->permissions) ? $staff->permissions : [])
             ->map(fn ($permission) => $permissionNames[strtolower(trim((string) $permission))] ?? null)
@@ -40,6 +42,7 @@ class EnsureStaffLoggedIn
             ->unique()
             ->values()
             ->all();
+        $request->attributes->set('staffAccount', $staff);
         view()->share('staffPermissions', $staffPermissions);
         $request->attributes->set('staffPermissions', $staffPermissions);
 

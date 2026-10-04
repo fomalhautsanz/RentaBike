@@ -11,8 +11,13 @@ use Illuminate\Validation\Rule;
 
 class InventoryController extends Controller
 {
-    public function index(): RedirectResponse
+    public function index(Request $request): RedirectResponse
     {
+        abort_unless(
+            in_array('View Inventory', $request->attributes->get('staffPermissions', []), true),
+            403
+        );
+
         return redirect()->route('staff.home');
     }
 
@@ -61,6 +66,12 @@ class InventoryController extends Controller
 
     public function update(Request $request, Bicycle $bike): RedirectResponse|JsonResponse
     {
+        abort_unless(
+            in_array('Manage Inventory', $request->attributes->get('staffPermissions', []), true)
+                || in_array('Edit Inventory', $request->attributes->get('staffPermissions', []), true),
+            403
+        );
+
         $validated = $request->validate([
             'qr_code' => [
                 'required',
