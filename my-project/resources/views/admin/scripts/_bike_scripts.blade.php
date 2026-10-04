@@ -14,7 +14,7 @@ function applyBikeFilters() {
   rows.forEach(r => {
     const searchOk = !bikeSearchFilter || r.dataset.id.toLowerCase().includes(bikeSearchFilter) || r.dataset.name.toLowerCase().includes(bikeSearchFilter);
     const typeOk = !bikeTypeFilter || r.dataset.type === bikeTypeFilter;
-    const statusOk = !bikeStatusFilter || r.dataset.status === bikeStatusFilter;
+    const statusOk = !bikeStatusFilter || r.dataset.status.toLowerCase() === bikeStatusFilter.toLowerCase();
     const isVisible = searchOk && typeOk && statusOk;
 
     r.style.display = isVisible ? '' : 'none';
@@ -23,9 +23,6 @@ function applyBikeFilters() {
 
   document.getElementById('bikes-footer-count').textContent = `Showing ${visibleCount} bikes`;
 }
-// ── Password verification para sa edit ug delete sa bike ──────────────────
-// Pag click sa edit/delete, mo-pop up una ang password modal. Kung sakto ang
-// password (gi-check sa backend), unya pa mo-open ang edit form o delete confirmation.
 let pendingBikeAction = null;
 
 function requestBikeAction(bikeId, action, details) {
@@ -40,10 +37,10 @@ function requestBikeAction(bikeId, action, details) {
   document.getElementById('bike-action-password').focus();
 }
 
-// same names gihapon sa onclick sa _bikes.blade.php, pero password na ang una
 function openEditBike(id, name, type, status, condition) {
   requestBikeAction(id, 'edit', { name, type, status, condition });
 }
+
 function openDeleteBike(id, name) {
   requestBikeAction(id, 'delete', { name });
 }
@@ -70,7 +67,6 @@ document.getElementById('bike-password-form').addEventListener('submit', async f
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || 'Password verification failed.');
 
-    // sakto ang password, i-proceed na sa edit o delete
     const action = pendingBikeAction;
     pendingBikeAction = null;
     closeModal('bike-password-modal');
@@ -80,7 +76,6 @@ document.getElementById('bike-password-form').addEventListener('submit', async f
       openDeleteBikeConfirm(action.bikeId, action.details.name);
     }
   } catch (verificationError) {
-    // sayop ang password: dili mo-proceed, ipakita lang ang error
     error.textContent = verificationError.message;
     error.hidden = false;
   } finally {
@@ -90,27 +85,28 @@ document.getElementById('bike-password-form').addEventListener('submit', async f
 });
 
 function openEditBikeForm(id, name, type, status, condition) {
+  const form = document.getElementById('edit-bike-form');
+  const selectedName = String(name || '').split(' · ')[0] || name;
+  const make = String(name || '').split(' · ').slice(1).join(' · ') || '';
+  const normalizedStatus = status === 'Maintenance' ? 'repair' : (status === 'Rented' ? 'rented' : 'available');
+  const normalizedCondition = condition === 'Needs Repair' ? 'repair' : (condition === 'Missing' ? 'missing' : 'good');
+
   document.getElementById('edit-bike-id').value = id;
-
-  // gi-separate nako ang model ug make kay mao na ang actual fields sa bicycle table
-  const nameParts = name.split(' · ');
-  document.getElementById('edit-bike-name').value = nameParts.shift() || name;
-  document.getElementById('edit-bike-make').value = nameParts.join(' · ');
-
+  document.getElementById('edit-bike-name').value = selectedName;
+  document.getElementById('edit-bike-make').value = make;
   document.getElementById('edit-bike-type').value = type;
-  document.getElementById('edit-bike-status').value = status;
-  document.getElementById('edit-bike-condition').value = condition;
-  // gi add nako para: 
-  // i-remember kinsa nga bike ang gi-edit (gamit ang id, dili name,
-  // kay pwede man magsama og name ang duha ka bike unlike sa staff)
+  document.getElementById('edit-bike-status').value = normalizedStatus;
+  document.getElementById('edit-bike-condition').value = normalizedCondition;
+  if (form) form.action = '/admin/bikes/' + encodeURIComponent(id);
+
   window._editingBikeId = id;
-  // i-set ang form action sa tama nga bike (qr_code) para mo-reach sa admin.bikes.update
-  document.getElementById('edit-bike-form').action = `{{ url('/admin/bikes') }}/${encodeURIComponent(id)}`;
   openModal('edit-bike-modal');
 }
+
 function openDeleteBikeConfirm(id, name) {
   document.getElementById('delete-bike-name-display').textContent = name + ' (' + id + ')';
-  // same sa taas 
+  const form = document.getElementById('delete-bike-form');
+  if (form) form.action = '/admin/bikes/' + encodeURIComponent(id);
   window._deletingBikeId = id;
   openModal('delete-bike-modal');
 }
@@ -130,57 +126,13 @@ function openQR(id, name, code) {
   openModal('qr-modal');
 }
 function saveEditBike() {
-  const idBeingEdited = window._editingBikeId;
-  if (!idBeingEdited) return;
-
-  // TODO: kung naa nay backend, ilisan ni og:
-  // fetch(`/bikes/${bike.id}`, { method: 'PUT', body: JSON.stringify(bike), headers: {...} })
-
-  document.getElementById('edit-bike-form').action = `{{ url('/admin/bikes') }}/${encodeURIComponent(idBeingEdited)}`;
-  document.getElementById('edit-bike-form').submit();
+  const form = document.getElementById('edit-bike-form');
+  if (form) form.requestSubmit();
 }
 
-
-async function confirmDeleteBike() {
-  const idBeingDeleted = window._deletingBikeId;
-  if (!idBeingDeleted) return;
-
-  // i-disable ang button para dili ma double-click ang delete
-  const button = document.getElementById('confirm-delete-bike-btn');
-  button.disabled = true;
-
-  try {
-    // DELETE request sa admin.bikes.destroy; qr_code (bike_code) ang gamiton sa route
-    const response = await fetch(`{{ url('/admin/bikes') }}/${encodeURIComponent(idBeingDeleted)}`, {
-      method: 'DELETE',
-      headers: {
-        'Accept': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-      }
-    });
-    const result = await response.json();
-    // kung 422/409/500, i-throw para ma-catch ug ma-toast ang error message
-    if (!response.ok) throw new Error(result.message || 'Unable to delete this bike.');
-
-    // successful na sa database, kuhaa na ang row sa table ug i-update ang count
-    document.querySelector(`#bikes-tbody tr[data-id="${CSS.escape(idBeingDeleted)}"]`)?.remove();
-    applyBikeFilters();
-    closeModal('delete-bike-modal');
-    showToast(result.message);
-    window._deletingBikeId = null;
-  } catch (deleteError) {
-    // naa gihapon ang bike; ipakita lang ang error ug i-close ang modal
-    closeModal('delete-bike-modal');
-    showToast(deleteError.message);
-  } finally {
-    button.disabled = false;
-  }
+function confirmDeleteBike() {
+  const form = document.getElementById('delete-bike-form');
+  if (form) form.requestSubmit();
+  window._deletingBikeId = null;
 }
-
-@if(session('active_tab') === 'bikes' && $errors->any())
-window.addEventListener('DOMContentLoaded', function () {
-  // ipakita ang error gikan sa bike edit (pananglitan wala na-verify o sayop ang status)
-  showToast(@json($errors->first()));
-});
-@endif
 </script>

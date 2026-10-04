@@ -38,35 +38,35 @@
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">Edit Bike</span>
-      <button class="modal-close" onclick="closeModal('edit-bike-modal')">
+      <button type="button" class="modal-close" onclick="closeModal('edit-bike-modal')">
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="form-group"><label class="form-label">Bike ID</label><input type="text" id="edit-bike-id" class="form-input" readonly></div>
-    <form method="POST" id="edit-bike-form" action="{{ url('/admin/bikes') }}">
+    <form id="edit-bike-form" method="POST" action="">
       @csrf
       @method('PATCH')
       <input type="hidden" name="current_tab" value="bikes">
-      <div class="form-group"><label class="form-label">Bike Name</label><input type="text" id="edit-bike-name" name="model" class="form-input" required></div>
-      <div class="form-group"><label class="form-label">Make</label><input type="text" id="edit-bike-make" name="make" class="form-input" required></div>
+      <div class="form-group"><label class="form-label">Bike ID</label><input type="text" id="edit-bike-id" name="qr_code" class="form-input" readonly></div>
+      <div class="form-group"><label class="form-label">Bike Name</label><input type="text" id="edit-bike-name" name="model" class="form-input"></div>
+      <div class="form-group"><label class="form-label">Make</label><input type="text" id="edit-bike-make" name="make" class="form-input"></div>
       <div class="form-group">
-      <label class="form-label">Type</label>
-      <select id="edit-bike-type" name="bike_type" class="form-select" required>
-        <option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
-      </select>
-    </div>
+        <label class="form-label">Type</label>
+        <select id="edit-bike-type" name="bike_type" class="form-select">
+          <option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
+        </select>
+      </div>
       <div class="form-group">
-      <label class="form-label">Status</label>
-      <select id="edit-bike-status" name="status" class="form-select" required>
-        <option>Available</option><option>Rented</option><option>Maintenance</option>
-      </select>
-    </div>
+        <label class="form-label">Status</label>
+        <select id="edit-bike-status" name="status" class="form-select">
+          <option value="available">Available</option><option value="rented">Rented</option><option value="repair">Maintenance</option>
+        </select>
+      </div>
       <div class="form-group">
-      <label class="form-label">Condition</label>
-      <select id="edit-bike-condition" name="condition" class="form-select" required>
-        <option>Good</option><option>Needs Repair</option><option>Missing</option>
-      </select>
-    </div>
+        <label class="form-label">Condition</label>
+        <select id="edit-bike-condition" name="condition" class="form-select">
+          <option value="good">Good</option><option value="repair">Needs Repair</option><option value="missing">Missing</option>
+        </select>
+      </div>
       <div class="form-actions">
         <button type="button" class="btn btn-outline" onclick="closeModal('edit-bike-modal')">Cancel</button>
         <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -75,7 +75,7 @@
   </div>
 </div>
 
-{{-- BIKE PASSWORD VERIFICATION MODAL (gamiton sa edit ug delete) --}}
+{{-- BIKE PASSWORD VERIFICATION MODAL --}}
 <div class="modal-backdrop" id="bike-password-modal" onclick="closeModalOutside(event,'bike-password-modal')">
   <div class="modal">
     <div class="modal-header">
@@ -101,17 +101,22 @@
 {{-- DELETE BIKE MODAL --}}
 <div class="modal-backdrop" id="delete-bike-modal" onclick="closeModalOutside(event,'delete-bike-modal')">
   <div class="modal">
-    <div class="delete-warning">
-      <div class="delete-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-triangle-alert-icon lucide-triangle-alert"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+    <form id="delete-bike-form" method="POST" action="">
+      @csrf
+      @method('DELETE')
+      <input type="hidden" name="current_tab" value="bikes">
+      <div class="delete-warning">
+        <div class="delete-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-triangle-alert-icon lucide-triangle-alert"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        </div>
+        <div class="delete-title">Delete Bike</div>
+        <div class="delete-desc">Are you sure you want to delete <strong id="delete-bike-name-display"></strong>? This cannot be undone.</div>
       </div>
-      <div class="delete-title">Delete Bike</div>
-      <div class="delete-desc">Are you sure you want to delete <strong id="delete-bike-name-display"></strong>? This cannot be undone.</div>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-outline" onclick="closeModal('delete-bike-modal')">Cancel</button>
-      <button id="confirm-delete-bike-btn" class="btn btn-primary btn-danger" onclick="confirmDeleteBike()">Delete</button> {{-- gi add nako function lain sad --}}
-    </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('delete-bike-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-danger">Delete</button>
+      </div>
+    </form>
   </div>
 </div>
 

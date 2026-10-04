@@ -1,4 +1,10 @@
 {{-- HOME SCREEN --}}
+<?php
+$totalBikes = (int) ($stats['total'] ?? 0);
+$availablePercent = $totalBikes > 0 ? round(((int) ($stats['available'] ?? 0) / $totalBikes) * 100) : 0;
+$rentedPercent = $totalBikes > 0 ? round(((int) ($stats['rented'] ?? 0) / $totalBikes) * 100) : 0;
+$repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $totalBikes) * 100) : 0;
+?>
 <section class="screen active" id="home">
   <div class="topbar">
     <div class="topbar-left">
@@ -41,9 +47,9 @@
           </div>
           <span class="stat-change up">Ready</span>
         </div>
-        <div class="stat-value">{{ $stats['available'] ?? 161 }}</div>
+        <div class="stat-value" id="stat-available">{{ $stats['available'] ?? 0 }}</div>
         <div class="stat-label">Available</div>
-        <div class="stat-track"><div class="stat-fill-green" style="width:65%"></div></div>
+        <div class="stat-track"><div class="stat-fill-green" data-fill-width="{{ $availablePercent }}"></div></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-top">
@@ -55,9 +61,9 @@
           </div>
           <span class="stat-change neutral">Active</span>
         </div>
-        <div class="stat-value">{{ $stats['rented'] ?? 87 }}</div>
+        <div class="stat-value" id="stat-rented">{{ $stats['rented'] ?? 0 }}</div>
         <div class="stat-label">Rented</div>
-        <div class="stat-track"><div class="stat-fill-blue" style="width:35%"></div></div>
+        <div class="stat-track"><div class="stat-fill-blue" data-fill-width="{{ $rentedPercent }}"></div></div>
       </div>
     </div>
 
@@ -72,9 +78,9 @@
           </div>
           <span class="stat-change neutral">!</span>
         </div>
-        <div class="stat-value">{{ $stats['repair'] ?? 10 }}</div>
+        <div class="stat-value" id="stat-repair">{{ $stats['repair'] ?? 0 }}</div>
         <div class="stat-label">Repair</div>
-        <div class="stat-track"><div class="stat-fill-orange" style="width:4%"></div></div>
+        <div class="stat-track"><div class="stat-fill-orange" data-fill-width="{{ $repairPercent }}"></div></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-top">
@@ -85,79 +91,44 @@
           </div>
           <span class="stat-change up">Live</span>
         </div>
-        <div class="stat-value">{{ $stats['total'] ?? 248 }}</div>
+        <div class="stat-value" id="stat-total">{{ $stats['total'] ?? 0 }}</div>
         <div class="stat-label">Total Bikes</div>
-        <div class="stat-track"><div class="stat-fill-green" style="width:100%"></div></div>
+        <div class="stat-track"><div class="stat-fill-green" data-fill-width="100"></div></div>
       </div>
     </div>
 
     {{-- BIKE LIST --}}
     <div class="section-title">
-      <h3>Bike Inventory</h3>
-      <a onclick="goTo('inventory')">View all</a>
+      <div class="dashboard-section-heading">
+        <h3>Bike Inventory</h3>
+        <p>Latest bike shown for each status</p>
+      </div>
+      <a class="dashboard-view-all" onclick="goTo('inventory')">
+        View all
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </a>
     </div>
-
-    {{-- Category view: isa ra ka first bike ang ipakita per category, while ang dots sa taas kay total per status. --}}
-    <div class="bike-category-list">
-      @forelse ($bikes ?? [] as $bikeType => $categoryBikes)
+    <div class="dashboard-category-list dashboard-status-list">
+      @forelse($dashboardBikes as $statusType => $bike)
         @php
-          $availableCount = $categoryBikes->filter(function ($bike) {
-              return strtolower($bike->status ?? '') === 'available';
-          })->count();
-          $rentedCount = $categoryBikes->filter(function ($bike) {
-              return strtolower($bike->status ?? '') === 'rented';
-          })->count();
-          $repairCount = $categoryBikes->filter(function ($bike) {
-              return in_array(strtolower($bike->status ?? ''), ['repair', 'maintenance']);
-          })->count();
-          $firstBike = $categoryBikes->first();
-          $status = strtolower($firstBike->status ?? 'available');
-          $statusForDisplay = $status === 'maintenance' ? 'repair' : $status;
-          $statusLabel = $statusForDisplay === 'repair' ? 'Maintenance' : ucfirst($statusForDisplay);
-          $statusType = $statusForDisplay === 'rented' ? 'rented' : ($statusForDisplay === 'repair' ? 'maintenance' : 'available');
-          $iconClass = $statusForDisplay === 'rented' ? 'blue' : ($statusForDisplay === 'repair' ? 'orange' : 'green');
-          $badgeClass = $statusForDisplay === 'rented' ? 'badge-blue' : ($statusForDisplay === 'repair' ? 'badge-orange' : 'badge-green');
-          $dotClass = $statusForDisplay === 'rented' ? 'badge-dot-blue' : ($statusForDisplay === 'repair' ? 'badge-dot-orange' : 'badge-dot-green');
+          $statusInfo = [
+            'available' => ['label' => 'Available', 'detail' => 'Available for rental', 'class' => 'available'],
+            'rented' => ['label' => 'Rented', 'detail' => 'Currently borrowed', 'class' => 'rented'],
+            'maintenance' => ['label' => 'Maintenance', 'detail' => 'Needs maintenance', 'class' => 'maintenance'],
+          ][$statusType];
         @endphp
-
-        <div class="bike-category-card">
-          <div class="bike-category-header">
-            <h4>{{ $bikeType }}</h4>
-            <div class="bike-category-counts">
-              <span><span class="category-count-dot category-count-green"></span>{{ $availableCount }}</span>
-              <span><span class="category-count-dot category-count-blue"></span>{{ $rentedCount }}</span>
-              <span><span class="category-count-dot category-count-orange"></span>{{ $repairCount }}</span>
+        <div class="dashboard-category-bike" data-status-type="{{ $statusType }}" data-bike-id="{{ $bike->qr_code }}" data-condition="{{ ucfirst($bike->condition ?? 'good') }}" data-issue="{{ ucfirst($bike->condition ?? 'good') }}" data-report-type="damage" onclick="openModal(this.dataset.statusType, { id: this.dataset.bikeId, condition: this.dataset.condition, issue: this.dataset.issue, reportType: this.dataset.reportType })">
+            <div class="dashboard-bike-icon dashboard-status-icon {{ $statusInfo['class'] }}" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
             </div>
-          </div>
-
-          <div class="bike-category-bike" onclick="openModal('{{ $statusType }}', @js(['id' => $firstBike->qr_code, 'condition' => ucfirst($firstBike->condition ?? 'good')]))">
-            <div class="bike-icon {{ $iconClass }}">
-              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
-            </div>
-            <div class="bike-meta"><h4>{{ $firstBike->qr_code }}</h4><p>{{ $firstBike->make }} {{ $firstBike->model }}</p></div>
-            <span class="badge {{ $badgeClass }}"><span class="badge-dot {{ $dotClass }}"></span>{{ $statusLabel }}</span>
+            <div class="dashboard-bike-row-copy"><h4>{{ $bike->qr_code }}</h4><p>{{ $statusInfo['detail'] }}</p></div>
+            <span class="badge {{ $statusInfo['class'] === 'available' ? 'badge-green' : ($statusInfo['class'] === 'rented' ? 'badge-blue' : 'badge-orange') }}"><span class="badge-dot {{ $statusInfo['class'] === 'available' ? 'badge-dot-green' : ($statusInfo['class'] === 'rented' ? 'badge-dot-blue' : 'badge-dot-orange') }}"></span>{{ $statusInfo['label'] }}</span>
             <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
-          </div>
         </div>
       @empty
-        <p>No bikes found in the inventory.</p>
+        <p class="dashboard-bike-empty">No available bikes found in the inventory.</p>
       @endforelse
     </div>
-
-    <style>
-      .bike-category-list{display:flex;flex-direction:column;gap:12px}
-      .bike-category-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:14px 12px 10px;box-shadow:var(--shadow-sm)}
-      .bike-category-header{display:flex;align-items:center;justify-content:space-between;padding:0 4px 10px;border-bottom:1px solid var(--gray-100)}
-      .bike-category-header h4{font-size:14px;font-weight:700;color:var(--gray-900)}
-      .bike-category-counts{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:600;color:var(--gray-600)}
-      .bike-category-counts span{display:inline-flex;align-items:center;gap:4px}
-      .category-count-dot{width:7px;height:7px;border-radius:50%;display:inline-block}
-      .category-count-green{background:var(--green-600)}
-      .category-count-blue{background:var(--blue-600)}
-      .category-count-orange{background:var(--orange-600)}
-      .bike-category-bike{background:var(--gray-50);border:1px solid var(--gray-100);border-radius:var(--radius-lg);padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;box-shadow:var(--shadow-sm);transition:all .15s ease;margin-top:10px}
-      .bike-category-bike:active{transform:scale(.98);box-shadow:none}
-    </style>
   </div>
 
   {{-- BOTTOM NAV --}}
@@ -173,7 +144,7 @@
       <span>Scan QR</span>
     </button>
     <button class="nav-btn" onclick="navActive(this); goTo('report')">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       <span>Report</span>
     </button>
   </nav>

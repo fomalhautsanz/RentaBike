@@ -30,4 +30,22 @@
 
 @section('scripts')
     @include('staff.scripts._staff_scripts')
+
+    @if(session('success') || request('screen'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const params = new URLSearchParams(window.location.search);
+                const screen = params.get('screen') || @json(session('active_screen') ?? null);
+
+                if (screen && document.getElementById(screen)) {
+                    goTo(screen);
+                }
+
+                const message = @json(session('success') ?: session('status') ?: null);
+                if (message) {
+                    showToast(message);
+                }
+            });
+        </script>
+    @endif
 @endsection

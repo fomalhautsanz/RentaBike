@@ -12,6 +12,10 @@ class EnsureAdminLoggedIn
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::check()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Your admin session has expired. Please log in again.'], 401);
+            }
+
             return redirect()->route('login')
                 ->withErrors([
                     'email' => 'Please log in to continue.',

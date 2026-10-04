@@ -16,7 +16,7 @@ class InventoryController extends Controller
         return redirect()->route('staff.home');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         abort_unless(
             in_array('Add Inventory', $request->attributes->get('staffPermissions', []), true),
@@ -31,7 +31,7 @@ class InventoryController extends Controller
             'condition' => ['required', 'in:Good,Needs Repair,Missing'],
         ]);
 
-        Bicycle::create([
+        $bike = Bicycle::create([
             'qr_code' => $validated['qr_code'],
             'model' => $validated['model'],
             'make' => $validated['make'],
@@ -40,10 +40,26 @@ class InventoryController extends Controller
             'status' => strtolower($validated['condition']) === 'good' ? 'available' : 'repair',
         ]);
 
-        return redirect()->route('staff.home')->with('status', 'Bike added to inventory.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Bike added to inventory.',
+                'bike' => [
+                    'id' => $bike->qr_code,
+                    'qr_code' => $bike->qr_code,
+                    'model' => $bike->model,
+                    'make' => $bike->make,
+                    'bike_type' => $bike->bike_type,
+                    'condition' => $bike->condition,
+                    'status' => $bike->status,
+                ],
+            ]);
+        }
+
+        return redirect()->route('staff.home', ['screen' => 'inventory'])
+            ->with('success', 'Bike added to inventory.');
     }
 
-    public function update(Request $request, Bicycle $bike): RedirectResponse
+    public function update(Request $request, Bicycle $bike): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'qr_code' => [
@@ -70,19 +86,49 @@ class InventoryController extends Controller
                 : 'repair',
         ]);
 
-        return redirect()->route('staff.home')->with('status', 'Bike updated in inventory.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Bike updated in inventory.',
+                'bike' => [
+                    'id' => $bike->fresh()->qr_code,
+                    'qr_code' => $bike->fresh()->qr_code,
+                    'model' => $bike->fresh()->model,
+                    'make' => $bike->fresh()->make,
+                    'bike_type' => $bike->fresh()->bike_type,
+                    'condition' => $bike->fresh()->condition,
+                    'status' => $bike->fresh()->status,
+                ],
+            ]);
+        }
+
+        return redirect()->route('staff.home', ['screen' => 'inventory'])
+            ->with('success', 'Bike updated in inventory.');
     }
 
-    public function destroy(Bicycle $bike): RedirectResponse
+    public function destroy(Request $request, Bicycle $bike): RedirectResponse|JsonResponse
     {
         if ($bike->status === 'rented') {
-            return redirect()->route('staff.home')
-                ->with('status', 'A rented bike cannot be removed from inventory.');
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'A rented bike cannot be removed from inventory.',
+                ], 422);
+            }
+
+            return redirect()->route('staff.home', ['screen' => 'inventory'])
+                ->with('success', 'A rented bike cannot be removed from inventory.');
         }
 
         $bike->delete();
 
-        return redirect()->route('staff.home')->with('status', 'Bike removed from inventory.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Bike removed from inventory.',
+                'deleted' => true,
+            ]);
+        }
+
+        return redirect()->route('staff.home', ['screen' => 'inventory'])
+            ->with('success', 'Bike removed from inventory.');
     }
 
     public function toggleStatus(Bicycle $bike): JsonResponse

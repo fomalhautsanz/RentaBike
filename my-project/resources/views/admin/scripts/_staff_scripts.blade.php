@@ -15,6 +15,14 @@ function applyStaffFilters() {
     r.style.display = roleOk && statusOk ? '' : 'none';
   });
 }
+function toggleManageStaffPermission(roleSelect, modalId) {
+  const option = document.querySelector(`#${modalId} [data-admin-only-permission]`);
+  if (!option) return;
+
+  const isAdmin = roleSelect.value === 'Admin';
+  option.style.display = isAdmin ? '' : 'none';
+  if (!isAdmin) option.querySelector('input').checked = false;
+}
 function populateEditStaff(staffId) {
   const row = document.querySelector(`#staff-tbody tr[data-id="${staffId}"]`);
   if (!row) return;
@@ -40,6 +48,7 @@ function populateEditStaff(staffId) {
   document.querySelectorAll('#edit-staff-modal .permission-checkbox').forEach(cb => {
     cb.checked = selectedPermissions.includes(cb.value);
   });
+  toggleManageStaffPermission(document.getElementById('edit-staff-role'), 'edit-staff-modal');
 
   document.getElementById('edit-staff-form').action = `/admin/staff/${staffId}`;
 }
@@ -86,6 +95,12 @@ document.getElementById('staff-password-form').addEventListener('submit', async 
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
       body
     });
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error(response.redirected
+        ? 'Your admin session has expired. Please log in again.'
+        : 'The server returned an unexpected response. Please refresh and try again.');
+    }
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || 'Password verification failed.');
 
@@ -177,6 +192,7 @@ function resetAddStaffForm() {
   addStaffForm.reset();
   addStaffForm.dataset.confirmed = 'false';
   addStaffForm.querySelectorAll('.permission-checkbox').forEach(cb => cb.checked = false);
+  toggleManageStaffPermission(document.getElementById('add-staff-role'), 'add-staff-modal');
 }
 
 function showDuplicateStaffModal(message = 'A staff member with this email is already registered.') {

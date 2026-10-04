@@ -8,15 +8,15 @@
       <div class="page-sub">Welcome back! Here's what's happening today!</div>
     </div>
 
-    {{-- Export CSV button, upper right --}}
-    <a href="{{ route('admin.dashboard.export') }}" class="btn btn-primary" onclick="showToast('Inventory report exported successfully.')">
+    {{-- Export Excel button, upper right --}}
+    <button type="button" class="btn btn-primary" onclick="exportBikesExcel()">
       <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
         <polyline points="7 10 12 15 17 10"/>
         <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
-      Export CSV
-    </a>
+      Export Excel
+    </button>
   </div>
 
   {{-- STAT CARDS --}}

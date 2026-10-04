@@ -58,6 +58,10 @@ class DashboardController extends Controller
         }
 
         $validated = $validator->validated();
+        $permissions = $validated['permissions'] ?? [];
+        if ($validated['role'] === 'Staff') {
+            $permissions = array_values(array_diff($permissions, ['Manage Staff']));
+        }
 
         $username = Str::before($validated['email'], '@');
         $baseUsername = $username;
@@ -84,7 +88,7 @@ class DashboardController extends Controller
             'role' => $validated['role'],
             'status' => 'active',
             'profile_picture' => $profilePicture,
-            'permissions' => $validated['permissions'] ?? [],
+            'permissions' => $permissions,
         ]);
 
         return $this->backToTab($request, 'staff')
@@ -120,6 +124,10 @@ class DashboardController extends Controller
             }
 
         $validated = $validator->validated();
+        $permissions = $validated['permissions'] ?? [];
+        if ($validated['role'] === 'Staff') {
+            $permissions = array_values(array_diff($permissions, ['Manage Staff']));
+        }
 
         $staff->first_name = $validated['first_name'];
         $staff->last_name = $validated['last_name'];
@@ -128,7 +136,7 @@ class DashboardController extends Controller
         $staff->phone = $validated['phone'] ?? null;
         $staff->role = $validated['role'];
         $staff->status = strtolower(str_replace(' ', '_', $validated['status']));
-        $staff->permissions = $validated['permissions'] ?? [];
+        $staff->permissions = $permissions;
 
         if (!empty($validated['password'])) {
             $staff->password_hash = Hash::make($validated['password']);
@@ -271,7 +279,7 @@ class DashboardController extends Controller
             'name' => trim($bike->model . ' · ' . $bike->make),
             'type' => $bike->bike_type,
             'qr_code' => $bike->qr_code,
-            'status' => ucfirst($bike->status),
+            'status' => $bike->status === 'repair' ? 'Maintenance' : ucfirst($bike->status),
             'condition' => $bike->condition === 'repair' ? 'Needs Repair' : ucfirst($bike->condition),
             'last_maintenance' => null,
         ];
@@ -326,18 +334,18 @@ class DashboardController extends Controller
 
     public function updateBike(Request $request, Bicycle $bike)
     {
-        // kinahanglan naka-verify daan ang password sa admin before ma-edit ang bike
         if (!$this->hasBikeConfirmation($request, $bike, 'edit')) {
             return $this->backToTab($request, 'bikes')
                 ->withErrors(['bike_confirmation' => 'Confirm your password before editing this bike.']);
         }
 
         $validator = Validator::make($request->all(), [
+            'qr_code' => ['required', 'string', 'max:100', Rule::unique('bicycle', 'qr_code')->ignore($bike->bike_id, 'bike_id')],
             'model' => ['required', 'string', 'max:100'],
             'make' => ['required', 'string', 'max:100'],
             'bike_type' => ['required', 'string', 'max:50'],
-            'status' => ['required', 'in:Available,Rented,Maintenance'],
-            'condition' => ['required', 'in:Good,Needs Repair,Missing'],
+            'status' => ['nullable', 'in:available,rented,repair'],
+            'condition' => ['required', 'in:good,repair,missing'],
         ]);
 
         if ($validator->fails()) {
@@ -347,90 +355,48 @@ class DashboardController extends Controller
         }
 
         $validated = $validator->validated();
-        $status = strtolower($validated['status']);
-        $condition = match ($validated['condition']) {
-            'Needs Repair' => 'repair',
-            'Missing' => 'missing',
-            default => 'good',
-        };
-        $hasActiveRental = $bike->rentals()->where('status', 'active')->exists();
+        $status = $validated['status'] ?? ($bike->status === 'rented' ? 'rented' : 'available');
 
-        if ($status === 'available' && $hasActiveRental) {
-            return $this->backToTab($request, 'bikes')
-                ->withErrors(['status' => 'This bike has an active rental and cannot be marked as available.']);
+        if ($validated['condition'] !== 'good') {
+            $status = 'repair';
+        } elseif ($status === 'repair') {
+            $status = $bike->status === 'rented' ? 'rented' : 'available';
         }
-
-        if ($status === 'rented' && !$hasActiveRental) {
-            return $this->backToTab($request, 'bikes')
-                ->withErrors(['status' => 'A bike cannot be marked as rented without an active rental.']);
-        }
-
-        // gi-update sa database ang bike details; ang status/condition procedure
-        // naa pud activity log para makita kinsa ang nag-edit sa bike.
-        DB::statement('CALL sp_update_bike_status(?, ?, ?, ?, ?)', [
-            $bike->bike_id,
-            $status,
-            $condition,
-            auth()->id(),
-            'admin',
-        ]);
 
         $bike->update([
+            'qr_code' => $validated['qr_code'],
             'model' => $validated['model'],
             'make' => $validated['make'],
             'bike_type' => $validated['bike_type'],
+            'status' => $status,
+            'condition' => $validated['condition'],
         ]);
 
-        // gamit na ang verification, kuhaa para kinahanglan balik og password sa sunod nga edit
         $this->clearBikeConfirmation($request, $bike, 'edit');
 
         return $this->backToTab($request, 'bikes')
             ->with('success', 'Bike updated successfully.');
     }
 
-    // DELETE sa bike. JSON ang response kay fetch() ang mo-tawag gikan sa _bike_scripts.
-    // Hard delete ni (parehas sa Staff inventory), pero ang rental ug issue_report
-    // naay foreign key (restrict) sa bicycle, so dili pwede i-delete ang bike nga
-    // naay history. Gi-check nato daan para klaro ang error message, dili 500.
     public function destroyBike(Request $request, Bicycle $bike)
     {
-        // password verification daan, dili mo-proceed kung wala pa na-verify
         if (!$this->hasBikeConfirmation($request, $bike, 'delete')) {
-            return response()->json(['message' => 'Confirm your password before deleting this bike.'], 403);
+            return $this->backToTab($request, 'bikes')
+                ->withErrors(['bike_confirmation' => 'Confirm your password before deleting this bike.']);
         }
 
-        // dili pwede i-delete ang bike nga gi-rent karon
-        if ($bike->status === 'rented' || $bike->rentals()->where('status', 'active')->exists()) {
-            return response()->json([
-                'message' => 'A rented bike cannot be deleted. Wait until it is returned.',
-            ], 422);
+        if ($bike->status === 'rented') {
+            return $this->backToTab($request, 'bikes')
+                ->with('error', 'A rented bike cannot be removed from inventory.');
         }
 
-        // naay rental o issue report history = protected sa foreign key, i-block nato
-        if ($bike->rentals()->exists() || IssueReport::where('bike_id', $bike->bike_id)->exists()) {
-            return response()->json([
-                'message' => 'This bike has rental or issue report history and cannot be deleted. Mark it as Maintenance or Missing instead.',
-            ], 422);
-        }
-
-        try {
-            $bike->delete();
-        } catch (\Illuminate\Database\QueryException $e) {
-            // backup lang ni kung naay lain nga table nga naka-link sa bike (FK)
-            report($e);
-
-            return response()->json([
-                'message' => 'Unable to delete this bike because it is still linked to other records.',
-            ], 409);
-        }
-
+        $bike->delete();
         $this->clearBikeConfirmation($request, $bike, 'delete');
 
-        return response()->json(['message' => 'Bike deleted successfully.']);
+        return $this->backToTab($request, 'bikes')
+            ->with('success', 'Bike removed from inventory.');
     }
 
-    // Gi-check ang password sa naka-login nga admin; kung sakto, i-save sa session
-    // nga verified siya for 5 minutes para sa specific nga bike ug action (edit/delete).
     public function verifyBikeAction(Request $request, Bicycle $bike)
     {
         $validated = $request->validate([
@@ -455,7 +421,6 @@ class DashboardController extends Controller
         return "bike_action_confirmations.{$bike->getKey()}.{$action}";
     }
 
-    // true kung naay valid (wala pa expire) nga verification para ani nga bike ug action
     private function hasBikeConfirmation(Request $request, Bicycle $bike, string $action): bool
     {
         $expiresAt = $request->session()->get($this->bikeConfirmationKey($bike, $action));
@@ -466,33 +431,6 @@ class DashboardController extends Controller
     private function clearBikeConfirmation(Request $request, Bicycle $bike, string $action): void
     {
         $request->session()->forget($this->bikeConfirmationKey($bike, $action));
-    }
-
-    public function exportAdminDashboardCsv() {
-        return response()->streamDownload(function () {
-            $handle = fopen('php://output', 'w');
-
-            fputcsv($handle, ['RENTABIKE']);
-            fputcsv($handle, ['Bike Inventory Report']);
-            fputcsv($handle, [now('Asia/Manila')->format('F j, Y h:i A')]);
-            fputcsv($handle, []);
-
-            fputcsv($handle, ['Bike ID', 'QR Code', 'Model', 'Make', 'Type', 'Status', 'Condition']);
-
-            Bicycle::orderBy('bike_id')->each(function (Bicycle $bike) use ($handle) {
-                fputcsv($handle, [
-                    $bike->bike_id,
-                    $bike->qr_code,
-                    $bike->model,
-                    $bike->make,
-                    $bike->bike_type,
-                    $bike->status,
-                    $bike->condition,
-                ]);
-            });
-
-                fclose($handle);
-        }, 'admin-dashboard.csv', ['Content-Type' => 'text/csv']);
     }
 
     private function normalizePermissions(mixed $permissions): array

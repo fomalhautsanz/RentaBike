@@ -5,7 +5,7 @@
       <div class="page-sub">Full log of all bike rentals and returns</div>
     </div>
     <div style="display:flex;gap:12px">
-      <button class="btn btn-primary" onclick="exportLogsCSV()">
+      <button class="btn btn-primary" onclick="exportLogsExcel()">
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Export Logs
       </button>
@@ -118,7 +118,10 @@
   </div>
 </section>
 
-{{-- gi add nako func sa filtering, og export csv --}}
+{{-- ExcelJS library (remove this line if your layout already loads it) --}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+
+{{-- gi add nako func sa filtering, og export excel --}}
 {{-- mga functions, diri nlng ibutang if kanang sa ui ra ha or gamay ra --}}
 <script>
 // filtering 
@@ -167,50 +170,111 @@ function applyLogFilters() {
 // initial filter application pag mo-load ang page (default: Last 24 Hours)
 document.addEventListener('DOMContentLoaded', applyLogFilters);
 
-// export logs to csv 
-function exportLogsCSV() {
+// export logs to styled excel (.xlsx)
+async function exportLogsExcel() {
   const rows = document.querySelectorAll('#rentals-tbody tr');
-  
-  const csvRows = [
-    ['RENTABIKE'],
-    ['Activity Logs Report'],
-    [new Date().toLocaleString('en-US', {
-      timeZone: 'Asia/Manila',
-      month: 'long', day: 'numeric', year: 'numeric', 
-      hour: '2-digit', minute: '2-digit', hour12: true 
-    })],
-    [],
-    ['Rental ID', 'Borrower', 'Bike', 'Staff', 'Borrow Time', 'Return Time', 'Duration', 'Status']
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Activity Logs');
+
+  ws.columns = [
+    { width: 12 }, { width: 22 }, { width: 24 }, { width: 18 },
+    { width: 24 }, { width: 24 }, { width: 14 }, { width: 14 },
   ];
 
+  const thin = { style: 'thin' };
+  const border = { top: thin, left: thin, bottom: thin, right: thin };
+  const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+
+  // Title banner
+  ws.mergeCells('A1:H1');
+  const title = ws.getCell('A1');
+  title.value = 'RENTABIKE';
+  title.font = { bold: true, size: 18, color: { argb: 'FF1F3864' } };
+  title.fill = fill('FFFFFF00');
+  title.alignment = { horizontal: 'center', vertical: 'middle' };
+  ws.getRow(1).height = 32;
+
+  // Report title
+  ws.mergeCells('A2:H2');
+  const sub = ws.getCell('A2');
+  sub.value = 'ACTIVITY LOGS REPORT';
+  sub.font = { bold: true, size: 12, color: { argb: 'FF1F3864' } };
+  sub.fill = fill('FFFCE4D6');
+  sub.alignment = { horizontal: 'center' };
+
+  // Date generated
+  ws.mergeCells('A3:H3');
+  const dateCell = ws.getCell('A3');
+  dateCell.value = new Date().toLocaleString('en-US', {
+    timeZone: 'Asia/Manila',
+    month: 'long', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  });
+  dateCell.font = { italic: true, size: 11 };
+  dateCell.alignment = { horizontal: 'center' };
+
+  // Header row (row 5)
+  const headers = ['Rental ID', 'Borrower', 'Bike', 'Staff', 'Borrow Time', 'Return Time', 'Duration', 'Status'];
+  const headerColors = ['FF00B0F0', 'FF00B0F0', 'FFD9D2C0', 'FFD9D2C0', 'FFF4B183', 'FFF4B183', 'FF92D050', 'FF92D050'];
+  const headerRow = ws.getRow(5);
+  headers.forEach((h, i) => {
+    const c = headerRow.getCell(i + 1);
+    c.value = h;
+    c.font = { bold: true };
+    c.fill = fill(headerColors[i]);
+    c.border = border;
+    c.alignment = { horizontal: 'center', vertical: 'middle' };
+  });
+  headerRow.height = 26;
+
+  // Data rows (only the ones currently visible after filtering)
+  let r = 6;
   rows.forEach(row => {
-    if (row.style.display === 'none') return; 
+    if (row.style.display === 'none') return;
 
     const cells = row.querySelectorAll('td');
-    const rentalId = cells[0].textContent.trim();
-    const borrower = cells[1].textContent.trim();
-    const bikeName = cells[2].querySelector('div').textContent.trim();
-    const staff = cells[3].textContent.trim();
-    const borrowTime = cells[4].textContent.trim();
-    const returnTime = cells[5].textContent.trim();
-    const duration = cells[6].textContent.trim();
-    const status = cells[7].textContent.trim();
+    const values = [
+      cells[0].textContent.trim(),
+      cells[1].textContent.trim(),
+      cells[2].querySelector('div').textContent.trim(),
+      cells[3].textContent.trim(),
+      cells[4].textContent.trim(),
+      cells[5].textContent.trim(),
+      cells[6].textContent.trim(),
+      cells[7].textContent.trim(),
+    ];
 
-    csvRows.push([rentalId, borrower, bikeName, staff, borrowTime, returnTime, duration, status]);
+    const excelRow = ws.getRow(r++);
+    values.forEach((v, i) => {
+      const c = excelRow.getCell(i + 1);
+      c.value = v;
+      c.border = border;
+      c.alignment = { vertical: 'middle', horizontal: i === 0 ? 'center' : 'left' };
+    });
+    excelRow.getCell(1).font = { bold: true };
+
+    // Color the status cell
+    const statusCell = excelRow.getCell(8);
+    const status = values[7];
+    if (status === 'Completed') statusCell.fill = fill('FFC6EFCE');
+    else if (status === 'Active') statusCell.fill = fill('FFBDD7EE');
+    else if (status === 'Overdue') statusCell.fill = fill('FFFFC7CE');
+    statusCell.alignment = { horizontal: 'center', vertical: 'middle' };
   });
 
-  const csvContent = csvRows.map(row =>
-    row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-  ).join('\n');
-
-  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  // Download
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `activity-logs-${new Date().toISOString().slice(0,10)}.csv`;
+  link.download = `activity-logs-${new Date().toISOString().slice(0, 10)}.xlsx`;
   link.click();
   URL.revokeObjectURL(url);
 
-  showToast('Activity logs CSV exported successfully.');
+  showToast('Activity logs exported successfully.');
 }
 </script>

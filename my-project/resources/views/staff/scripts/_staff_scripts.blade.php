@@ -2,7 +2,14 @@
 // ── NAVIGATION ───────────────────────────────────────────────────────────────
 function goTo(id) {
   const target = document.getElementById(id);
-  if (!target) return;
+  if (!target) {
+    if (id === 'inventory') {
+      showToast('You do not have access to inventory.\nPlease contact your administrator.');
+    } else if (id === 'report') {
+      showToast('You do not have access to maintenance reports.\nPlease contact your administrator.');
+    }
+    return;
+  }
 
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   target.classList.add('active');
@@ -128,24 +135,206 @@ function openBikeAction(action, data = {}) {
   const title = action === 'edit' ? `Edit ${data.id ?? 'Bike'}` : 'Delete Bike';
   const body = action === 'delete'
     ? `<p class="modal-confirmation-message">Are you sure you want to remove ${data.id ?? 'this bike'} from inventory?</p>
-       <form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}">
+       <form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}" data-live-form="delete">
          @csrf
          @method('DELETE')
          <div class="modal-actions"><button type="submit" class="primary-btn">Delete Bike</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
        </form>`
-    : `<form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}">
+    : `<form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}" data-live-form="edit">
          @csrf
          @method('PATCH')
          <div class="form-group"><label class="form-label" for="edit-qr-code">QR Code</label><input id="edit-qr-code" name="qr_code" class="form-input" value="${data.qrCode ?? ''}" required></div>
          <div class="form-group"><label class="form-label" for="edit-model">Model</label><input id="edit-model" name="model" class="form-input" value="${data.model ?? ''}" required></div>
          <div class="form-group"><label class="form-label" for="edit-make">Make</label><input id="edit-make" name="make" class="form-input" value="${data.make ?? ''}" required></div>
-         <div class="form-group"><label class="form-label" for="edit-bike-type">Bike Type</label><select id="edit-bike-type" name="bike_type" class="form-select" required>${['Mountain Bike', 'City Bike', "Lady's/Men's Bike", 'E-Scooter', 'Road Bike', 'Sidecar Bike', "Children's Bike"].map(type => `<option ${data.type === type ? 'selected' : ''}>${type}</option>`).join('')}</select></div>
-         <div class="form-group"><label class="form-label" for="edit-condition">Condition</label><select id="edit-condition" name="condition" class="form-select" required><option ${data.condition === 'Good' ? 'selected' : ''}>Good</option><option ${data.condition === 'Needs Repair' ? 'selected' : ''}>Needs Repair</option><option ${data.condition === 'Missing' ? 'selected' : ''}>Missing</option></select></div>
+         <div class="form-group"><label class="form-label" for="edit-bike-type">Bike Type</label><select id="edit-bike-type" name="bike_type" class="form-select" required>${['Mountain Bike', 'City Bike', "Lady's/Men's Bike", 'E-Scooter', 'Road Bike', 'Sidecar Bike', "Children's Bike"].map(type => `<option value="${type}" ${data.type === type ? 'selected' : ''}>${type}</option>`).join('')}</select></div>
+         <div class="form-group"><label class="form-label" for="edit-condition">Condition</label><select id="edit-condition" name="condition" class="form-select" required><option value="Good" ${data.condition === 'Good' ? 'selected' : ''}>Good</option><option value="Needs Repair" ${data.condition === 'Needs Repair' ? 'selected' : ''}>Needs Repair</option><option value="Missing" ${data.condition === 'Missing' ? 'selected' : ''}>Missing</option></select></div>
          <div class="modal-actions"><button type="submit" class="primary-btn">Save Changes</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
        </form>`;
   content.innerHTML = `<div class="modal-bike-title">${title}</div>${body}`;
   document.getElementById('modalBg').classList.add('open');
 }
+
+function confirmDeleteBike(id, qrCode) {
+  openBikeAction('delete', { id: id || qrCode || '' });
+}
+
+function updateInventoryRowFromBike(bike) {
+  const bikeCode = bike.qr_code || bike.id;
+  const category = bike.bike_type || 'Unknown';
+  const statusValue = bike.status || 'available';
+  const conditionLabel = bike.condition === 'repair' ? 'Repair' : (bike.condition === 'missing' ? 'Missing' : 'Available');
+  const statusLabel = statusValue === 'rented' ? 'Rented' : (statusValue === 'repair' ? 'Repair' : 'Available');
+  const statusClass = statusValue === 'rented' ? 'badge-blue' : (statusValue === 'repair' ? 'badge-orange' : 'badge-green');
+
+  function syncCategoryBlock(categoryName) {
+    const block = document.querySelector(`.inv-category-block[data-category="${categoryName}"]`);
+    if (!block) return null;
+
+    const rows = block.querySelectorAll('.inv-bike-row');
+    const count = rows.length;
+    const countEl = block.querySelector('.cat-count');
+    if (countEl) {
+      countEl.textContent = `${count} ${count === 1 ? 'unit' : 'units'}`;
+    }
+
+    return block;
+  }
+
+  const existingRow = document.querySelector(`.inv-bike-row[data-qr="${String(bikeCode).toLowerCase()}"]`);
+  const currentCategory = existingRow ? existingRow.dataset.category : null;
+
+  if (existingRow) {
+    const oldCategory = currentCategory;
+    existingRow.dataset.qr = String(bikeCode).toLowerCase();
+    existingRow.dataset.model = `${(bike.model || '').toLowerCase()} ${(bike.make || '').toLowerCase()}`.trim();
+    existingRow.dataset.category = category;
+    existingRow.dataset.status = statusValue;
+    existingRow.innerHTML = `
+      <div style="flex:1;min-width:0">
+        <div class="inv-row-id">${bikeCode}</div>
+        <div class="inv-row-name">${bike.model} · ${bike.make}</div>
+      </div>
+      <span class="badge ${statusClass}" style="flex-shrink:0;font-size:11px">${statusLabel}</span>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button type="button" onclick="openBikeAction('edit', { id: '${bikeCode}', qrCode: '${bikeCode}', model: '${(bike.model || '').replace(/'/g, "\\'")}', make: '${(bike.make || '').replace(/'/g, "\\'")}', type: '${(bike.bike_type || '').replace(/'/g, "\\'")}', condition: '${conditionLabel === 'Repair' ? 'Needs Repair' : (conditionLabel === 'Missing' ? 'Missing' : 'Good')}' })" class="action-btn" style="width:30px;height:30px" title="Edit ${bikeCode}">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button type="button" onclick="openBikeAction('delete', { id: '${bikeCode}' })" class="action-btn" style="width:30px;height:30px;color:#ef4444" title="Delete ${bikeCode}">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </div>`;
+
+    if (oldCategory && oldCategory !== category) {
+      const oldBlock = document.querySelector(`.inv-category-block[data-category="${oldCategory}"]`);
+      if (oldBlock) {
+        const oldList = oldBlock.querySelector('.inv-list');
+        if (oldList && existingRow.parentNode === oldList) {
+          oldList.removeChild(existingRow);
+        }
+      }
+    }
+
+    let targetBlock = document.querySelector(`.inv-category-block[data-category="${category}"]`);
+    if (!targetBlock) {
+      const template = document.querySelector('.inv-category-block');
+      if (!template) return;
+      const clone = template.cloneNode(true);
+      clone.dataset.category = category;
+      clone.querySelector('.inv-cat-header h3').textContent = category;
+      clone.querySelector('.inv-list').innerHTML = '';
+      template.parentNode.insertBefore(clone, template.nextSibling);
+      targetBlock = clone;
+    }
+
+    const targetList = targetBlock.querySelector('.inv-list');
+    if (targetList && existingRow.parentNode !== targetList) {
+      targetList.appendChild(existingRow);
+    }
+
+    syncCategoryBlock(category);
+    if (currentCategory && currentCategory !== category) {
+      syncCategoryBlock(currentCategory);
+    }
+    return;
+  }
+
+  let targetBlock = document.querySelector(`.inv-category-block[data-category="${category}"]`);
+  if (!targetBlock) {
+    const template = document.querySelector('.inv-category-block');
+    if (!template) return;
+    const clone = template.cloneNode(true);
+    clone.dataset.category = category;
+    clone.querySelector('.inv-cat-header h3').textContent = category;
+    clone.querySelector('.cat-count').textContent = '1 unit';
+    clone.querySelector('.inv-list').innerHTML = '';
+    template.parentNode.insertBefore(clone, template.nextSibling);
+    targetBlock = clone;
+  }
+
+  const list = targetBlock.querySelector('.inv-list');
+  const el = document.createElement('div');
+  el.className = 'inv-row inv-bike-row';
+  el.dataset.qr = bikeCode.toLowerCase();
+  el.dataset.model = `${(bike.model || '').toLowerCase()} ${(bike.make || '').toLowerCase()}`.trim();
+  el.dataset.category = category;
+  el.dataset.status = statusValue;
+  el.style.gap = '8px';
+  el.style.alignItems = 'center';
+  el.innerHTML = `
+    <div style="flex:1;min-width:0">
+      <div class="inv-row-id">${bikeCode}</div>
+      <div class="inv-row-name">${bike.model} · ${bike.make}</div>
+    </div>
+    <span class="badge ${statusClass}" style="flex-shrink:0;font-size:11px">${statusLabel}</span>
+    <div style="display:flex;gap:4px;flex-shrink:0">
+      <button type="button" onclick="openBikeAction('edit', { id: '${bikeCode}', qrCode: '${bikeCode}', model: '${(bike.model || '').replace(/'/g, "\\'")}', make: '${(bike.make || '').replace(/'/g, "\\'")}', type: '${(bike.bike_type || '').replace(/'/g, "\\'")}', condition: '${conditionLabel === 'Repair' ? 'Needs Repair' : (conditionLabel === 'Missing' ? 'Missing' : 'Good')}' })" class="action-btn" style="width:30px;height:30px" title="Edit ${bikeCode}">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+      <button type="button" onclick="openBikeAction('delete', { id: '${bikeCode}' })" class="action-btn" style="width:30px;height:30px;color:#ef4444" title="Delete ${bikeCode}">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </button>
+    </div>`;
+  list.appendChild(el);
+  syncCategoryBlock(category);
+}
+
+function handleLiveInventorySubmit(event) {
+  const form = event.target;
+  if (!form || !form.matches('[data-live-form]')) return;
+  if (event.submitter && event.submitter.type === 'button') {
+    // let the natural form submit happen for non-ajax cases; handled below
+  }
+
+  event.preventDefault();
+  const action = form.dataset.liveForm;
+  const url = form.action;
+  const methodOverride = form.querySelector('input[name="_method"]')?.value || form.method;
+  const formData = new FormData(form);
+  const body = new FormData(form);
+  const headers = {
+    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+  };
+
+  fetch(url, {
+    method: methodOverride.toUpperCase(),
+    headers,
+    body,
+  })
+    .then(async response => {
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.message || 'Something went wrong.');
+      }
+      return payload;
+    })
+    .then((payload) => {
+      if (action === 'create' && payload.bike) {
+        updateInventoryRowFromBike(payload.bike);
+      }
+      if (action === 'edit' && payload.bike) {
+        updateInventoryRowFromBike(payload.bike);
+      }
+      if (action === 'delete') {
+        const deletedId = form.action.split('/').pop();
+        document.querySelectorAll('.inv-bike-row').forEach(row => {
+          if ((row.dataset.qr || '').toLowerCase() === decodeURIComponent(deletedId).toLowerCase()) {
+            row.remove();
+          }
+        });
+      }
+      closeModal();
+      goTo('inventory');
+      showToast(payload.message || 'Updated successfully.');
+      form.reset();
+    })
+    .catch((error) => {
+      showToast(error.message || 'Could not complete the action.');
+    });
+}
+
+document.addEventListener('submit', handleLiveInventorySubmit);
 
 function openStaffAction(action, name = '') {
   const content = document.getElementById('modalContent');

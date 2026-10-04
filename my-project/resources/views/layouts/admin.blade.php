@@ -463,6 +463,7 @@
     border-radius: 999px;
     font-size: 12px;
     font-weight: 500;
+    white-space: nowrap;
   }
 
   .badge-green  { background: #f0fdf4; color: #15803d; }

@@ -4,21 +4,57 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bicycle;
+use App\Models\Staff;
+use Illuminate\Support\Facades\Session;
 
 class DashboardController extends Controller
 {
     public function index()
     {
         $stats = [
-            'available' => Bicycle::where('status', 'available')->count(),
-            'rented'    => Bicycle::where('status', 'rented')->count(),
-            'repair'    => Bicycle::where('status', 'repair')->count(),
+            'available' => Bicycle::where('condition', 'good')->where('status', 'available')->count(),
+            'rented'    => Bicycle::where('condition', 'good')->where('status', 'rented')->count(),
+            'repair'    => Bicycle::where('condition', '!=', 'good')->count(),
             'total'     => Bicycle::count(),
         ];
-        // I-group nato ang tanan bikes by category para isa ra ka bike per category ang makita sa dashboard.
-        $bikes = Bicycle::orderBy('bike_id')->get()->groupBy('bike_type');
+        $bikes = Bicycle::query()->latest('created_at')->get();
+        $bikeCategories = $bikes->groupBy('bike_type');
+        $dashboardBikes = collect([
+            'available' => Bicycle::query()
+                ->where('status', 'available')
+                ->latest('created_at')
+                ->latest('bike_id')
+                ->first(),
+            'rented' => Bicycle::query()
+                ->where('status', 'rented')
+                ->latest('created_at')
+                ->latest('bike_id')
+                ->first(),
+            'maintenance' => Bicycle::query()
+                ->whereIn('status', ['repair', 'maintenance'])
+                ->latest('created_at')
+                ->latest('bike_id')
+                ->first(),
+        ])->filter();
 
-        return view('staff.home', compact('stats', 'bikes'));
+        $staff = Staff::find(Session::get('staff_id'));
+        $staffPermissions = $staff?->permissions ?? [];
+        $canAddInventory = in_array('Add Inventory', $staffPermissions, true);
+        $canEditInventory = in_array('Manage Inventory', $staffPermissions, true)
+            || in_array('Edit Inventory', $staffPermissions, true);
+        $canDeleteInventory = in_array('Manage Inventory', $staffPermissions, true)
+            || in_array('Delete Inventory', $staffPermissions, true);
+
+        return view('staff.home', compact(
+            'stats',
+            'bikes',
+            'bikeCategories',
+            'dashboardBikes',
+            'staffPermissions',
+            'canAddInventory',
+            'canEditInventory',
+            'canDeleteInventory'
+        ));
     }
 
     public function exportStaffDashboardCsv()
