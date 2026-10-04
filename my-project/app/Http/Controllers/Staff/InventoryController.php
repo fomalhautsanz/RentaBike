@@ -116,20 +116,26 @@ class InventoryController extends Controller
 
         if ($bike->status === 'rented') {
             if ($request->expectsJson()) {
-                return response()->json(['message' => 'A rented bike cannot be removed from inventory.'], 422);
+                return response()->json([
+                    'message' => 'A rented bike cannot be removed from inventory.',
+                ], 422);
             }
 
-            return redirect()->route('staff.home')
-                ->with('status', 'A rented bike cannot be removed from inventory.');
+            return redirect()->route('staff.home', ['screen' => 'inventory'])
+                ->with('success', 'A rented bike cannot be removed from inventory.');
         }
 
         $bike->delete();
 
         if ($request->expectsJson()) {
-            return response()->json(['message' => 'Bike removed from inventory.']);
+            return response()->json([
+                'message' => 'Bike removed from inventory.',
+                'deleted' => true,
+            ]);
         }
 
-        return redirect()->route('staff.home')->with('status', 'Bike removed from inventory.');
+        return redirect()->route('staff.home', ['screen' => 'inventory'])
+            ->with('success', 'Bike removed from inventory.');
     }
 
     public function toggleStatus(Bicycle $bike): JsonResponse
