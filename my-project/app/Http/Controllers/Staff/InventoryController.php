@@ -4,15 +4,22 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bicycle;
+use App\Models\Staff;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class InventoryController extends Controller
 {
-    public function index(): RedirectResponse
+    public function index(Request $request): RedirectResponse
     {
+        abort_unless(
+            in_array('View Inventory', $request->attributes->get('staffPermissions', []), true),
+            403
+        );
+
         return redirect()->route('staff.home');
     }
 
@@ -45,6 +52,12 @@ class InventoryController extends Controller
 
     public function update(Request $request, Bicycle $bike): RedirectResponse
     {
+        abort_unless(
+            in_array('Manage Inventory', $request->attributes->get('staffPermissions', []), true)
+                || in_array('Edit Inventory', $request->attributes->get('staffPermissions', []), true),
+            403
+        );
+
         $validated = $request->validate([
             'qr_code' => [
                 'required',
@@ -73,14 +86,48 @@ class InventoryController extends Controller
         return redirect()->route('staff.home')->with('status', 'Bike updated in inventory.');
     }
 
-    public function destroy(Bicycle $bike): RedirectResponse
+    public function destroy(Request $request, Bicycle $bike): RedirectResponse|JsonResponse
     {
+        abort_unless(
+            in_array('Manage Inventory', $request->attributes->get('staffPermissions', []), true)
+                || in_array('Delete Inventory', $request->attributes->get('staffPermissions', []), true),
+            403
+        );
+
+        $password = $request->input('password');
+        $staff = $request->attributes->get('staffAccount');
+        if (!is_string($password) || $password === '') {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Enter your password to confirm bike deletion.'], 422);
+            }
+
+            return redirect()->route('staff.home')
+                ->with('status', 'Enter your password to confirm bike deletion.');
+        }
+
+        if (!$staff instanceof Staff || !Hash::check($password, $staff->password_hash)) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Incorrect password. The bike was not deleted.'], 422);
+            }
+
+            return redirect()->route('staff.home')
+                ->with('status', 'Incorrect password. The bike was not deleted.');
+        }
+
         if ($bike->status === 'rented') {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'A rented bike cannot be removed from inventory.'], 422);
+            }
+
             return redirect()->route('staff.home')
                 ->with('status', 'A rented bike cannot be removed from inventory.');
         }
 
         $bike->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Bike removed from inventory.']);
+        }
 
         return redirect()->route('staff.home')->with('status', 'Bike removed from inventory.');
     }

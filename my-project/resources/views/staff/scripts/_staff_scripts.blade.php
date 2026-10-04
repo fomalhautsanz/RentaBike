@@ -2,7 +2,16 @@
 // ── NAVIGATION ───────────────────────────────────────────────────────────────
 function goTo(id) {
   const target = document.getElementById(id);
-  if (!target) return;
+  if (!target) {
+    const deniedMessages = {
+      inventory: 'You do not have access to inventory.\nPlease contact your administrator.',
+      'inventory-create': 'You do not have permission to add inventory.\nPlease contact your administrator.',
+      report: 'You do not have access to reports.\nPlease contact your administrator.',
+      'report-form': 'You do not have access to reports.\nPlease contact your administrator.',
+    };
+    if (deniedMessages[id]) showToast(deniedMessages[id]);
+    return;
+  }
 
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   target.classList.add('active');
@@ -133,9 +142,11 @@ function openBikeAction(action, data = {}) {
   const title = action === 'edit' ? `Edit ${data.id ?? 'Bike'}` : 'Delete Bike';
   const body = action === 'delete'
     ? `<p class="modal-confirmation-message">Are you sure you want to remove ${data.id ?? 'this bike'} from inventory?</p>
-       <form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}">
+       <form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}" onsubmit="submitBikeDeletion(event, this)">
          @csrf
          @method('DELETE')
+         <div class="form-group"><label class="form-label" for="delete-bike-password">Enter your password to confirm</label><input id="delete-bike-password" name="password" type="password" class="form-input" autocomplete="current-password" required></div>
+         <p id="delete-bike-error" role="alert" style="display:none;color:var(--red-600);font-size:13px;margin-top:-4px"></p>
          <div class="modal-actions"><button type="submit" class="primary-btn">Delete Bike</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
        </form>`
     : `<form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}">
@@ -150,6 +161,45 @@ function openBikeAction(action, data = {}) {
        </form>`;
   content.innerHTML = `<div class="modal-bike-title">${title}</div>${body}`;
   document.getElementById('modalBg').classList.add('open');
+}
+
+function submitBikeDeletion(event, form) {
+  event.preventDefault();
+
+  const submitButton = form.querySelector('[type="submit"]');
+  const passwordInput = form.querySelector('[name="password"]');
+  const errorMessage = form.querySelector('#delete-bike-error');
+  submitButton.disabled = true;
+  errorMessage.style.display = 'none';
+  errorMessage.textContent = '';
+
+  fetch(form.action, {
+    method: 'POST',
+    body: new FormData(form),
+    headers: {
+      'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+  })
+    .then(async response => {
+      const data = await response.json();
+      if (!response.ok) {
+        errorMessage.textContent = data.message || 'The bike could not be deleted.';
+        errorMessage.style.display = 'block';
+        passwordInput.value = '';
+        passwordInput.focus();
+        return;
+      }
+
+      window.location.reload();
+    })
+    .catch(() => {
+      errorMessage.textContent = 'Could not verify your password. Please try again.';
+      errorMessage.style.display = 'block';
+    })
+    .finally(() => {
+      submitButton.disabled = false;
+    });
 }
 
 function openStaffAction(action, name = '') {
@@ -285,6 +335,10 @@ function toggleID() {
 // ── REPORT ───────────────────────────────────────────────────────────────────
 const reportTitles = { damage: 'Report Damage', missing: 'Report Missing Bike', other: 'Other Issue' };
 function openReportForm(type, bikeId = '') {
+  if (!document.getElementById('report-form')) {
+    goTo('report-form');
+    return;
+  }
   document.getElementById('reportFormTitle').textContent = reportTitles[type] ?? 'Report Issue';
   document.getElementById('reportBikeId').value = bikeId;
   document.getElementById('reportDesc').value   = '';
@@ -309,6 +363,10 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
+
+@if(session('status'))
+showToast(@json(session('status')));
+@endif
 
 document.querySelectorAll('[data-fill-width]').forEach(fill => {
   fill.style.width = `${fill.dataset.fillWidth}%`;

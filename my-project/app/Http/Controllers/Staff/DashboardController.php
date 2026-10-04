@@ -4,12 +4,11 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bicycle;
-use App\Models\Staff;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $stats = [
             'available' => Bicycle::where('condition', 'good')->where('status', 'available')->count(),
@@ -37,8 +36,7 @@ class DashboardController extends Controller
                 ->first(),
         ])->filter();
 
-        $staff = Staff::find(Session::get('staff_id'));
-        $staffPermissions = $staff?->permissions ?? [];
+        $staffPermissions = $request->attributes->get('staffPermissions', []);
         $canAddInventory = in_array('Add Inventory', $staffPermissions, true);
         $canEditInventory = in_array('Manage Inventory', $staffPermissions, true)
             || in_array('Edit Inventory', $staffPermissions, true);
@@ -57,8 +55,13 @@ class DashboardController extends Controller
         ));
     }
 
-    public function exportStaffDashboardCsv()
+    public function exportStaffDashboardCsv(Request $request)
     {
+        abort_unless(
+            in_array('View Inventory', $request->attributes->get('staffPermissions', []), true),
+            403
+        );
+
         return response()->streamDownload(function () {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['Bike ID', 'QR Code', 'Model', 'Make', 'Type', 'Status', 'Condition']);
