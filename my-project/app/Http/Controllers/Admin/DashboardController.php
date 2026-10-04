@@ -334,6 +334,11 @@ class DashboardController extends Controller
 
     public function updateBike(Request $request, Bicycle $bike)
     {
+        if (!$this->hasBikeConfirmation($request, $bike, 'edit')) {
+            return $this->backToTab($request, 'bikes')
+                ->withErrors(['bike_confirmation' => 'Confirm your password before editing this bike.']);
+        }
+
         $validator = Validator::make($request->all(), [
             'qr_code' => ['required', 'string', 'max:100', Rule::unique('bicycle', 'qr_code')->ignore($bike->bike_id, 'bike_id')],
             'model' => ['required', 'string', 'max:100'],
@@ -367,21 +372,65 @@ class DashboardController extends Controller
             'condition' => $validated['condition'],
         ]);
 
+        $this->clearBikeConfirmation($request, $bike, 'edit');
+
         return $this->backToTab($request, 'bikes')
             ->with('success', 'Bike updated successfully.');
     }
 
     public function destroyBike(Request $request, Bicycle $bike)
     {
+        if (!$this->hasBikeConfirmation($request, $bike, 'delete')) {
+            return $this->backToTab($request, 'bikes')
+                ->withErrors(['bike_confirmation' => 'Confirm your password before deleting this bike.']);
+        }
+
         if ($bike->status === 'rented') {
             return $this->backToTab($request, 'bikes')
                 ->with('error', 'A rented bike cannot be removed from inventory.');
         }
 
         $bike->delete();
+        $this->clearBikeConfirmation($request, $bike, 'delete');
 
         return $this->backToTab($request, 'bikes')
             ->with('success', 'Bike removed from inventory.');
+    }
+
+    public function verifyBikeAction(Request $request, Bicycle $bike)
+    {
+        $validated = $request->validate([
+            'action' => ['required', 'in:edit,delete'],
+            'password' => ['required', 'string'],
+        ]);
+
+        if (!Hash::check($validated['password'], $request->user()->password_hash)) {
+            return response()->json(['message' => 'The password is incorrect.'], 422);
+        }
+
+        $request->session()->put(
+            $this->bikeConfirmationKey($bike, $validated['action']),
+            now()->addMinutes(5)->timestamp
+        );
+
+        return response()->json(['message' => 'Password confirmed.']);
+    }
+
+    private function bikeConfirmationKey(Bicycle $bike, string $action): string
+    {
+        return "bike_action_confirmations.{$bike->getKey()}.{$action}";
+    }
+
+    private function hasBikeConfirmation(Request $request, Bicycle $bike, string $action): bool
+    {
+        $expiresAt = $request->session()->get($this->bikeConfirmationKey($bike, $action));
+
+        return is_numeric($expiresAt) && (int) $expiresAt >= now()->timestamp;
+    }
+
+    private function clearBikeConfirmation(Request $request, Bicycle $bike, string $action): void
+    {
+        $request->session()->forget($this->bikeConfirmationKey($bike, $action));
     }
 
     private function normalizePermissions(mixed $permissions): array

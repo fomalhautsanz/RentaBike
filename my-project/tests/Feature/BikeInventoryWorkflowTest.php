@@ -68,6 +68,14 @@ test('admin can update and delete bikes from the inventory', function () {
     ]);
 
     $this->actingAs($admin, 'web')
+        ->post(route('admin.bikes.verify', $bike), [
+            'action' => 'edit',
+            'password' => 'secret-password',
+        ])
+        ->assertOk()
+        ->assertJsonPath('message', 'Password confirmed.');
+
+    $this->actingAs($admin, 'web')
         ->patch(route('admin.bikes.update', $bike), [
             'qr_code' => 'MB-202',
             'model' => 'Trail 300',
@@ -85,10 +93,61 @@ test('admin can update and delete bikes from the inventory', function () {
     ]);
 
     $this->actingAs($admin, 'web')
+        ->post(route('admin.bikes.verify', $bike->fresh()), [
+            'action' => 'delete',
+            'password' => 'secret-password',
+        ])
+        ->assertOk();
+
+    $this->actingAs($admin, 'web')
         ->delete(route('admin.bikes.destroy', $bike->fresh()->qr_code))
         ->assertRedirect(route('admin.dashboard'));
 
     $this->assertDatabaseMissing('bicycle', ['qr_code' => 'MB-202']);
+});
+
+test('bike edit and delete actions reject missing or incorrect password confirmation', function () {
+    $admin = Admin::create([
+        'username' => 'admin-confirmation',
+        'full_name' => 'Test Admin',
+        'email' => 'admin-confirmation@example.test',
+        'password_hash' => Hash::make('secret-password'),
+    ]);
+
+    $bike = Bicycle::create([
+        'qr_code' => 'MB-303',
+        'model' => 'Trail 200',
+        'make' => 'Trek',
+        'bike_type' => 'Mountain Bike',
+        'status' => 'available',
+        'condition' => 'good',
+    ]);
+
+    $this->actingAs($admin, 'web')
+        ->patch(route('admin.bikes.update', $bike), [
+            'qr_code' => 'MB-404',
+            'model' => 'Trail 400',
+            'make' => 'Trek',
+            'bike_type' => 'Mountain Bike',
+            'condition' => 'good',
+            'current_tab' => 'bikes',
+        ])
+        ->assertSessionHasErrors('bike_confirmation');
+
+    expect($bike->fresh()->qr_code)->toBe('MB-303');
+
+    $this->actingAs($admin, 'web')
+        ->post(route('admin.bikes.verify', $bike), [
+            'action' => 'delete',
+            'password' => 'wrong-password',
+        ])
+        ->assertUnprocessable();
+
+    $this->actingAs($admin, 'web')
+        ->delete(route('admin.bikes.destroy', $bike))
+        ->assertSessionHasErrors('bike_confirmation');
+
+    $this->assertDatabaseHas('bicycle', ['qr_code' => 'MB-303']);
 });
 
 test('staff inventory renders real edit and delete actions for bike records', function () {

@@ -75,6 +75,29 @@
   </div>
 </div>
 
+{{-- BIKE PASSWORD VERIFICATION MODAL --}}
+<div class="modal-backdrop" id="bike-password-modal" onclick="closeModalOutside(event,'bike-password-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Verify Your Password</span>
+      <button type="button" class="modal-close" onclick="closeModal('bike-password-modal')" aria-label="Close">&times;</button>
+    </div>
+    <p id="bike-password-prompt">Enter your admin password to continue.</p>
+    <form id="bike-password-form" data-verify-url="{{ route('admin.bikes.verify', ['bike' => '__BIKE_ID__']) }}">
+      @csrf
+      <div class="form-group">
+        <label class="form-label" for="bike-action-password">Admin Password</label>
+        <input type="password" id="bike-action-password" name="password" class="form-input" autocomplete="current-password" required>
+      </div>
+      <p id="bike-password-error" role="alert" style="color:#dc2626;font-size:13px" hidden></p>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('bike-password-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Verify</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 {{-- DELETE BIKE MODAL --}}
 <div class="modal-backdrop" id="delete-bike-modal" onclick="closeModalOutside(event,'delete-bike-modal')">
   <div class="modal">
