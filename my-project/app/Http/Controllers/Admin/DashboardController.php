@@ -384,33 +384,6 @@ class DashboardController extends Controller
             ->with('success', 'Bike removed from inventory.');
     }
 
-    public function exportAdminDashboardCsv() {
-        return response()->streamDownload(function () {
-            $handle = fopen('php://output', 'w');
-
-            fputcsv($handle, ['RENTABIKE']);
-            fputcsv($handle, ['Bike Inventory Report']);
-            fputcsv($handle, [now('Asia/Manila')->format('F j, Y h:i A')]);
-            fputcsv($handle, []);
-
-            fputcsv($handle, ['Bike ID', 'QR Code', 'Model', 'Make', 'Type', 'Status', 'Condition']);
-
-            Bicycle::orderBy('bike_id')->each(function (Bicycle $bike) use ($handle) {
-                fputcsv($handle, [
-                    $bike->bike_id,
-                    $bike->qr_code,
-                    $bike->model,
-                    $bike->make,
-                    $bike->bike_type,
-                    $bike->status,
-                    $bike->condition,
-                ]);
-            });
-
-                fclose($handle);
-        }, 'admin-dashboard.csv', ['Content-Type' => 'text/csv']);
-    }
-
     private function normalizePermissions(mixed $permissions): array
     {
         if (is_string($permissions)) {
