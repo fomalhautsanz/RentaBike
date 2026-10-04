@@ -12,7 +12,7 @@
 <style>
 
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-html{font-size:15px}
+html{font-size:15px;scrollbar-gutter:stable}
 body{background:#f9fafb;color:#111827;font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;}
 
 :root{
@@ -128,9 +128,26 @@ body{background:#f9fafb;color:#111827;font-family:'DM Sans',sans-serif;-webkit-f
 .section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .section-title h3{font-size:12px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.7px}
 .section-title a{font-size:12px;font-weight:600;color:var(--green-600);text-decoration:none;cursor:pointer}
+.dashboard-section-heading p{font-size:10px;color:var(--gray-400);margin-top:3px}
+.dashboard-view-all{display:inline-flex;align-items:center;gap:4px;padding:8px 12px;border:1px solid var(--green-600);border-radius:10px;background:var(--green-600);font-size:12px!important;font-weight:700!important;color:#fff!important;line-height:1;box-shadow:0 3px 8px rgba(22,163,74,.2)}
+.dashboard-view-all:active{transform:scale(.98);box-shadow:none}
+.dashboard-view-all svg{width:13px;height:13px}
 
 /* ── BIKE LIST ── */
 .bike-list{display:flex;flex-direction:column;gap:10px}
+.dashboard-category-list{display:flex;flex-direction:column;gap:10px;padding:0 2px}
+.dashboard-bike-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--green-600);background:var(--green-50);flex-shrink:0}
+.dashboard-bike-icon svg{width:19px;height:19px}
+.dashboard-status-icon.rented{color:var(--blue-600);background:var(--blue-50)}
+.dashboard-status-icon.maintenance{color:var(--orange-600);background:var(--orange-50)}
+.dashboard-category-bike{display:flex;align-items:center;gap:10px;padding:12px;background:var(--white);border:1px solid var(--gray-200);border-radius:16px;box-shadow:0 1px 3px rgba(15,23,42,.06);cursor:pointer;min-width:0;transition:background .15s ease,border-color .15s ease,transform .15s ease}
+.dashboard-category-bike:hover{background:var(--green-50);border-color:#bbf7d0}
+.dashboard-category-bike:active{transform:scale(.985)}
+.dashboard-bike-row-copy{flex:1;min-width:0}
+.dashboard-bike-row-copy h4,.dashboard-bike-row-copy p{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dashboard-bike-row-copy h4{font-size:12px;font-weight:700;color:var(--gray-900);margin:0}
+.dashboard-bike-row-copy p{font-size:10.5px;color:var(--gray-500);margin:2px 0 0}
+.dashboard-bike-empty{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:18px;color:var(--gray-500);font-size:12px;text-align:center}
 .bike-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;box-shadow:var(--shadow-sm);transition:all .15s ease;text-decoration:none;}
 .bike-card:active{transform:scale(.98);box-shadow:none}
 .bike-icon{width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -158,7 +175,7 @@ body{background:#f9fafb;color:#111827;font-family:'DM Sans',sans-serif;-webkit-f
 .badge-dot-orange{background:var(--orange-600)}
 
 /* ── BOTTOM NAV ── */
-.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--white);border-top:1px solid var(--gray-200);display:flex;align-items:flex-end;padding:10px 8px 18px;box-shadow:0 -4px 20px rgba(0,0,0,.06);z-index:100;}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;width:100%;max-width:430px;margin:0 auto;background:var(--white);border-top:1px solid var(--gray-200);display:flex;align-items:flex-end;padding:10px 8px 18px;box-shadow:0 -4px 20px rgba(0,0,0,.06);z-index:100;}
 .nav-btn{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--gray-400);cursor:pointer;padding:2px 0;font-family:'DM Sans',sans-serif;transition:color .15s;}
 .nav-btn svg{width:20px;height:20px}
 .nav-btn.active{color:var(--green-700)}.nav-btn.active svg{color:var(--green-600)}

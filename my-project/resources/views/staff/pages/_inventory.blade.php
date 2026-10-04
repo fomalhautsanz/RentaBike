@@ -204,6 +204,7 @@
   const rows = [...inventory.querySelectorAll('[data-inventory-row]')];
   const categories = [...inventory.querySelectorAll('[data-inventory-category]')];
   const searchInput = document.getElementById('inventorySearch');
+  const filterWrap = document.getElementById('inventoryFilterWrap');
   const filterButton = document.getElementById('inventoryFilterButton');
   const filterPopover = document.getElementById('inventoryFilterPopover');
   const filterCount = document.getElementById('inventoryFilterCount');
@@ -345,7 +346,7 @@
   });
   searchInput.addEventListener('input', renderRows);
   document.addEventListener('click', event => {
-    if (!filterPopover.hidden && !document.getElementById('inventoryFilterWrap').contains(event.target)) closeFilters();
+    if (!filterPopover.hidden && !event.composedPath().includes(filterWrap)) closeFilters();
   });
 
   window.openInventory = function (bikeType = null) {

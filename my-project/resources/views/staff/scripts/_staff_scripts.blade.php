@@ -6,6 +6,11 @@ function goTo(id) {
 
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   target.classList.add('active');
+  const navScreen = { home: 'home', scanner: 'scanner', report: 'report', 'report-form': 'report' }[id];
+  if (navScreen) {
+    const navButton = document.querySelector(`.nav-btn[data-screen="${navScreen}"]`);
+    if (navButton) navActive(navButton);
+  }
   window.scrollTo(0, 0);
 }
 function navActive(btn) {
