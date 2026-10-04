@@ -180,6 +180,7 @@ body{background:#f9fafb;color:#111827;font-family:'DM Sans',sans-serif;-webkit-f
 .nav-btn svg{width:20px;height:20px}
 .nav-btn.active{color:var(--green-700)}.nav-btn.active svg{color:var(--green-600)}
 .nav-qr{position:relative;color:var(--gray-700)}.nav-qr span{color:var(--gray-700)}
+.nav-qr.active span{color:var(--green-700)}
 .qr-pill{width:54px;height:54px;background:linear-gradient(135deg,var(--green-600),var(--green-900));border-radius:16px;display:flex;align-items:center;justify-content:center;margin-top:-18px;margin-bottom:2px;box-shadow:0 6px 18px rgba(22,163,74,.35);}
 .qr-pill svg{color:#fff;width:24px;height:24px}
 
