@@ -8,7 +8,7 @@
     @include('staff.pages._home_feature')
     @include('staff.pages._scanner')
     @if($canViewInventory ?? false)
-        @include('staff.pages._inventory_feature')
+        @include('staff.pages._inventory')
     @endif
     @if($canAddInventory ?? false)
         @include('staff.pages._inventory_create')
