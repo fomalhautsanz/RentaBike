@@ -7,19 +7,22 @@
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <form method="POST" action="#">
+    <form method="POST" action="{{ route('admin.bikes.store') }}">
       @csrf
-      <div class="form-group"><label class="form-label">Bike Name</label><input type="text" name="name" class="form-input" placeholder="e.g. Mountain Pro X1" required></div>
+      <input type="hidden" name="current_tab" value="bikes">
+      <div class="form-group"><label class="form-label">Bike ID</label><input type="text" name="qr_code" class="form-input" placeholder="e.g. RB-004" required></div>
+      <div class="form-group"><label class="form-label">Bike Name</label><input type="text" name="model" class="form-input" placeholder="e.g. City 300" required></div>
+      <div class="form-group"><label class="form-label">Make</label><input type="text" name="make" class="form-input" placeholder="e.g. Trek" required></div>
       <div class="form-group">
-        <label class="form-label">Type</label>
-        <select name="type" class="form-select">
-          <option>Mountain Bike</option><option>City Bike</option><option>Lady's/Men's Bike</option><option>E-Scooter</option><option>Kiddie Bikes</option>
+        <label class="form-label">Bike Type</label>
+        <select name="bike_type" class="form-select" required>
+          <option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
         </select>
       </div>
       <div class="form-group">
         <label class="form-label">Condition</label>
         <select name="condition" class="form-select">
-          <option>Good</option><option>Needs Repair</option><option>Unusable</option>
+          <option value="good">Good</option><option value="repair">Needs Repair</option><option value="missing">Missing</option>
         </select>
       </div>
       <div class="form-actions">
@@ -35,51 +38,85 @@
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">Edit Bike</span>
-      <button class="modal-close" onclick="closeModal('edit-bike-modal')">
+      <button type="button" class="modal-close" onclick="closeModal('edit-bike-modal')">
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="form-group"><label class="form-label">Bike ID</label><input type="text" id="edit-bike-id" class="form-input" readonly></div>
-    <div class="form-group"><label class="form-label">Bike Name</label><input type="text" id="edit-bike-name" class="form-input"></div>
-    <div class="form-group">
-      <label class="form-label">Type</label>
-      <select id="edit-bike-type" class="form-select">
-        <option>Mountain Bike</option><option>City Bike</option><option>Lady's/Men's Bike</option><option>E-Scooter</option><option>Kiddie Bikes</option>
-      </select>
+    <form id="edit-bike-form" method="POST" action="">
+      @csrf
+      @method('PATCH')
+      <input type="hidden" name="current_tab" value="bikes">
+      <div class="form-group"><label class="form-label">Bike ID</label><input type="text" id="edit-bike-id" name="qr_code" class="form-input" readonly></div>
+      <div class="form-group"><label class="form-label">Bike Name</label><input type="text" id="edit-bike-name" name="model" class="form-input"></div>
+      <div class="form-group"><label class="form-label">Make</label><input type="text" id="edit-bike-make" name="make" class="form-input"></div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select id="edit-bike-type" name="bike_type" class="form-select">
+          <option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select id="edit-bike-status" name="status" class="form-select">
+          <option value="available">Available</option><option value="rented">Rented</option><option value="repair">Maintenance</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Condition</label>
+        <select id="edit-bike-condition" name="condition" class="form-select">
+          <option value="good">Good</option><option value="repair">Needs Repair</option><option value="missing">Missing</option>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('edit-bike-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{{-- BIKE PASSWORD VERIFICATION MODAL --}}
+<div class="modal-backdrop" id="bike-password-modal" onclick="closeModalOutside(event,'bike-password-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Verify Your Password</span>
+      <button type="button" class="modal-close" onclick="closeModal('bike-password-modal')" aria-label="Close">&times;</button>
     </div>
-    <div class="form-group">
-      <label class="form-label">Status</label>
-      <select id="edit-bike-status" class="form-select">
-        <option>Available</option><option>Rented</option><option>Maintenance</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Condition</label>
-      <select id="edit-bike-condition" class="form-select">
-        <option>Good</option><option>Needs Repair</option><option>Unusable</option>
-      </select>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-outline" onclick="closeModal('edit-bike-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="closeModal('edit-bike-modal')">Save Changes</button>
-    </div>
+    <p id="bike-password-prompt">Enter your admin password to continue.</p>
+    <form id="bike-password-form" data-verify-url="{{ route('admin.bikes.verify', ['bike' => '__BIKE_ID__']) }}">
+      @csrf
+      <div class="form-group">
+        <label class="form-label" for="bike-action-password">Admin Password</label>
+        <input type="password" id="bike-action-password" name="password" class="form-input" autocomplete="current-password" required>
+      </div>
+      <p id="bike-password-error" role="alert" style="color:#dc2626;font-size:13px" hidden></p>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('bike-password-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Verify</button>
+      </div>
+    </form>
   </div>
 </div>
 
 {{-- DELETE BIKE MODAL --}}
 <div class="modal-backdrop" id="delete-bike-modal" onclick="closeModalOutside(event,'delete-bike-modal')">
   <div class="modal">
-    <div class="delete-warning">
-      <div class="delete-icon">
-        <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    <form id="delete-bike-form" method="POST" action="">
+      @csrf
+      @method('DELETE')
+      <input type="hidden" name="current_tab" value="bikes">
+      <div class="delete-warning">
+        <div class="delete-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-triangle-alert-icon lucide-triangle-alert"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        </div>
+        <div class="delete-title">Delete Bike</div>
+        <div class="delete-desc">Are you sure you want to delete <strong id="delete-bike-name-display"></strong>? This cannot be undone.</div>
       </div>
-      <div class="delete-title">Delete Bike</div>
-      <div class="delete-desc">Are you sure you want to delete <strong id="delete-bike-name-display"></strong>? This cannot be undone.</div>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-outline" onclick="closeModal('delete-bike-modal')">Cancel</button>
-      <button class="btn btn-primary" style="background:#ef4444" onclick="closeModal('delete-bike-modal')">Delete</button>
-    </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('delete-bike-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-danger">Delete</button>
+      </div>
+    </form>
   </div>
 </div>
 

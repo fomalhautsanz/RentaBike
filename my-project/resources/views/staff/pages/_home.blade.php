@@ -1,4 +1,10 @@
 {{-- HOME SCREEN --}}
+<?php
+$totalBikes = (int) ($stats['total'] ?? 0);
+$availablePercent = $totalBikes > 0 ? round(((int) ($stats['available'] ?? 0) / $totalBikes) * 100) : 0;
+$rentedPercent = $totalBikes > 0 ? round(((int) ($stats['rented'] ?? 0) / $totalBikes) * 100) : 0;
+$repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $totalBikes) * 100) : 0;
+?>
 <section class="screen active" id="home">
   <div class="topbar">
     <div class="topbar-left">
@@ -41,9 +47,9 @@
           </div>
           <span class="stat-change up">Ready</span>
         </div>
-        <div class="stat-value">{{ $stats['available'] ?? 161 }}</div>
+        <div class="stat-value" id="stat-available">{{ $stats['available'] ?? 0 }}</div>
         <div class="stat-label">Available</div>
-        <div class="stat-track"><div class="stat-fill-green" style="width:65%"></div></div>
+        <div class="stat-track"><div class="stat-fill-green" data-fill-width="{{ $availablePercent }}"></div></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-top">
@@ -55,9 +61,9 @@
           </div>
           <span class="stat-change neutral">Active</span>
         </div>
-        <div class="stat-value">{{ $stats['rented'] ?? 87 }}</div>
+        <div class="stat-value" id="stat-rented">{{ $stats['rented'] ?? 0 }}</div>
         <div class="stat-label">Rented</div>
-        <div class="stat-track"><div class="stat-fill-blue" style="width:35%"></div></div>
+        <div class="stat-track"><div class="stat-fill-blue" data-fill-width="{{ $rentedPercent }}"></div></div>
       </div>
     </div>
 
@@ -72,9 +78,9 @@
           </div>
           <span class="stat-change neutral">!</span>
         </div>
-        <div class="stat-value">{{ $stats['repair'] ?? 10 }}</div>
+        <div class="stat-value" id="stat-repair">{{ $stats['repair'] ?? 0 }}</div>
         <div class="stat-label">Repair</div>
-        <div class="stat-track"><div class="stat-fill-orange" style="width:4%"></div></div>
+        <div class="stat-track"><div class="stat-fill-orange" data-fill-width="{{ $repairPercent }}"></div></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-top">
@@ -85,42 +91,43 @@
           </div>
           <span class="stat-change up">Live</span>
         </div>
-        <div class="stat-value">{{ $stats['total'] ?? 248 }}</div>
+        <div class="stat-value" id="stat-total">{{ $stats['total'] ?? 0 }}</div>
         <div class="stat-label">Total Bikes</div>
-        <div class="stat-track"><div class="stat-fill-green" style="width:100%"></div></div>
+        <div class="stat-track"><div class="stat-fill-green" data-fill-width="100"></div></div>
       </div>
     </div>
 
     {{-- BIKE LIST --}}
     <div class="section-title">
-      <h3>Bike Inventory</h3>
-      <a onclick="goTo('inventory')">View all</a>
+      <div class="dashboard-section-heading">
+        <h3>Bike Inventory</h3>
+        <p>Latest bike shown for each status</p>
+      </div>
+      <a class="dashboard-view-all" onclick="goTo('inventory')">
+        View all
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </a>
     </div>
-    <div class="bike-list">
-      <div class="bike-card" onclick="openModal('available', { id:'BK-101', condition:'Ready for Rental', lastBorrower:'Joshua Rivera', lastReturned:'Today, 12:30 PM' })">
-        <div class="bike-icon green">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
+    <div class="dashboard-category-list dashboard-status-list">
+      @forelse($dashboardBikes as $statusType => $bike)
+        @php
+          $statusInfo = [
+            'available' => ['label' => 'Available', 'detail' => 'Available for rental', 'class' => 'available'],
+            'rented' => ['label' => 'Rented', 'detail' => 'Currently borrowed', 'class' => 'rented'],
+            'maintenance' => ['label' => 'Maintenance', 'detail' => 'Needs maintenance', 'class' => 'maintenance'],
+          ][$statusType];
+        @endphp
+        <div class="dashboard-category-bike" data-status-type="{{ $statusType }}" data-bike-id="{{ $bike->qr_code }}" data-condition="{{ ucfirst($bike->condition ?? 'good') }}" data-issue="{{ ucfirst($bike->condition ?? 'good') }}" data-report-type="damage" onclick="openModal(this.dataset.statusType, { id: this.dataset.bikeId, condition: this.dataset.condition, issue: this.dataset.issue, reportType: this.dataset.reportType })">
+            <div class="dashboard-bike-icon dashboard-status-icon {{ $statusInfo['class'] }}" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+            </div>
+            <div class="dashboard-bike-row-copy"><h4>{{ $bike->qr_code }}</h4><p>{{ $statusInfo['detail'] }}</p></div>
+            <span class="badge {{ $statusInfo['class'] === 'available' ? 'badge-green' : ($statusInfo['class'] === 'rented' ? 'badge-blue' : 'badge-orange') }}"><span class="badge-dot {{ $statusInfo['class'] === 'available' ? 'badge-dot-green' : ($statusInfo['class'] === 'rented' ? 'badge-dot-blue' : 'badge-dot-orange') }}"></span>{{ $statusInfo['label'] }}</span>
+            <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
         </div>
-        <div class="bike-meta"><h4>BK-101</h4><p>Available for rental</p></div>
-        <span class="badge badge-green"><span class="badge-dot badge-dot-green"></span>Available</span>
-        <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
-      </div>
-      <div class="bike-card" onclick="openModal('rented', { id:'BK-102', borrower:'Ashley Mendoza', borrowTime:'2:00 PM', returnTime:'4:00 PM' })">
-        <div class="bike-icon blue">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
-        </div>
-        <div class="bike-meta"><h4>BK-102</h4><p>Borrowed by Ashley</p></div>
-        <span class="badge badge-blue"><span class="badge-dot badge-dot-blue"></span>Rented</span>
-        <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
-      </div>
-      <div class="bike-card" onclick="openModal('maintenance', { id:'BK-103', issue:'Flat rear tire', updatedBy:'Admin', date:'May 27, 2026' })">
-        <div class="bike-icon orange">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
-        </div>
-        <div class="bike-meta"><h4>BK-103</h4><p>Needs maintenance</p></div>
-        <span class="badge badge-orange"><span class="badge-dot badge-dot-orange"></span>Repair</span>
-        <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
-      </div>
+      @empty
+        <p class="dashboard-bike-empty">No available bikes found in the inventory.</p>
+      @endforelse
     </div>
   </div>
 

@@ -1,30 +1,113 @@
 <script>
+let bikeSearchFilter = '', bikeTypeFilter = '', bikeStatusFilter = '';
+
 function filterBikes(q) {
-  q = q.toLowerCase();
-  document.querySelectorAll('#bikes-tbody tr').forEach(r => {
-    r.style.display = (r.dataset.id.toLowerCase().includes(q) || r.dataset.name.toLowerCase().includes(q)) ? '' : 'none';
-  });
+  bikeSearchFilter = q.toLowerCase();
+  applyBikeFilters();
 }
-let bikeTypeFilter = '', bikeStatusFilter = '';
 function filterBikeType(v) { bikeTypeFilter = v; applyBikeFilters(); }
 function filterBikeStatus(v) { bikeStatusFilter = v; applyBikeFilters(); }
 function applyBikeFilters() {
-  document.querySelectorAll('#bikes-tbody tr').forEach(r => {
+  const rows = document.querySelectorAll('#bikes-tbody tr');
+  let visibleCount = 0;
+
+  rows.forEach(r => {
+    const searchOk = !bikeSearchFilter || r.dataset.id.toLowerCase().includes(bikeSearchFilter) || r.dataset.name.toLowerCase().includes(bikeSearchFilter);
     const typeOk = !bikeTypeFilter || r.dataset.type === bikeTypeFilter;
-    const statusOk = !bikeStatusFilter || r.dataset.status === bikeStatusFilter;
-    r.style.display = typeOk && statusOk ? '' : 'none';
+    const statusOk = !bikeStatusFilter || r.dataset.status.toLowerCase() === bikeStatusFilter.toLowerCase();
+    const isVisible = searchOk && typeOk && statusOk;
+
+    r.style.display = isVisible ? '' : 'none';
+    if (isVisible) visibleCount++;
   });
+
+  document.getElementById('bikes-footer-count').textContent = `Showing ${visibleCount} bikes`;
 }
+let pendingBikeAction = null;
+
+function requestBikeAction(bikeId, action, details) {
+  pendingBikeAction = { bikeId, action, details };
+  document.getElementById('bike-password-prompt').textContent =
+    action === 'delete'
+      ? 'Enter your admin password to delete this bike.'
+      : 'Enter your admin password to edit this bike.';
+  document.getElementById('bike-password-error').hidden = true;
+  document.getElementById('bike-password-form').reset();
+  openModal('bike-password-modal');
+  document.getElementById('bike-action-password').focus();
+}
+
 function openEditBike(id, name, type, status, condition) {
+  requestBikeAction(id, 'edit', { name, type, status, condition });
+}
+
+function openDeleteBike(id, name) {
+  requestBikeAction(id, 'delete', { name });
+}
+
+document.getElementById('bike-password-form').addEventListener('submit', async function (event) {
+  event.preventDefault();
+  if (!pendingBikeAction) return;
+
+  const form = event.currentTarget;
+  const error = document.getElementById('bike-password-error');
+  const submit = form.querySelector('[type="submit"]');
+  const verifyUrl = form.dataset.verifyUrl.replace('__BIKE_ID__', encodeURIComponent(pendingBikeAction.bikeId));
+  const body = new URLSearchParams(new FormData(form));
+  body.set('action', pendingBikeAction.action);
+  submit.disabled = true;
+  error.hidden = true;
+
+  try {
+    const response = await fetch(verifyUrl, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'Password verification failed.');
+
+    const action = pendingBikeAction;
+    pendingBikeAction = null;
+    closeModal('bike-password-modal');
+    if (action.action === 'edit') {
+      openEditBikeForm(action.bikeId, action.details.name, action.details.type, action.details.status, action.details.condition);
+    } else {
+      openDeleteBikeConfirm(action.bikeId, action.details.name);
+    }
+  } catch (verificationError) {
+    error.textContent = verificationError.message;
+    error.hidden = false;
+  } finally {
+    submit.disabled = false;
+    document.getElementById('bike-action-password').value = '';
+  }
+});
+
+function openEditBikeForm(id, name, type, status, condition) {
+  const form = document.getElementById('edit-bike-form');
+  const selectedName = String(name || '').split(' · ')[0] || name;
+  const make = String(name || '').split(' · ').slice(1).join(' · ') || '';
+  const normalizedStatus = status === 'Maintenance' ? 'repair' : (status === 'Rented' ? 'rented' : 'available');
+  const normalizedCondition = condition === 'Needs Repair' ? 'repair' : (condition === 'Missing' ? 'missing' : 'good');
+
   document.getElementById('edit-bike-id').value = id;
-  document.getElementById('edit-bike-name').value = name;
+  document.getElementById('edit-bike-name').value = selectedName;
+  document.getElementById('edit-bike-make').value = make;
   document.getElementById('edit-bike-type').value = type;
-  document.getElementById('edit-bike-status').value = status;
-  document.getElementById('edit-bike-condition').value = condition;
+  document.getElementById('edit-bike-status').value = normalizedStatus;
+  document.getElementById('edit-bike-condition').value = normalizedCondition;
+  if (form) form.action = '/admin/bikes/' + encodeURIComponent(id);
+
+  window._editingBikeId = id;
   openModal('edit-bike-modal');
 }
-function openDeleteBike(id, name) {
+
+function openDeleteBikeConfirm(id, name) {
   document.getElementById('delete-bike-name-display').textContent = name + ' (' + id + ')';
+  const form = document.getElementById('delete-bike-form');
+  if (form) form.action = '/admin/bikes/' + encodeURIComponent(id);
+  window._deletingBikeId = id;
   openModal('delete-bike-modal');
 }
 function openQR(id, name, code) {
@@ -41,5 +124,15 @@ function openQR(id, name, code) {
   html += '</div>';
   box.innerHTML = html;
   openModal('qr-modal');
+}
+function saveEditBike() {
+  const form = document.getElementById('edit-bike-form');
+  if (form) form.requestSubmit();
+}
+
+function confirmDeleteBike() {
+  const form = document.getElementById('delete-bike-form');
+  if (form) form.requestSubmit();
+  window._deletingBikeId = null;
 }
 </script>
