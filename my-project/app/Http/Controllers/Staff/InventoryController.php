@@ -4,11 +4,9 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bicycle;
-use App\Models\Staff;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class InventoryController extends Controller
@@ -88,32 +86,6 @@ class InventoryController extends Controller
 
     public function destroy(Request $request, Bicycle $bike): RedirectResponse|JsonResponse
     {
-        abort_unless(
-            in_array('Manage Inventory', $request->attributes->get('staffPermissions', []), true)
-                || in_array('Delete Inventory', $request->attributes->get('staffPermissions', []), true),
-            403
-        );
-
-        $password = $request->input('password');
-        $staff = $request->attributes->get('staffAccount');
-        if (!is_string($password) || $password === '') {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'Enter your password to confirm bike deletion.'], 422);
-            }
-
-            return redirect()->route('staff.home')
-                ->with('status', 'Enter your password to confirm bike deletion.');
-        }
-
-        if (!$staff instanceof Staff || !Hash::check($password, $staff->password_hash)) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'Incorrect password. The bike was not deleted.'], 422);
-            }
-
-            return redirect()->route('staff.home')
-                ->with('status', 'Incorrect password. The bike was not deleted.');
-        }
-
         if ($bike->status === 'rented') {
             if ($request->expectsJson()) {
                 return response()->json([

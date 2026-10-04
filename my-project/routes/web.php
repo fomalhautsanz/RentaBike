@@ -98,6 +98,7 @@ Route::prefix('staff')
             ->name('staff.inventory.update');
 
         Route::delete('/inventory/{bike}', [InventoryController::class, 'destroy'])
+            ->middleware('staff.inventory.delete')
             ->name('staff.inventory.destroy');
 
         Route::patch('/inventory/{bike}/toggle-status', [InventoryController::class, 'toggleStatus'])

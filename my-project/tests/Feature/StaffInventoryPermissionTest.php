@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Staff\InventoryController;
 use App\Http\Controllers\Staff\DashboardController;
+use App\Http\Middleware\EnsureStaffCanDeleteBike;
 use App\Models\Bicycle;
 use App\Models\Staff;
 use Illuminate\Http\Request;
@@ -44,7 +45,7 @@ test('staff without delete inventory cannot delete bikes', function () {
     $request = Request::create('/staff/inventory/BK-001', 'DELETE');
     $request->attributes->set('staffPermissions', ['View Inventory']);
 
-    expect(fn () => (new InventoryController())->destroy(request: $request, bike: new Bicycle()))
+    expect(fn () => (new EnsureStaffCanDeleteBike())->handle($request, fn () => response()->noContent()))
         ->toThrow(HttpException::class);
 });
 
@@ -60,7 +61,7 @@ test('staff cannot delete bikes with an incorrect password', function () {
     $request->attributes->set('staffPermissions', ['Delete Inventory']);
     $request->attributes->set('staffAccount', new Staff(['password_hash' => Hash::make('correct-password')]));
 
-    $response = (new InventoryController())->destroy($request, new Bicycle());
+    $response = (new EnsureStaffCanDeleteBike())->handle($request, fn () => response()->noContent());
 
     expect($response->getStatusCode())->toBe(422)
         ->and($response->getData(true)['message'])->toBe('Incorrect password. The bike was not deleted.');

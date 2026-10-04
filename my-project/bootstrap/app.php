@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use App\Http\Middleware\EnsureAdminLoggedIn;
+use App\Http\Middleware\EnsureStaffCanDeleteBike;
 use App\Http\Middleware\EnsureStaffLoggedIn;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin.auth' => EnsureAdminLoggedIn::class,
             'staff.auth' => EnsureStaffLoggedIn::class,
+            'staff.inventory.delete' => EnsureStaffCanDeleteBike::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
