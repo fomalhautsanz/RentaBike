@@ -1,42 +1,100 @@
-# RentaBike
+# RentaBike 🚲
 
-A PHP-based bike rental management system built with Laravel Blade templating and modern web technologies.
+A dual-portal bike rental management system built for **USeP Energy Park**, developed by **CyberCrows** at the University of Southeastern Philippines, Tagum-Mabini Campus. Built with Laravel 13, Blade templating, Tailwind CSS, and MySQL.
+
+---
 
 ## Overview
 
-RentaBike is a comprehensive bike rental platform designed to streamline the booking, management, and tracking of bicycle rentals. Whether you're running a small local bike shop or a large-scale rental service, RentaBike provides the tools you need to manage your fleet efficiently.
+RentaBike is a role-based bike rental management platform with two separate portals:
+
+- **Admin Portal** — A full-featured web dashboard for administrators to manage staff, bikes, rentals, reports, and system activity.
+- **Staff Portal** — A mobile-first interface for on-ground staff to process rentals via QR code scanning, manage inventory (with permission-gated access), and file issue reports.
+
+---
+
+## Portals & Access
+
+| Portal | URL | Description |
+|---|---|---|
+| Admin | `/admin/login` | Full management dashboard |
+| Staff | `/staff/login` | Mobile-first rental operations |
+
+---
 
 ## Features
 
-- **Bike Fleet Management** - Easily add, update, and manage your bicycle inventory
-- **Booking System** - Intuitive booking interface for customers to reserve bikes
-- **User Authentication** - Secure login and user account management
-- **Rental Tracking** - Monitor active rentals and rental history
-- **Admin Dashboard** - Comprehensive dashboard for administrators to oversee operations
-- **Responsive Design** - Works seamlessly on desktop, tablet, and mobile devices
+### Admin Portal
+- **Dashboard Overview** — Live stats (total bikes, active rentals, available bikes, today's revenue) with charts: weekly rental trends, bike type distribution, revenue vs. rentals, and peak rental hours
+- **Staff Management** — Add, edit, and deactivate staff accounts with dynamic, per-staff privilege assignment via checkboxes
+- **Bike Inventory** — Full CRUD on the bike fleet with QR code assignment, type, model, make, and condition tracking
+- **Maintenance & Reports** — View and resolve issue reports filed by staff (damage, missing bikes, other)
+- **Reports & Analytics** — Generate period-based reports; export rental data as CSV
+- **Activity Logs** — Full audit trail of all admin and staff actions across the system
+
+### Staff Portal (Mobile-First)
+- **Home Dashboard** — Live bike status counters (available, rented, under repair, total) with a quick bike list
+- **QR Code Scanner** — Scan a bike's QR code to open the rental form
+- **Rental Management** — Process rentals with borrower name, contact, borrow/return time, and valid ID upload; countdown timer on the success screen
+- **Bike Inventory** — Browse inventory by category with search and filter by type and status; edit/delete gated by admin-assigned permissions
+- **Issue Reporting** — File damage, missing bike, or other issue reports with optional photo evidence
+- **Confirmation Dialogs** — Every destructive or submitting action requires a confirmation step before proceeding
+
+### Security
+- **Separate authentication** for admin and staff — no shared login
+- **Rate limiting** — accounts lock for 3 minutes after 3 consecutive failed login attempts
+- **Email hashing** — stored as HMAC-SHA-256 (keyed hash), never in plaintext
+- **Password hashing** — bcrypt via Laravel's `Hash` facade
+- **Dynamic permissions** — admin can grant or revoke specific privileges per staff member (view/add/edit/delete inventory, handle maintenance, manage staff)
+
+---
 
 ## Tech Stack
 
-- **Frontend**: Blade (62.6%) - Laravel's powerful templating engine
-- **Backend**: PHP (37.1%) - Server-side logic and API endpoints
-- **Framework**: Laravel - Modern PHP web application framework
-- **Database**: MySQL/PostgreSQL - Data persistence
-- **Other**: Additional supporting technologies (0.3%)
+| Layer | Technology |
+|---|---|
+| Framework | Laravel 13 |
+| Language | PHP 8.5.2 |
+| Templating | Blade |
+| Styling | Tailwind CSS |
+| Database | MySQL (managed via MySQL Workbench) |
+| Charts | Chart.js |
+| Version Control | Git / GitHub |
+
+---
+
+## Database Architecture
+
+The database uses a custom ERD-based schema — **not** Laravel's default `users` table. It includes:
+
+**Tables:** `admin`, `staff`, `bicycle`, `borrower`, `rental`, `overtime`, `payment`, `reports`, `issue_report`, `feedback`, `activity_log`
+
+**Views:** `vw_active_rentals`, `vw_rental_history`, `vw_bicycle_inventory`, `vw_revenue_summary`, `vw_staff_activity_log`
+
+**Stored Procedures:** `sp_open_rental`, `sp_close_rental`, `sp_generate_report`, `sp_update_bike_status`, `sp_manage_staff`
+
+**Functions:** `fn_compute_rental_fee`, `fn_compute_overtime_penalty`, `fn_is_bike_available`
+
+**Triggers:** 7 triggers covering bike availability validation, automatic status updates, overtime fee sync, payment settlement logging, and staff deletion protection
+
+---
 
 ## Requirements
 
-- PHP 8.0 or higher
+- PHP 8.5+
 - Composer
-- Node.js & npm (for asset compilation)
-- MySQL or PostgreSQL database
-- Laravel 9.x or higher
+- Node.js & npm
+- MySQL 8.0+
+- Laravel 13
+
+---
 
 ## Installation
 
 1. **Clone the repository**
    ```bash
    git clone https://github.com/fomalhautsanz/RentaBike.git
-   cd RentaBike
+   cd RentaBike/my-project
    ```
 
 2. **Install PHP dependencies**
@@ -59,96 +117,151 @@ RentaBike is a comprehensive bike rental platform designed to streamline the boo
    php artisan key:generate
    ```
 
-6. **Configure database**
-   - Edit `.env` and set your database credentials
+6. **Configure environment**
+
+   Edit `.env` with your credentials:
    ```env
    DB_CONNECTION=mysql
    DB_HOST=127.0.0.1
    DB_PORT=3306
    DB_DATABASE=rentabike
    DB_USERNAME=root
-   DB_PASSWORD=
+   DB_PASSWORD=your_password
+
+   EMAIL_HASH_KEY=your_long_random_secret_key
    ```
 
-7. **Run migrations**
+7. **Create the database** in MySQL Workbench
+   ```sql
+   CREATE DATABASE rentabike;
+   ```
+
+8. **Run migrations** (creates all tables, views, stored procedures, functions, and triggers)
    ```bash
    php artisan migrate
    ```
 
-8. **Build assets**
+9. **Create sessions and cache tables**
    ```bash
-   npm run dev
+   php artisan session:table
+   php artisan cache:table
+   php artisan migrate
    ```
 
-9. **Start development server**
-   ```bash
-   php artisan serve
-   ```
+10. **Seed an admin account**
+    ```bash
+    php artisan tinker
+    ```
+    ```php
+    \App\Models\Admin::create([
+        'username'      => 'admin',
+        'full_name'     => 'Admin User',
+        'email'         => 'admin@rentabike.com',
+        'email_hash'    => hash_hmac('sha256', 'admin@rentabike.com', env('EMAIL_HASH_KEY')),
+        'password_hash' => bcrypt('your_password'),
+    ]);
+    ```
 
-Access the application at `http://localhost:8000`
+11. **Build assets and start the server**
+    ```bash
+    npm run dev
+    php artisan serve
+    ```
+
+    Admin portal → `http://localhost:8000/admin/login`
+    Staff portal → `http://localhost:8000/staff/login`
+
+---
 
 ## Project Structure
 
 ```
-RentaBike/
-├── app/              # Application logic (controllers, models, etc.)
-├── resources/        # Views and asset files
-│   └── views/        # Blade templates
-├── database/         # Migrations and seeders
-├── routes/           # Application routes
-├── public/           # Public assets
-└── config/           # Configuration files
+my-project/
+├── app/
+│   ├── Helpers/
+│   │   └── HashHelper.php          # HMAC email hashing utility
+│   ├── Http/Controllers/
+│   │   ├── Auth/
+│   │   │   ├── LoginController.php       # Admin auth with rate limiting
+│   │   │   └── StaffLoginController.php  # Staff auth with rate limiting
+│   │   └── Admin/
+│   │       └── DashboardController.php
+│   └── Models/
+│       ├── Admin.php
+│       ├── Staff.php
+│       └── Bicycle.php
+├── database/
+│   └── migrations/                  # 14+ migration files (ERD-based schema)
+├── resources/
+│   └── views/
+│       ├── layouts/
+│       │   ├── admin.blade.php      # Admin portal layout
+│       │   └── staff.blade.php      # Staff portal layout (mobile-first)
+│       ├── admin/
+│       │   ├── dashboard.blade.php
+│       │   ├── pages/               # _dashboard, _staff, _bikes, _maintenance, _rentals, _reports
+│       │   ├── modals/              # _staff_modals, _bike_modals, _report_modal
+│       │   └── scripts/             # _dashboard_charts, _staff_scripts, _bike_scripts
+│       ├── staff/
+│       │   ├── home.blade.php
+│       │   ├── pages/               # _login, _home, _scanner, _inventory, _report, _rental_form, _success
+│       │   ├── modals/              # _bike_modals
+│       │   └── scripts/             # _staff_scripts
+│       └── auth/
+│           └── login.blade.php      # Admin login view
+└── routes/
+    └── web.php
 ```
 
-## Usage
+---
 
-### For Customers
-1. Create an account or log in
-2. Browse available bikes
-3. Select rental dates and times
-4. Complete booking and payment
-5. Pick up your bike and enjoy!
+## Branching Strategy
 
-### For Administrators
-1. Log in with admin credentials
-2. Access the dashboard
-3. Manage bike inventory
-4. View and process rental requests
-5. Generate reports and analytics
+```
+main            ← stable, production-ready code only
+└── develop     ← integration branch; merge all features here first
+    ├── feature/admin-dashboard
+    ├── feature/admin-user-accounts
+    ├── feature/admin-inventory-management
+    ├── feature/admin-rental-oversight
+    ├── feature/admin-reports-analytics
+    ├── feature/admin-feedback-management
+    ├── feature/admin-activity-logs
+    ├── feature/staff-dashboard
+    ├── feature/staff-qr-scanning
+    ├── feature/staff-bike-monitoring
+    ├── feature/staff-rental-management
+    ├── feature/staff-issue-handling
+    └── feature/staff-maintenance-handling
+```
 
-## Contributing
+**Workflow:** `feature/xxx` → Pull Request → `develop` → Pull Request → `main`
 
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-## Support
-
-For support, please:
-- Open an issue in the [GitHub Issues](https://github.com/fomalhautsanz/RentaBike/issues) section
-- Contact the development team
+---
 
 ## Roadmap
 
+- [x] Admin and staff authentication with rate limiting
+- [x] Email hashing (HMAC-SHA-256) and password hashing (bcrypt)
+- [x] ERD-based database with stored procedures, views, functions, and triggers
+- [x] Admin dashboard with live charts
+- [x] Staff management with dynamic per-staff permissions
+- [x] Bike inventory management
+- [x] QR-based rental processing (staff portal)
+- [x] Issue reporting with photo evidence
+- [x] Activity logging
+- [ ] Full rental processing backend (open/close via stored procedures)
+- [ ] Reports & Analytics page backend
+- [ ] Email notifications on rental events
 - [ ] Payment gateway integration
-- [ ] Email notifications
-- [ ] Advanced booking calendar
-- [ ] Mobile app
-- [ ] Real-time GPS tracking
-- [ ] Customer reviews and ratings
-- [ ] Loyalty program
+- [ ] Real-time bike availability updates
 
-## Authors
+---
 
-- **fomalhautsanz** - Initial work
+## Team
+
+**CyberCrows** — University of Southeastern Philippines, Tagum-Mabini Campus
+College of Teacher Education and Technology
 
 ---
 
