@@ -207,7 +207,7 @@ class DashboardController extends Controller
         'available_bikes'   => Bicycle::where('condition', 'good')
             ->where('status', 'available')
             ->count(),
-        'active_rentals'    => Rental::where('status', 'active')->count(),
+        'active_rentals'    => Bicycle::where('status', 'rented')->count(),
         'under_maintenance' => Bicycle::whereIn('status', ['maintenance', 'repair'])->count(),
         'revenue'           => (float) Rental::where('status', 'completed')
             ->whereMonth('start_time', now()->month)
