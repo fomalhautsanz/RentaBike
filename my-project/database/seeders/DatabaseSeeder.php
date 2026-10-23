@@ -15,9 +15,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::table('bicycle')->updateOrInsert(
-            ['qr_code' => 'TEST001'],
+        if (DB::table('bicycle')->exists()) {
+            return;
+        }
+
+        DB::table('bicycle')->insert(
             [
+                'qr_code' => 'RB-001',
                 'model' => 'Test Bike',
                 'make' => 'Test',
                 'bike_type' => 'standard',

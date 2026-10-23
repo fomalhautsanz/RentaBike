@@ -10,7 +10,7 @@
     <form method="POST" action="{{ route('admin.bikes.store') }}">
       @csrf
       <input type="hidden" name="current_tab" value="bikes">
-      <div class="form-group"><label class="form-label">Bike ID</label><input type="text" name="qr_code" class="form-input" placeholder="e.g. RB-004" required></div>
+      <div class="form-group"><label class="form-label">Bike ID</label><input type="text" class="form-input" value="{{ $nextBikeCode }}" readonly></div>
       <div class="form-group"><label class="form-label">Bike Name</label><input type="text" name="model" class="form-input" placeholder="e.g. City 300" required></div>
       <div class="form-group"><label class="form-label">Make</label><input type="text" name="make" class="form-input" placeholder="e.g. Trek" required></div>
       <div class="form-group">
@@ -120,6 +120,26 @@
   </div>
 </div>
 
+{{-- QR SHEET MODAL --}}
+<div class="modal-backdrop" id="qr-sheet-modal" onclick="closeModalOutside(event,'qr-sheet-modal')">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">Generate QR Codes</span>
+      <button class="modal-close" onclick="closeModal('qr-sheet-modal')">
+        <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:16px" id="qr-sheet-count"></div>
+    <div class="qr-sheet-grid" id="qr-sheet-grid"></div>
+    <div style="font-size:13px;color:#6b7280;text-align:center;margin-top:12px" id="qr-sheet-more"></div>
+    <div class="form-actions" style="margin-top:20px">
+      <button class="btn btn-outline" onclick="closeModal('qr-sheet-modal')">Cancel</button>
+      <button class="btn btn-outline" id="qr-zip-btn" onclick="downloadQrZip()">Download ZIP</button>
+      <button class="btn btn-primary" id="qr-print-btn" onclick="printQrSheet()">Print</button>
+    </div>
+  </div>
+</div>
+
 {{-- QR MODAL --}}
 <div class="modal-backdrop" id="qr-modal" onclick="closeModalOutside(event,'qr-modal')">
   <div class="modal">
@@ -137,7 +157,7 @@
     </div>
     <div class="form-actions" style="margin-top:20px">
       <button class="btn btn-outline" onclick="closeModal('qr-modal')">Close</button>
-      <button class="btn btn-primary">Download QR</button>
+      <button class="btn btn-primary" onclick="downloadQR()">Download QR</button>
     </div>
   </div>
 </div>

@@ -143,7 +143,7 @@ function openBikeAction(action, data = {}) {
     : `<form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}" data-live-form="edit">
          @csrf
          @method('PATCH')
-         <div class="form-group"><label class="form-label" for="edit-qr-code">QR Code</label><input id="edit-qr-code" name="qr_code" class="form-input" value="${data.qrCode ?? ''}" required></div>
+         <div class="form-group"><label class="form-label" for="edit-qr-code">QR Code</label><input id="edit-qr-code" class="form-input" value="${data.qrCode ?? ''}" readonly></div>
          <div class="form-group"><label class="form-label" for="edit-model">Model</label><input id="edit-model" name="model" class="form-input" value="${data.model ?? ''}" required></div>
          <div class="form-group"><label class="form-label" for="edit-make">Make</label><input id="edit-make" name="make" class="form-input" value="${data.make ?? ''}" required></div>
          <div class="form-group"><label class="form-label" for="edit-bike-type">Bike Type</label><select id="edit-bike-type" name="bike_type" class="form-select" required>${['Mountain Bike', 'City Bike', "Lady's/Men's Bike", 'E-Scooter', 'Road Bike', 'Sidecar Bike', "Children's Bike"].map(type => `<option value="${type}" ${data.type === type ? 'selected' : ''}>${type}</option>`).join('')}</select></div>
@@ -312,6 +312,8 @@ function handleLiveInventorySubmit(event) {
     .then((payload) => {
       if (action === 'create' && payload.bike) {
         updateInventoryRowFromBike(payload.bike);
+        const qrInput = form.querySelector('#qr-code');
+        if (qrInput && payload.next_qr_code) qrInput.defaultValue = payload.next_qr_code;
       }
       if (action === 'edit' && payload.bike) {
         updateInventoryRowFromBike(payload.bike);

@@ -29,8 +29,7 @@
         {{-- QR Code --}}
         <div class="form-group">
           <label class="form-label" for="qr-code">Bike ID</label>
-          <input id="qr-code" name="qr_code" class="form-input"
-            value="{{ old('qr_code') }}" placeholder="e.g. RB-004" required autocomplete="off">
+          <input id="qr-code" class="form-input" value="{{ $nextBikeCode }}" readonly>
         </div>
 
         {{-- Model --}}

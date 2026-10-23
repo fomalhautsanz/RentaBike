@@ -295,12 +295,15 @@ class DashboardController extends Controller
     $inProgressReports = IssueReport::where('status', 'in_progress')->count();
     $resolvedReports   = IssueReport::where('status', 'resolved')->count();
 
+    $nextBikeCode = Bicycle::nextQrCode();
+
     return view('admin.dashboard', compact(
         'staff',
         'stats',
         'pendingReports', 'inProgressReports', 'resolvedReports',
         'recentActivity', 'bikeTypeDistribution',
-        'weeklyRentals', 'revenueVsRentals', 'peakHours', 'bikes'
+        'weeklyRentals', 'revenueVsRentals', 'peakHours', 'bikes',
+        'nextBikeCode'
     ));
 }
 
@@ -308,7 +311,6 @@ class DashboardController extends Controller
    public function storeBike(Request $request)
 {
     $validator = Validator::make($request->all(), [
-        'qr_code' => ['required', 'string', 'max:100', 'unique:bicycle,qr_code'],
         'model' => ['required', 'string', 'max:100'],
         'make' => ['required', 'string', 'max:100'],
         'bike_type' => ['required', 'string', 'max:50'],
@@ -325,6 +327,7 @@ class DashboardController extends Controller
 
     Bicycle::create([
         ...$validated,
+        'qr_code' => Bicycle::nextQrCode(),
         'status' => $validated['condition'] === 'good' ? 'available' : 'repair',
     ]);
 
@@ -340,7 +343,6 @@ class DashboardController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'qr_code' => ['required', 'string', 'max:100', Rule::unique('bicycle', 'qr_code')->ignore($bike->bike_id, 'bike_id')],
             'model' => ['required', 'string', 'max:100'],
             'make' => ['required', 'string', 'max:100'],
             'bike_type' => ['required', 'string', 'max:50'],
@@ -364,7 +366,6 @@ class DashboardController extends Controller
         }
 
         $bike->update([
-            'qr_code' => $validated['qr_code'],
             'model' => $validated['model'],
             'make' => $validated['make'],
             'bike_type' => $validated['bike_type'],

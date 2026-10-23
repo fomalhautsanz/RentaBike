@@ -86,8 +86,9 @@ test('admin can update and delete bikes from the inventory', function () {
         ])
         ->assertRedirect(route('admin.dashboard'));
 
+    // Bike codes are permanent, so the submitted qr_code is ignored.
     $this->assertDatabaseHas('bicycle', [
-        'qr_code' => 'MB-202',
+        'qr_code' => 'MB-101',
         'model' => 'Trail 300',
         'make' => 'Specialized',
     ]);
@@ -103,7 +104,7 @@ test('admin can update and delete bikes from the inventory', function () {
         ->delete(route('admin.bikes.destroy', $bike->fresh()->qr_code))
         ->assertRedirect(route('admin.dashboard'));
 
-    $this->assertDatabaseMissing('bicycle', ['qr_code' => 'MB-202']);
+    $this->assertDatabaseMissing('bicycle', ['qr_code' => 'MB-101']);
 });
 
 test('bike edit and delete actions reject missing or incorrect password confirmation', function () {

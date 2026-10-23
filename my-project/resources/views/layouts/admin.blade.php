@@ -854,6 +854,21 @@
 
   .qr-box { display: inline-block; margin-bottom: 12px; }
 
+  .qr-sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+  }
+
+  .qr-sheet-item {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .qr-sheet-item img { width: 100%; max-width: 120px; display: block; margin: 0 auto 4px; }
+
   .qr-grid {
     display: grid;
     grid-template-columns: repeat(8, 1fr);

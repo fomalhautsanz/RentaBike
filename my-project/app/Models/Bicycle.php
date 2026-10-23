@@ -38,6 +38,16 @@ class Bicycle extends Model
         return $this->bike_type;
     }
 
+    public static function nextQrCode(): string
+    {
+        $last = static::where('qr_code', 'like', 'RB-%')
+            ->pluck('qr_code')
+            ->map(fn ($code) => (int) substr($code, 3))
+            ->max() ?? 0;
+
+        return sprintf('RB-%03d', $last + 1);
+    }
+
     protected $fillable = [
         'qr_code',
         'model',
