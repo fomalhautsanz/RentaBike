@@ -5,7 +5,7 @@
       <div class="page-sub">Manage your bike fleet and QR code assignments</div>
     </div>
     <div style="display:flex;gap:10px">
-      <button class="btn btn-outline">
+      <button class="btn btn-outline" onclick="openQrSheet()">
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx=".5"/><rect width="5" height="5" x="16" y="3" rx=".5"/><rect width="5" height="5" x="3" y="16" rx=".5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/></svg>
         Generate QR Codes
       </button>
@@ -37,11 +37,11 @@
       <tbody id="bikes-tbody">
         @foreach($bikes ?? [] as $bike)
         <tr data-id="{{ $bike->bike_code }}" data-name="{{ $bike->name }}" data-type="{{ $bike->type }}" data-status="{{ $bike->status }}">
-          <td style="font-weight:600">{{ $bike->bike_code }}</td>
+          <td style="font-weight:600;white-space:nowrap">{{ $bike->bike_code }}</td>
           <td>{{ $bike->name }}</td>
           <td><span class="badge badge-gray">{{ $bike->type }}</span></td>
           <td>
-            <button class="btn btn-outline btn-sm" onclick="openQR(@js($bike->bike_code), @js($bike->name), @js($bike->qr_code))">
+            <button class="btn btn-outline btn-sm" style="white-space:nowrap" onclick="openQR(@js($bike->bike_code), @js($bike->name), @js($bike->qr_code))">
               <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx=".5"/><rect width="5" height="5" x="16" y="3" rx=".5"/><rect width="5" height="5" x="3" y="16" rx=".5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/></svg>
               {{ $bike->qr_code }}
             </button>

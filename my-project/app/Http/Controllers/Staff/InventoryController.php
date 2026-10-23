@@ -7,7 +7,6 @@ use App\Models\Bicycle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class InventoryController extends Controller
 {
@@ -24,7 +23,6 @@ class InventoryController extends Controller
         );
 
         $validated = $request->validate([
-            'qr_code' => ['required', 'string', 'max:100', 'unique:bicycle,qr_code'],
             'model' => ['required', 'string', 'max:100'],
             'make' => ['required', 'string', 'max:100'],
             'bike_type' => ['required', 'string', 'max:50'],
@@ -32,7 +30,7 @@ class InventoryController extends Controller
         ]);
 
         $bike = Bicycle::create([
-            'qr_code' => $validated['qr_code'],
+            'qr_code' => Bicycle::nextQrCode(),
             'model' => $validated['model'],
             'make' => $validated['make'],
             'bike_type' => $validated['bike_type'],
@@ -43,6 +41,7 @@ class InventoryController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'Bike added to inventory.',
+                'next_qr_code' => Bicycle::nextQrCode(),
                 'bike' => [
                     'id' => $bike->qr_code,
                     'qr_code' => $bike->qr_code,
@@ -62,12 +61,6 @@ class InventoryController extends Controller
     public function update(Request $request, Bicycle $bike): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
-            'qr_code' => [
-                'required',
-                'string',
-                'max:100',
-                Rule::unique('bicycle', 'qr_code')->ignore($bike->bike_id, 'bike_id'),
-            ],
             'model' => ['required', 'string', 'max:100'],
             'make' => ['required', 'string', 'max:100'],
             'bike_type' => ['required', 'string', 'max:50'],
@@ -76,7 +69,6 @@ class InventoryController extends Controller
 
         $condition = strtolower($validated['condition']);
         $bike->update([
-            'qr_code' => $validated['qr_code'],
             'model' => $validated['model'],
             'make' => $validated['make'],
             'bike_type' => $validated['bike_type'],
