@@ -7,15 +7,15 @@
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <form method="POST" action="{{ route('admin.bikes.store') }}">
+    <form method="POST" action="{{ route('admin.bikes.store') }}" data-bike-code-preview-url="{{ route('admin.bikes.next-code') }}">
       @csrf
       <input type="hidden" name="current_tab" value="bikes">
-      <div class="form-group"><label class="form-label">Bike ID</label><input type="text" class="form-input" value="{{ $nextBikeCode }}" readonly></div>
+      <div class="form-group"><label class="form-label" for="add-bike-id">Bike ID</label><input type="text" id="add-bike-id" class="form-input" value="{{ $nextBikeCode }}" readonly></div>
       <div class="form-group"><label class="form-label">Bike Name</label><input type="text" name="model" class="form-input" placeholder="e.g. City 300" required></div>
       <div class="form-group"><label class="form-label">Make</label><input type="text" name="make" class="form-input" placeholder="e.g. Trek" required></div>
       <div class="form-group">
         <label class="form-label">Bike Type</label>
-        <select name="bike_type" class="form-select" required>
+        <select id="add-bike-type" name="bike_type" class="form-select" onchange="updateBikeCodePreview(this)" required>
           <option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
         </select>
       </div>
@@ -42,7 +42,7 @@
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <form id="edit-bike-form" method="POST" action="">
+    <form id="edit-bike-form" method="POST" action="" data-bike-code-preview-url="{{ route('admin.bikes.next-code') }}">
       @csrf
       @method('PATCH')
       <input type="hidden" name="current_tab" value="bikes">
@@ -51,7 +51,7 @@
       <div class="form-group"><label class="form-label">Make</label><input type="text" id="edit-bike-make" name="make" class="form-input"></div>
       <div class="form-group">
         <label class="form-label">Type</label>
-        <select id="edit-bike-type" name="bike_type" class="form-select">
+        <select id="edit-bike-type" name="bike_type" class="form-select" onchange="updateBikeCodePreview(this)">
           <option value="Mountain Bike">Mountain Bike</option><option value="City Bike">City Bike</option><option value="Lady's/Men's Bike">Lady's/Men's Bike</option><option value="E-Scooter">E-Scooter</option><option value="Road Bike">Road Bike</option><option value="Sidecar Bike">Sidecar Bike</option><option value="Children's Bike">Children's Bike</option>
         </select>
       </div>

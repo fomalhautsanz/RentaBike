@@ -14,6 +14,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class Bicycle extends Model
 {
+    private const BIKE_TYPE_PREFIXES = [
+        'mountain bike' => 'MB',
+        'city bike' => 'CB',
+        "lady's/men's bike" => 'LM',
+        'e-scooter' => 'ES',
+        'road bike' => 'RB',
+        'sidecar bike' => 'SB',
+        "children's bike" => 'CH',
+        'standard' => 'ST',
+    ];
+
     protected $table = 'bicycle';
     protected $primaryKey = 'bike_id';
     public $timestamps = false;
@@ -38,14 +49,50 @@ class Bicycle extends Model
         return $this->bike_type;
     }
 
-    public static function nextQrCode(): string
+    public static function bikeTypes(): array
     {
-        $last = static::where('qr_code', 'like', 'RB-%')
-            ->pluck('qr_code')
-            ->map(fn ($code) => (int) substr($code, 3))
-            ->max() ?? 0;
+        return [
+            'Mountain Bike',
+            'City Bike',
+            "Lady's/Men's Bike",
+            'E-Scooter',
+            'Road Bike',
+            'Sidecar Bike',
+            "Children's Bike",
+        ];
+    }
 
-        return sprintf('RB-%03d', $last + 1);
+    public static function prefixForType(string $bikeType): string
+    {
+        $prefix = self::BIKE_TYPE_PREFIXES[strtolower(trim($bikeType))] ?? null;
+
+        if ($prefix === null) {
+            throw new \InvalidArgumentException("Unsupported bike type: {$bikeType}");
+        }
+
+        return $prefix;
+    }
+
+    public static function nextQrCode(string $bikeType, ?int $excludeBikeId = null): string
+    {
+        $prefix = self::prefixForType($bikeType);
+        $bikes = static::whereRaw('LOWER(TRIM(bike_type)) = ?', [strtolower(trim($bikeType))]);
+
+        if ($excludeBikeId !== null) {
+            $bikes->where('bike_id', '!=', $excludeBikeId);
+        }
+
+        $candidate = $bikes->count() + 1;
+        do {
+            $code = sprintf('%s-%03d', $prefix, $candidate++);
+            $existing = static::where('qr_code', $code);
+
+            if ($excludeBikeId !== null) {
+                $existing->where('bike_id', '!=', $excludeBikeId);
+            }
+        } while ($existing->exists());
+
+        return $code;
     }
 
     protected $fillable = [

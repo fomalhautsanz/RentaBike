@@ -44,7 +44,7 @@ class DashboardController extends Controller
             || in_array('Edit Inventory', $staffPermissions, true);
         $canDeleteInventory = in_array('Manage Inventory', $staffPermissions, true)
             || in_array('Delete Inventory', $staffPermissions, true);
-        $nextBikeCode = Bicycle::nextQrCode();
+        $nextBikeCode = Bicycle::nextQrCode('Mountain Bike');
 
         return view('staff.home', compact(
             'stats',

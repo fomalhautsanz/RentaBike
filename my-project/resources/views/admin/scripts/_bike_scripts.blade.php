@@ -2,6 +2,42 @@
 <script>
 let bikeSearchFilter = '', bikeTypeFilter = '', bikeStatusFilter = '';
 
+function updateBikeCodePreview(typeSelect) {
+  const form = typeSelect.form;
+  const codeInput = document.getElementById(
+    form.id === 'edit-bike-form' ? 'edit-bike-id' : 'add-bike-id'
+  );
+  if (!codeInput) return;
+
+  if (form.id === 'edit-bike-form' && typeSelect.value === form.dataset.originalBikeType) {
+    codeInput.dataset.requestId = String(Number(codeInput.dataset.requestId || 0) + 1);
+    codeInput.value = form.dataset.originalBikeCode;
+    return;
+  }
+
+  const requestId = Number(codeInput.dataset.requestId || 0) + 1;
+  codeInput.dataset.requestId = String(requestId);
+  const params = new URLSearchParams({ bike_type: typeSelect.value });
+  if (form.dataset.excludeQrCode) params.set('exclude_qr_code', form.dataset.excludeQrCode);
+
+  fetch(`${form.dataset.bikeCodePreviewUrl}?${params}`, {
+    headers: { Accept: 'application/json' },
+  })
+    .then(async response => {
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Could not preview the bike ID.');
+      return result;
+    })
+    .then(result => {
+      if (codeInput.dataset.requestId === String(requestId)) codeInput.value = result.bike_code;
+    })
+    .catch(error => {
+      if (codeInput.dataset.requestId === String(requestId)) {
+        showToast(error.message || 'Could not preview the bike ID.');
+      }
+    });
+}
+
 function filterBikes(q) {
   bikeSearchFilter = q.toLowerCase();
   applyBikeFilters();
@@ -87,15 +123,22 @@ document.getElementById('bike-password-form').addEventListener('submit', async f
 
 function openEditBikeForm(id, name, type, status, condition) {
   const form = document.getElementById('edit-bike-form');
+  const typeSelect = document.getElementById('edit-bike-type');
   const selectedName = String(name || '').split(' · ')[0] || name;
   const make = String(name || '').split(' · ').slice(1).join(' · ') || '';
   const normalizedStatus = status === 'Maintenance' ? 'repair' : (status === 'Rented' ? 'rented' : 'available');
   const normalizedCondition = condition === 'Needs Repair' ? 'repair' : (condition === 'Missing' ? 'missing' : 'good');
 
+  if (![...typeSelect.options].some(option => option.value === type)) {
+    typeSelect.add(new Option(type, type));
+  }
   document.getElementById('edit-bike-id').value = id;
   document.getElementById('edit-bike-name').value = selectedName;
   document.getElementById('edit-bike-make').value = make;
-  document.getElementById('edit-bike-type').value = type;
+  typeSelect.value = type;
+  form.dataset.originalBikeType = type;
+  form.dataset.originalBikeCode = id;
+  form.dataset.excludeQrCode = id;
   document.getElementById('edit-bike-status').value = normalizedStatus;
   document.getElementById('edit-bike-condition').value = normalizedCondition;
   if (form) form.action = '/admin/bikes/' + encodeURIComponent(id);

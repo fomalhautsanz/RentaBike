@@ -140,25 +140,69 @@ function openBikeAction(action, data = {}) {
          @method('DELETE')
          <div class="modal-actions"><button type="submit" class="primary-btn">Delete Bike</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
        </form>`
-    : `<form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}" data-live-form="edit">
+    : `<form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}" data-live-form="edit" data-bike-code-preview-url="{{ route('staff.inventory.next-code') }}">
          @csrf
          @method('PATCH')
-         <div class="form-group"><label class="form-label" for="edit-qr-code">QR Code</label><input id="edit-qr-code" class="form-input" value="${data.qrCode ?? ''}" readonly></div>
+         <div class="form-group"><label class="form-label" for="edit-qr-code">Bike ID</label><input id="edit-qr-code" data-bike-code class="form-input" value="${data.qrCode ?? ''}" readonly></div>
          <div class="form-group"><label class="form-label" for="edit-model">Model</label><input id="edit-model" name="model" class="form-input" value="${data.model ?? ''}" required></div>
          <div class="form-group"><label class="form-label" for="edit-make">Make</label><input id="edit-make" name="make" class="form-input" value="${data.make ?? ''}" required></div>
-         <div class="form-group"><label class="form-label" for="edit-bike-type">Bike Type</label><select id="edit-bike-type" name="bike_type" class="form-select" required>${['Mountain Bike', 'City Bike', "Lady's/Men's Bike", 'E-Scooter', 'Road Bike', 'Sidecar Bike', "Children's Bike"].map(type => `<option value="${type}" ${data.type === type ? 'selected' : ''}>${type}</option>`).join('')}</select></div>
+         <div class="form-group"><label class="form-label" for="edit-bike-type">Bike Type</label><select id="edit-bike-type" name="bike_type" class="form-select" onchange="updateStaffBikeCodePreview(this)" required>${['Mountain Bike', 'City Bike', "Lady's/Men's Bike", 'E-Scooter', 'Road Bike', 'Sidecar Bike', "Children's Bike"].map(type => `<option value="${type}" ${data.type === type ? 'selected' : ''}>${type}</option>`).join('')}</select></div>
          <div class="form-group"><label class="form-label" for="edit-condition">Condition</label><select id="edit-condition" name="condition" class="form-select" required><option value="Good" ${data.condition === 'Good' ? 'selected' : ''}>Good</option><option value="Needs Repair" ${data.condition === 'Needs Repair' ? 'selected' : ''}>Needs Repair</option><option value="Missing" ${data.condition === 'Missing' ? 'selected' : ''}>Missing</option></select></div>
          <div class="modal-actions"><button type="submit" class="primary-btn">Save Changes</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
        </form>`;
   content.innerHTML = `<div class="modal-bike-title">${title}</div>${body}`;
+  if (action === 'edit') {
+    const form = content.querySelector('[data-live-form="edit"]');
+    const typeSelect = form.querySelector('[name="bike_type"]');
+    if (![...typeSelect.options].some(option => option.value === data.type)) {
+      typeSelect.add(new Option(data.type, data.type));
+    }
+    form.dataset.originalBikeType = data.type ?? '';
+    form.dataset.originalBikeCode = data.qrCode ?? '';
+    form.dataset.excludeQrCode = data.qrCode ?? '';
+  }
   document.getElementById('modalBg').classList.add('open');
+}
+
+function updateStaffBikeCodePreview(typeSelect) {
+  const form = typeSelect.form;
+  const codeInput = form.querySelector('[data-bike-code]');
+  if (!codeInput) return;
+
+  if (form.dataset.liveForm === 'edit' && typeSelect.value === form.dataset.originalBikeType) {
+    codeInput.dataset.requestId = String(Number(codeInput.dataset.requestId || 0) + 1);
+    codeInput.value = form.dataset.originalBikeCode;
+    return;
+  }
+
+  const requestId = Number(codeInput.dataset.requestId || 0) + 1;
+  codeInput.dataset.requestId = String(requestId);
+  const params = new URLSearchParams({ bike_type: typeSelect.value });
+  if (form.dataset.excludeQrCode) params.set('exclude_qr_code', form.dataset.excludeQrCode);
+
+  fetch(`${form.dataset.bikeCodePreviewUrl}?${params}`, {
+    headers: { Accept: 'application/json' },
+  })
+    .then(async response => {
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Could not preview the bike ID.');
+      return result;
+    })
+    .then(result => {
+      if (codeInput.dataset.requestId === String(requestId)) codeInput.value = result.bike_code;
+    })
+    .catch(error => {
+      if (codeInput.dataset.requestId === String(requestId)) {
+        showToast(error.message || 'Could not preview the bike ID.');
+      }
+    });
 }
 
 function confirmDeleteBike(id, qrCode) {
   openBikeAction('delete', { id: id || qrCode || '' });
 }
 
-function updateInventoryRowFromBike(bike) {
+function updateInventoryRowFromBike(bike, previousBikeCode = null) {
   const bikeCode = bike.qr_code || bike.id;
   const category = bike.bike_type || 'Unknown';
   const statusValue = bike.status || 'available';
@@ -180,7 +224,11 @@ function updateInventoryRowFromBike(bike) {
     return block;
   }
 
-  const existingRow = document.querySelector(`.inv-bike-row[data-qr="${String(bikeCode).toLowerCase()}"]`);
+  const existingRow = document.querySelector(
+    `.inv-bike-row[data-qr="${String(bikeCode).toLowerCase()}"]`
+  ) || (previousBikeCode
+    ? document.querySelector(`.inv-bike-row[data-qr="${String(previousBikeCode).toLowerCase()}"]`)
+    : null);
   const currentCategory = existingRow ? existingRow.dataset.category : null;
 
   if (existingRow) {
@@ -316,7 +364,8 @@ function handleLiveInventorySubmit(event) {
         if (qrInput && payload.next_qr_code) qrInput.defaultValue = payload.next_qr_code;
       }
       if (action === 'edit' && payload.bike) {
-        updateInventoryRowFromBike(payload.bike);
+        const previousBikeCode = decodeURIComponent(form.action.split('/').pop());
+        updateInventoryRowFromBike(payload.bike, previousBikeCode);
       }
       if (action === 'delete') {
         const deletedId = form.action.split('/').pop();
@@ -330,6 +379,10 @@ function handleLiveInventorySubmit(event) {
       goTo('inventory');
       showToast(payload.message || 'Updated successfully.');
       form.reset();
+      if (action === 'create') {
+        const bikeType = form.querySelector('[name="bike_type"]');
+        if (bikeType) updateStaffBikeCodePreview(bikeType);
+      }
     })
     .catch((error) => {
       showToast(error.message || 'Could not complete the action.');

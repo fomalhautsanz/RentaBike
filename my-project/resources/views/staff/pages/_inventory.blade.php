@@ -197,7 +197,7 @@
       ['City Bike',       '🚲', '#eff6ff', [['CB-001','City Cruiser','Giant','available'],['CB-002','City Cruiser','Giant','repair']]],
       ['E-Scooter',       '🛴', '#fff7ed', [['ES-001','E-Scooter X1','Segway','available']]],
       ['Road Bike',       '🚴', '#f0fdf4', [['RB-001','Road Racer','Specialized','available'],['RB-002','Road Racer','Specialized','rented']]],
-      ["Children's Bike", '🚲', '#fdf4ff', [['KD-001','Kids 16"','Trek','available'],['KD-002','Kids 16"','Trek','rented']]],
+      ["Children's Bike", '🚲', '#fdf4ff', [['CH-001','Kids 16"','Trek','available'],['CH-002','Kids 16"','Trek','rented']]],
     ] as [$cat, $emoji, $bg, $rows])
     <div class="inv-category inv-category-block" data-category="{{ $cat }}" style="margin-bottom:12px">
       <div class="inv-cat-header">

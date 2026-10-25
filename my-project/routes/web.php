@@ -56,6 +56,8 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
 
     Route::post('/bikes', [DashboardController::class, 'storeBike'])
         ->name('admin.bikes.store');
+    Route::get('/bikes/next-code', [DashboardController::class, 'nextBikeCode'])
+        ->name('admin.bikes.next-code');
     Route::patch('/bikes/{bike}', [DashboardController::class, 'updateBike'])
         ->name('admin.bikes.update');
     Route::post('/bikes/{bike}/verify', [DashboardController::class, 'verifyBikeAction'])
@@ -96,6 +98,8 @@ Route::prefix('staff')
 
         Route::post('/inventory', [InventoryController::class, 'store'])
             ->name('staff.inventory.store');
+        Route::get('/inventory/next-code', [InventoryController::class, 'nextBikeCode'])
+            ->name('staff.inventory.next-code');
 
         Route::patch('/inventory/{bike}', [InventoryController::class, 'update'])
             ->name('staff.inventory.update');
