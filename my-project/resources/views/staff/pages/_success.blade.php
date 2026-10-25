@@ -7,7 +7,7 @@
       </svg>
     </div>
     <h2>Bike Assigned!</h2>
-    <p class="success-sub">Bike 102 has been successfully rented.</p>
+    <p class="success-sub" id="success-sub">Bike 102 has been successfully rented.</p>
 
     <div class="rental-receipt">
       <div class="receipt-header">
@@ -17,16 +17,16 @@
         </svg>
         <span>Rental Receipt</span>
       </div>
-      <div class="receipt-row"><span>Borrower</span><b>Ashley Mendoza</b></div>
-      <div class="receipt-row"><span>Bike</span><b>Bike 102</b></div>
-      <div class="receipt-row"><span>Duration</span><b>2 Hours</b></div>
-      <div class="receipt-row"><span>Total Fee</span><b>₱120</b></div>
+      <div class="receipt-row"><span>Borrower</span><b id="receipt-borrower">Ashley Mendoza</b></div>
+      <div class="receipt-row"><span>Bike</span><b id="receipt-bike">Bike 102</b></div>
+      <div class="receipt-row"><span>Duration</span><b id="receipt-duration">2 Hours</b></div>
+      <div class="receipt-row"><span>Total Fee</span><b id="receipt-fee">₱120</b></div>
     </div>
 
     <div class="timer-display" id="timer">02:00:00</div>
     <div class="timer-label">Time Remaining</div>
 
-    <button class="primary-btn" onclick="goTo('home')" style="width:100%">
+    <button class="primary-btn" onclick="goHomeFresh()" style="width:100%">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <rect width="7" height="9" x="3" y="3" rx="1"/>
         <rect width="7" height="5" x="14" y="3" rx="1"/>

@@ -6,6 +6,8 @@ use App\Http\Controllers\Auth\StaffLoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
 use App\Http\Controllers\Staff\InventoryController;
+use App\Http\Controllers\Staff\RentalController;
+use App\Http\Controllers\Staff\ScanController;
 
 
 // ======================================================
@@ -109,4 +111,18 @@ Route::prefix('staff')
 
         Route::patch('/inventory/{bike}/toggle-status', [InventoryController::class, 'toggleStatus'])
             ->name('staff.inventory.toggle-status');
+
+        // QR scan lookup (read-only): GET /staff/scan/{code}
+        Route::get('/scan/{code}', [ScanController::class, 'show'])
+            ->name('staff.scan');
+
+        // Rentals human ma-scan: i-open, extend, ug end session
+        Route::post('/rentals', [RentalController::class, 'store'])
+            ->name('staff.rentals.store');
+
+        Route::post('/rentals/{rental}/extend', [RentalController::class, 'extend'])
+            ->name('staff.rentals.extend');
+
+        Route::post('/rentals/{rental}/end', [RentalController::class, 'end'])
+            ->name('staff.rentals.end');
     });

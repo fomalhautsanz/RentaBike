@@ -14,6 +14,17 @@ function goTo(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   target.classList.add('active');
   window.scrollTo(0, 0);
+
+  // Camera: ablihi ra kung naa sa scanner screen, ug i-stop dayon kung mobiya (back, nav, ug uban pa)
+  const wasOnScanner = scannerScreenOpen;
+  scannerScreenOpen = (id === 'scanner');
+  if (scannerScreenOpen) {
+    startCameraScan();
+  } else if (wasOnScanner) {
+    stopCameraScan();
+    hideSessionSheet();
+    pendingBikeCode = null; // clear ang stale nga "Scan to Rent/Return" kung wala nahuman
+  }
 }
 function navActive(btn) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -49,20 +60,238 @@ function startScan(bikeCode) {
   goTo('scanner');
 }
 
-function simulateScan() {
-  const btn = document.querySelector('.scan-simulate-btn');
-  btn.textContent = 'Scanning…';
-  btn.disabled = true;
-  setTimeout(() => {
-    btn.textContent = 'Simulate QR Scan';
-    btn.disabled = false;
-    if (pendingBikeCode) {
-      toggleBikeStatus(pendingBikeCode);
-    } else {
-      goTo('rental-form');
-    }
-  }, 1200);
+// ── Real camera scanning (html5-qrcode) ──
+// Ang QR nga gi-generate sa admin (QuickChart) mao ra ang BARE qr_code, pananglitan "RB-004".
+const SCAN_DEBOUNCE_MS = 3000;      // parehas nga code sulod sa 3s, i-ignore
+let scannerScreenOpen = false;
+let qrScanner = null;               // Html5Qrcode instance
+let scannerToken = 0;               // para ma-ignore ang start() nga human na mobiya sa screen
+let scannerBusy = false;            // naa pay gi-check nga bike
+let resumeCamera = false;           // i-balik ang camera kung mobalik sa tab
+let lastScanRaw = null;
+let lastScanAt = 0;
+
+function setScannerStatus(message, isError = false) {
+  const el = document.getElementById('scanner-status');
+  if (!el) return;
+  el.textContent = message;
+  el.classList.toggle('is-error', isError);
 }
+
+function setScannerFrameOff(isOff) {
+  const inner = document.querySelector('.scanner-inner');
+  if (inner) inner.classList.toggle('is-off', isOff);
+}
+
+function setScannerRetry(show) {
+  const btn = document.getElementById('scanner-retry');
+  if (btn) btn.classList.toggle('show', show);
+}
+
+// Bare code ra ang dawaton (letters, numbers, - ug _). Ang uban (URL, text, ug uban pa) = invalid.
+function parseBikeCode(raw) {
+  const code = String(raw ?? '').trim();
+  return /^[A-Za-z0-9_-]{1,100}$/.test(code) ? code : null;
+}
+
+function classifyCameraError(err) {
+  const text = String((err && (err.name || err.message)) || err || '').toLowerCase();
+  if (text.includes('notallowed') || text.includes('permission') || text.includes('denied')) return 'denied';
+  if (text.includes('overconstrained') || text.includes('constraint')) return 'constraint';
+  if (text.includes('notfound') || text.includes('no camera') || text.includes('requested device not found')) return 'none';
+  if (text.includes('notreadable') || text.includes('trackstart') || text.includes('could not start video source') || text.includes('in use')) return 'busy';
+  return 'other';
+}
+
+function showCameraProblem(statusText, toastText) {
+  setScannerStatus(statusText, true);
+  setScannerFrameOff(true);
+  setScannerRetry(true);
+  showToast(toastText || statusText);
+}
+
+function handleCameraError(err) {
+  switch (classifyCameraError(err)) {
+    case 'denied':
+      showCameraProblem('Camera permission denied. Allow camera access in your browser settings, or enter the bike code below.', 'Camera permission denied.\nAllow camera access or enter the code manually.');
+      break;
+    case 'none':
+      showCameraProblem('No camera found on this device. Enter the bike code below.', 'No camera found.\nEnter the bike code manually.');
+      break;
+    case 'busy':
+      showCameraProblem('The camera is being used by another app or tab. Close it, then tap "Try camera again".', 'Camera is in use by another app.');
+      break;
+    default:
+      showCameraProblem('Could not start the camera. Try again or enter the bike code below.', 'Could not start the camera.');
+  }
+}
+
+async function startCameraScan() {
+  if (qrScanner) return; // naa nay naga-andar o naga-start
+  setScannerRetry(false);
+
+  if (typeof Html5Qrcode === 'undefined') {
+    showCameraProblem('Scanner could not load (check your internet). Enter the bike code below.', 'Scanner failed to load.\nUse manual entry.');
+    return;
+  }
+  // Ang camera mo-work ra sa https o localhost
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showCameraProblem('Camera needs https or localhost. Enter the bike code below.', 'Camera is not available on this connection.\nUse https or localhost.');
+    return;
+  }
+
+  const token = ++scannerToken;
+  const instance = new Html5Qrcode('qr-reader', {
+    verbose: false,
+    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+  });
+  qrScanner = instance;
+  setScannerFrameOff(false);
+  setScannerStatus('Starting camera…');
+
+  const config = { fps: 10, aspectRatio: 1.0 };
+  try {
+    try {
+      await instance.start({ facingMode: 'environment' }, config, onQrDecoded, () => {});
+    } catch (err) {
+      // Walay rear camera (pananglitan laptop)? Try ang front camera.
+      if (classifyCameraError(err) !== 'constraint') throw err;
+      await instance.start({ facingMode: 'user' }, config, onQrDecoded, () => {});
+    }
+    if (token !== scannerToken) { // nahabilin na sa screen, i-release dayon
+      releaseScanner(instance);
+      return;
+    }
+    setScannerStatus('Position the bike QR code inside the frame to continue.');
+  } catch (err) {
+    if (qrScanner === instance) qrScanner = null;
+    try { instance.clear(); } catch (e) {}
+    if (token === scannerToken) handleCameraError(err);
+  }
+}
+
+function releaseScanner(instance) {
+  return Promise.resolve()
+    .then(() => instance.stop())
+    .catch(() => {}) // wala pa naka-start / na-stop na
+    .then(() => { try { instance.clear(); } catch (e) {} });
+}
+
+function stopCameraScan() {
+  scannerToken++;
+  const instance = qrScanner;
+  qrScanner = null;
+  if (instance) releaseScanner(instance);
+}
+
+// Gi-tawag sa camera sa matag frame nga naay na-basa nga QR
+function onQrDecoded(decodedText) {
+  const raw = String(decodedText ?? '').trim();
+  const now = Date.now();
+  if (scannerBusy || sessionSheetOpen) return;
+  // Debounce: ang parehas nga QR nga naa pa sa frame dili i-process balik
+  if (raw === lastScanRaw && now - lastScanAt < SCAN_DEBOUNCE_MS) return;
+  lastScanRaw = raw;
+  lastScanAt = now;
+  processBikeCode(raw);
+}
+
+function submitManualCode() {
+  const input = document.getElementById('manual-code-input');
+  if (!input) return;
+  if (!input.value.trim()) {
+    showToast('Enter a bike code first.');
+    return;
+  }
+  processBikeCode(input.value);
+}
+
+function processBikeCode(raw) {
+  if (scannerBusy || sessionSheetOpen) return;
+  const code = parseBikeCode(raw);
+  if (!code) {
+    showToast('Invalid QR code.\nPlease scan a RentaBike bike QR.');
+    return;
+  }
+
+  // Gikan sa "Scan to Rent/Return" sa bike modal? Ang parehas nga bike ra ang dapat i-scan.
+  if (pendingBikeCode && String(pendingBikeCode).toLowerCase() !== code.toLowerCase()) {
+    showToast(`Wrong bike.\nPlease scan ${pendingBikeCode}.`);
+    return;
+  }
+
+  scannerBusy = true;
+
+  sendJson('GET', `/staff/scan/${encodeURIComponent(code)}`)
+    .then(({ ok, data }) => {
+      if (!ok) {
+        // 404 "Bike not found" / 422 "This bike cannot be rented"
+        showToast(`${data.message || 'Could not check this bike.'}\n(${code})`);
+        return;
+      }
+
+      const input = document.getElementById('manual-code-input');
+      if (input) input.value = '';
+
+      if (data.next_action === 'return') {
+        openSessionSheet(data); // Rented: detalye sa session + End / Extend
+      } else {
+        openRentalForm(data);   // Available: rental form (package, presyo, return time)
+      }
+    })
+    .catch(handleRequestError)
+    .finally(() => {
+      scannerBusy = false;
+    });
+}
+
+// Shared fetch helper: JSON + CSRF (meta csrf-token), ug check kung na-expire ang staff session
+function sendJson(method, url, payload) {
+  const options = {
+    method,
+    credentials: 'same-origin',
+    headers: {
+      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+      'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+  };
+  if (payload !== undefined) {
+    options.headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(payload);
+  }
+
+  return fetch(url, options).then(response => {
+    // Na-expire ang staff session? (staff.auth mo-redirect sa login page)
+    if (response.redirected || response.status === 401 || response.status === 419) {
+      const err = new Error('session');
+      err.sessionExpired = true;
+      throw err;
+    }
+    return response.json().then(data => ({ ok: response.ok, data }));
+  });
+}
+
+function handleRequestError(error) {
+  if (error && error.sessionExpired) {
+    showToast('Session expired.\nPlease log in again.');
+    setTimeout(() => { window.location.href = '/staff/login'; }, 1500);
+    return;
+  }
+  showToast('Something went wrong.\nCheck your connection and try again.');
+}
+
+// I-stop ang camera kung gi-tago ang tab, ug i-balik kung mobalik
+document.addEventListener('visibilitychange', () => {
+  if (!scannerScreenOpen) return;
+  if (document.hidden) {
+    resumeCamera = !!qrScanner;
+    stopCameraScan();
+  } else if (resumeCamera) {
+    resumeCamera = false;
+    startCameraScan();
+  }
+});
 
 function toggleBikeStatus(bikeCode) {
   const row = document.querySelector(`[data-bike-code="${bikeCode}"]`);
@@ -112,20 +341,414 @@ function toggleBikeStatus(bikeCode) {
 }
 
 // ── RENTAL ───────────────────────────────────────────────────────────────────
-function submitRental() {
-  goTo('success');
-  startTimer();
+let rentalBike = null;          // { bike, pricing } gikan sa scan
+let selectedMinutes = null;     // gipili nga duration
+let rentalSubmitting = false;
+let timerInterval = null;
+
+function formatPeso(n) {
+  const v = Number(n) || 0;
+  return '₱' + (Number.isInteger(v) ? v : v.toFixed(2));
 }
-function startTimer() {
-  let h = 2, m = 0, s = 0;
+
+function formatClock(h24, m) {
+  return `${h24 % 12 || 12}:${pad(m)} ${h24 < 12 ? 'AM' : 'PM'}`;
+}
+
+function goHomeFresh() {
+  // Reload para ma-update ang stats/bike status sa dashboard
+  window.location.href = "{{ route('staff.home') }}";
+}
+
+// Available nga bike ang na-scan: ablihi ang rental form
+function openRentalForm(data) {
+  rentalBike = { bike: data.bike, pricing: data.pricing };
+  selectedMinutes = null;
+
+  document.getElementById('rf-bike-name').textContent = data.bike.name || data.bike.qr_code;
+  document.getElementById('rf-bike-meta').textContent = `${data.bike.qr_code} · ${data.bike.bike_type} · ${data.pricing.rate_label}`;
+  document.getElementById('rf-name').value = '';
+  document.getElementById('rf-contact').value = '';
+  document.getElementById('rf-borrow-time').value = data.server_time || '';
+
+  const wrap = document.getElementById('rf-packages');
+  wrap.innerHTML = '';
+  data.pricing.options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'rf-pkg';
+    btn.dataset.minutes = opt.minutes;
+    const time = document.createElement('span');
+    time.className = 'rf-pkg-time';
+    time.textContent = opt.label;
+    const price = document.createElement('span');
+    price.className = 'rf-pkg-price';
+    price.textContent = formatPeso(opt.price);
+    btn.append(time, price);
+    btn.addEventListener('click', () => selectPackage(opt.minutes));
+    wrap.appendChild(btn);
+  });
+
+  // Pilia dayon ang una nga option para naay total ug return time
+  if (data.pricing.options.length) selectPackage(data.pricing.options[0].minutes);
+  else updateRentalSummary();
+
+  goTo('rental-form');
+  showToast(`${data.bike.qr_code} is available.\nFill in the rental form.`);
+}
+
+function selectPackage(minutes) {
+  selectedMinutes = minutes;
+  document.querySelectorAll('#rf-packages .rf-pkg').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.minutes) === minutes);
+  });
+  updateRentalSummary();
+}
+
+// Total ug expected return time: ang system ra ang mo-compute (borrow time + duration)
+function updateRentalSummary() {
+  if (!rentalBike) return;
+  const totalEl = document.getElementById('rf-total');
+  const returnEl = document.getElementById('rf-expected-return');
+  const opt = rentalBike.pricing.options.find(o => o.minutes === selectedMinutes);
+
+  totalEl.textContent = opt ? formatPeso(opt.price) : '₱0';
+
+  const time = document.getElementById('rf-borrow-time').value;
+  if (!opt || !time) {
+    returnEl.textContent = '—';
+    return;
+  }
+  const [h, m] = time.split(':').map(Number);
+  const end = h * 60 + m + opt.minutes;
+  const label = formatClock(Math.floor(end / 60) % 24, end % 60);
+  returnEl.textContent = end >= 1440 ? `${label} (next day)` : label;
+}
+
+function submitRental() {
+  if (rentalSubmitting) return;
+  if (!rentalBike) {
+    showToast('Scan a bike first.');
+    return;
+  }
+
+  const name = document.getElementById('rf-name').value.trim();
+  const contact = document.getElementById('rf-contact').value.trim();
+  const borrowTime = document.getElementById('rf-borrow-time').value;
+
+  if (!name) { showToast('Please enter the borrower name.'); return; }
+  if (!contact) { showToast('Please enter the contact number.'); return; }
+  if (!borrowTime) { showToast('Please enter the borrow time.'); return; }
+  if (!selectedMinutes) { showToast('Please select a rental duration.'); return; }
+
+  rentalSubmitting = true;
+  const confirmBtn = document.getElementById('rf-confirm');
+  confirmBtn.disabled = true;
+
+  sendJson('POST', '/staff/rentals', {
+    code: rentalBike.bike.qr_code,
+    borrower_name: name,
+    contact_no: contact,
+    minutes: selectedMinutes,
+    borrow_time: borrowTime,
+  })
+    .then(({ ok, data }) => {
+      if (!ok) {
+        showToast(data.message || 'Could not save the rental.');
+        return;
+      }
+
+      const r = data.rental;
+      document.getElementById('success-sub').textContent = `${data.bike.qr_code} has been successfully rented.`;
+      document.getElementById('receipt-borrower').textContent = r.borrower_name || name;
+      document.getElementById('receipt-bike').textContent = `${data.bike.name} (${data.bike.qr_code})`;
+      document.getElementById('receipt-duration').textContent = `${r.duration_label} · until ${r.expected_end_label}`;
+      document.getElementById('receipt-fee').textContent = formatPeso(r.base_fee);
+
+      rentalBike = null;
+      selectedMinutes = null;
+      goTo('success');
+      startTimer(r.seconds_remaining);
+    })
+    .catch(handleRequestError)
+    .finally(() => {
+      rentalSubmitting = false;
+      confirmBtn.disabled = false;
+    });
+}
+
+function startTimer(totalSeconds) {
+  if (timerInterval) clearInterval(timerInterval);
   const el = document.getElementById('timer');
-  const tick = setInterval(() => {
-    if (s === 0) {
-      if (m === 0) { if (h === 0) { clearInterval(tick); return; } h--; m = 59; s = 59; }
-      else { m--; s = 59; }
-    } else { s--; }
-    el.textContent = pad(h) + ':' + pad(m) + ':' + pad(s);
-  }, 1000);
+  const deadline = Date.now() + Math.max(0, totalSeconds) * 1000;
+  const render = () => {
+    const remaining = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+    el.textContent = pad(Math.floor(remaining / 3600)) + ':' + pad(Math.floor((remaining % 3600) / 60)) + ':' + pad(remaining % 60);
+    if (remaining === 0) { clearInterval(timerInterval); timerInterval = null; }
+  };
+  render();
+  timerInterval = setInterval(render, 1000);
+}
+
+// ── SESSION SHEET: rented nga bike ang na-scan (details, End Session, Extend) ──
+let sessionSheetOpen = false;
+let sessionData = null;         // { bike, rental }
+let sessionDeadline = 0;        // Date.now() + segundo nga nahabilin
+let sessionTick = null;
+let sessionEndArmed = false;    // 2-step: tap End Session 2x
+let sessionEnded = false;
+let extendMinutes = null;
+let sessionBusy = false;
+
+function formatCountdown(sec) {
+  const s = Math.abs(sec);
+  return pad(Math.floor(s / 3600)) + ':' + pad(Math.floor((s % 3600) / 60)) + ':' + pad(s % 60);
+}
+
+function ssRow(label, value, extraClass = '', id = '') {
+  const row = document.createElement('div');
+  row.className = 'modal-detail-row';
+  const l = document.createElement('span');
+  l.className = 'label';
+  l.textContent = label;
+  const v = document.createElement('span');
+  v.className = 'value' + (extraClass ? ' ' + extraClass : '');
+  v.textContent = value;
+  if (id) v.id = id;
+  row.append(l, v);
+  return row;
+}
+
+function openSessionSheet(data) {
+  sessionData = { bike: data.bike, rental: data.rental };
+  sessionEndArmed = false;
+  sessionEnded = false;
+  extendMinutes = null;
+  sessionBusy = false;
+  sessionSheetOpen = true;
+  if (data.rental) sessionDeadline = Date.now() + data.rental.seconds_remaining * 1000;
+
+  renderSession();
+  document.getElementById('session-sheet').classList.add('show');
+  startSessionTick();
+}
+
+function renderSession() {
+  const { bike, rental } = sessionData;
+  const body = document.getElementById('ss-body');
+  const actions = document.getElementById('ss-actions');
+  const extendBtn = document.getElementById('ss-extend-btn');
+  const endBtn = document.getElementById('ss-end-btn');
+
+  document.getElementById('ss-title').textContent = bike.name || bike.qr_code;
+  document.getElementById('ss-sub').textContent = `${bike.qr_code} · ${bike.bike_type}`;
+  body.innerHTML = '';
+  setExtendPanel(false);
+  endBtn.className = 'ss-btn ss-btn-danger';
+  endBtn.disabled = false;
+  sessionEndArmed = false;
+
+  if (!rental) {
+    // Walay rental record (daang data nga gi-mark ra nga rented): existing return behavior
+    const note = document.createElement('div');
+    note.className = 'ss-note';
+    note.textContent = 'No active rental record was found for this bike. You can still mark it as returned.';
+    body.appendChild(note);
+    extendBtn.style.display = 'none';
+    actions.classList.add('single');
+    endBtn.textContent = 'Mark as Returned';
+    return;
+  }
+
+  extendBtn.style.display = '';
+  actions.classList.remove('single');
+  endBtn.textContent = 'End Session';
+
+  body.append(
+    ssRow('Borrower', rental.borrower_name || '—'),
+    ssRow('Contact', rental.contact_no || '—'),
+    ssRow('Borrowed at', rental.start_label),
+    ssRow('Interval', rental.duration_label),
+    ssRow('Expected return', rental.expected_end_label),
+    ssRow('Time remaining', '', '', 'ss-remaining'),
+    ssRow('Paid so far', formatPeso(rental.amount_paid)),
+  );
+  if (rental.estimated_overtime_fee > 0) {
+    body.appendChild(ssRow('Overtime fee (est.)', formatPeso(rental.estimated_overtime_fee), 'ss-over'));
+  }
+  updateSessionClock();
+  renderExtendChips();
+}
+
+function updateSessionClock() {
+  const el = document.getElementById('ss-remaining');
+  if (!el) return;
+  const remaining = Math.round((sessionDeadline - Date.now()) / 1000);
+  el.textContent = remaining < 0 ? `Overtime ${formatCountdown(remaining)}` : formatCountdown(remaining);
+  el.classList.toggle('ss-over', remaining < 0);
+}
+
+function startSessionTick() {
+  stopSessionTick();
+  sessionTick = setInterval(updateSessionClock, 1000);
+}
+
+function stopSessionTick() {
+  if (sessionTick) { clearInterval(sessionTick); sessionTick = null; }
+}
+
+function setExtendPanel(show) {
+  document.getElementById('ss-extend-panel').classList.toggle('show', show);
+  if (!show) {
+    extendMinutes = null;
+    document.getElementById('ss-extend-confirm').classList.remove('show');
+    document.querySelectorAll('#ss-chips .ss-chip').forEach(c => c.classList.remove('active'));
+  }
+}
+
+function toggleExtendPanel() {
+  if (sessionBusy || sessionEnded || !sessionData || !sessionData.rental) return;
+  const panel = document.getElementById('ss-extend-panel');
+  resetEndButton();
+  setExtendPanel(!panel.classList.contains('show'));
+}
+
+function renderExtendChips() {
+  const chips = document.getElementById('ss-chips');
+  chips.innerHTML = '';
+  sessionData.rental.extend_options.forEach(opt => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'ss-chip';
+    chip.dataset.minutes = opt.minutes;
+    const b = document.createElement('b');
+    b.textContent = `+${opt.label}`;
+    const span = document.createElement('span');
+    span.textContent = formatPeso(opt.price);
+    chip.append(b, span);
+    chip.addEventListener('click', () => selectExtend(opt));
+    chips.appendChild(chip);
+  });
+}
+
+function selectExtend(opt) {
+  extendMinutes = opt.minutes;
+  document.querySelectorAll('#ss-chips .ss-chip').forEach(c => {
+    c.classList.toggle('active', Number(c.dataset.minutes) === opt.minutes);
+  });
+  const confirmBtn = document.getElementById('ss-extend-confirm');
+  confirmBtn.textContent = `Confirm +${opt.label} (${formatPeso(opt.price)})`;
+  confirmBtn.classList.add('show');
+}
+
+function confirmExtend() {
+  if (sessionBusy || !extendMinutes || !sessionData || !sessionData.rental) return;
+  sessionBusy = true;
+
+  sendJson('POST', `/staff/rentals/${sessionData.rental.rental_id}/extend`, { minutes: extendMinutes })
+    .then(({ ok, data }) => {
+      if (!ok) {
+        showToast(data.message || 'Could not extend the rental.');
+        return;
+      }
+      sessionData.rental = data.rental;
+      sessionDeadline = Date.now() + data.rental.seconds_remaining * 1000;
+      renderSession();
+      showToast(data.message);
+    })
+    .catch(handleRequestError)
+    .finally(() => {
+      sessionBusy = false;
+    });
+}
+
+function resetEndButton() {
+  sessionEndArmed = false;
+  const endBtn = document.getElementById('ss-end-btn');
+  if (endBtn && sessionData) endBtn.textContent = sessionData.rental ? 'End Session' : 'Mark as Returned';
+}
+
+function endSession() {
+  if (sessionBusy || !sessionData) return;
+  if (sessionEnded) { goHomeFresh(); return; } // "Done" button human ma-end
+
+  const rental = sessionData.rental;
+  if (!rental) {
+    // Existing return behavior (PATCH toggle-status)
+    const code = sessionData.bike.qr_code;
+    hideSessionSheet();
+    toggleBikeStatus(code);
+    return;
+  }
+
+  // 2-step para dili ma-end sa sayop nga tap
+  if (!sessionEndArmed) {
+    sessionEndArmed = true;
+    setExtendPanel(false);
+    document.getElementById('ss-end-btn').textContent = 'Tap again to confirm';
+    showToast(rental.estimated_overtime_fee > 0
+      ? `Overtime fee ${formatPeso(rental.estimated_overtime_fee)} will be collected.\nTap End Session again to confirm.`
+      : 'Tap End Session again to confirm.');
+    setTimeout(() => { if (sessionEndArmed && !sessionEnded) resetEndButton(); }, 5000);
+    return;
+  }
+
+  sessionBusy = true;
+  sendJson('POST', `/staff/rentals/${rental.rental_id}/end`)
+    .then(({ ok, data }) => {
+      if (!ok) {
+        showToast(data.message || 'Could not end the session.');
+        resetEndButton();
+        return;
+      }
+      showSessionReceipt(data.receipt);
+    })
+    .catch(handleRequestError)
+    .finally(() => {
+      sessionBusy = false;
+    });
+}
+
+function showSessionReceipt(receipt) {
+  sessionEnded = true;
+  stopSessionTick();
+  setExtendPanel(false);
+
+  document.getElementById('ss-title').textContent = 'Session ended';
+  const body = document.getElementById('ss-body');
+  body.innerHTML = '';
+  body.append(
+    ssRow('Borrower', receipt.borrower_name || '—'),
+    ssRow('Time used', receipt.time_used),
+    ssRow('Rental fee', formatPeso(receipt.base_fee)),
+    ssRow('Overtime fee', formatPeso(receipt.overtime_fee)),
+    ssRow('Total fee', formatPeso(receipt.total_fee)),
+    ssRow('Amount paid', formatPeso(receipt.amount_paid)),
+    receipt.balance_due > 0
+      ? ssRow('Balance due', formatPeso(receipt.balance_due), 'ss-over')
+      : ssRow('Payment', 'Settled'),
+  );
+
+  document.getElementById('ss-extend-btn').style.display = 'none';
+  document.getElementById('ss-actions').classList.add('single');
+  const endBtn = document.getElementById('ss-end-btn');
+  endBtn.className = 'ss-btn ss-btn-primary';
+  endBtn.textContent = 'Done';
+  showToast(receipt.balance_due > 0 ? `Session ended.\nCollect ${formatPeso(receipt.balance_due)}.` : 'Session ended.');
+}
+
+function closeSessionSheet() {
+  if (sessionEnded) { goHomeFresh(); return; }
+  hideSessionSheet();
+}
+
+function hideSessionSheet() {
+  stopSessionTick();
+  sessionSheetOpen = false;
+  sessionData = null;
+  lastScanAt = 0; // pwede na ma-scan balik ang parehas nga QR
+  const sheet = document.getElementById('session-sheet');
+  if (sheet) sheet.classList.remove('show');
 }
 function pad(n) { return String(n).padStart(2, '0'); }
 
