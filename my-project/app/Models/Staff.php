@@ -13,11 +13,20 @@ class Staff extends Model
     protected $fillable = [
         'admin_id',
         'username',
+        'first_name',
+        'last_name',
         'full_name',
         'email',
+        'phone',
+        'profile_picture',
+        'permissions',
         'password_hash',
         'role',
         'status',
+    ];
+
+    protected $casts = [
+        'permissions' => 'array',
     ];
 
     protected static function booted(): void

@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,11 +15,20 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        if (DB::table('bicycle')->exists()) {
+            return;
+        }
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        DB::table('bicycle')->insert(
+            [
+                'qr_code' => 'RB-001',
+                'model' => 'Test Bike',
+                'make' => 'Test',
+                'bike_type' => 'standard',
+                'status' => 'available',
+                'condition' => 'good',
+                'created_at' => now(),
+            ]
+        );
     }
 }
