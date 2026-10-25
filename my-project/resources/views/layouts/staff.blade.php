@@ -41,7 +41,8 @@ body{background:#f9fafb;color:#111827;font-family:'DM Sans',sans-serif;-webkit-f
 /* ── TOPBAR ── */
 .topbar{background:var(--white);border-bottom:1px solid var(--gray-200);padding:16px 20px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50;}
 .topbar-left{display:flex;align-items:center;gap:10px}
-.topbar-logo{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;}
+.topbar-logo{width:clamp(32px,10vw,40px);height:clamp(32px,10vw,40px);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.topbar-logo img{width:100%;height:100%;object-fit:contain;}
 .topbar-logo svg{color:#fff}
 .topbar-brand{font-size:17px;font-weight:700;color:var(--gray-900);letter-spacing:-.3px}
 .topbar-sub{font-size:12px;color:var(--gray-500);margin-top:1px}
