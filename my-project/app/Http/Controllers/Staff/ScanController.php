@@ -7,6 +7,7 @@ use App\Models\Bicycle;
 use App\Models\Rental;
 use App\Support\RentalPricing;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Staff QR scanning: gi-tawag sa scanner screen human ma-basa ang QR (o ma-type
@@ -69,7 +70,14 @@ class ScanController extends Controller
                 'next_action' => 'return',
                 'message' => 'Bike is currently rented.',
                 // null kung wala'y rental record (daang data nga gi-mark ra nga rented)
-                'rental' => $rental ? RentalPricing::summary($rental, $bike->bike_type, $now) : null,
+                'rental' => $rental ? [
+                    ...RentalPricing::summary($rental, $bike->bike_type, $now),
+                    'borrower_id_url' => $rental->borrower?->id_photo_id
+                        && preg_match('#\Aborrower-ids/[A-Za-z0-9._-]+\z#D', $rental->borrower->id_photo_id)
+                        && Storage::disk('local')->exists($rental->borrower->id_photo_id)
+                            ? route('staff.rentals.borrower-id', $rental->rental_id)
+                            : null,
+                ] : null,
             ]);
         }
 

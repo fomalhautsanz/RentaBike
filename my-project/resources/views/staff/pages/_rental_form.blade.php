@@ -4,6 +4,7 @@
   .rf-bike{background:var(--green-50);border:1px solid var(--green-100);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:16px}
   .rf-bike-name{font-size:15px;font-weight:700;color:var(--gray-900)}
   .rf-bike-meta{font-size:12px;color:var(--gray-600);margin-top:2px}
+  .rf-bike-id{font-size:13px;font-weight:700;color:var(--green-700);margin-top:6px}
   .rf-packages{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .rf-pkg{border:1.5px solid var(--gray-200);background:var(--white);border-radius:var(--radius-md);padding:10px 4px;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:center}
   .rf-pkg .rf-pkg-time{display:block;font-size:13px;font-weight:700;color:var(--gray-900)}
@@ -13,6 +14,9 @@
   .rf-computed{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius-md);padding:12px 14px;font-size:15px;font-weight:600;color:var(--gray-900)}
   .rf-total{display:flex;justify-content:space-between;align-items:center;padding:12px 0;font-size:14px;color:var(--gray-600)}
   .rf-total b{font-size:20px;color:var(--green-700)}
+  .rf-id-preview{display:none;max-width:100%;max-height:240px;margin-top:12px;border:1px solid var(--gray-200);border-radius:var(--radius-md);object-fit:contain}
+  .rf-id-preview.show{display:block}
+  .rf-id-file-name{font-size:12px;color:var(--gray-600);margin-top:8px;overflow-wrap:anywhere}
 </style>
 <section class="screen" id="rental-form">
   <div class="page-header">
@@ -30,6 +34,7 @@
       <div class="rf-bike" id="rf-bike">
         <div class="rf-bike-name" id="rf-bike-name">—</div>
         <div class="rf-bike-meta" id="rf-bike-meta"></div>
+        <div class="rf-bike-id">Bike ID: <span id="rf-bike-id">—</span></div>
       </div>
 
       <div class="form-group">
@@ -66,9 +71,12 @@
               <rect width="14" height="18" x="5" y="3" rx="2"/>
               <path d="M9 7h6M9 11h6M9 15h4"/>
             </svg>
-            <p>Tap to upload ID</p>
-            <input type="file">
+            <p>Tap to upload a valid ID image or PDF</p>
+            <input id="rf-id-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required onchange="previewBorrowerId(this)">
           </div>
+          <div class="rf-id-file-name" id="rf-id-file-name"></div>
+          <img class="rf-id-preview" id="rf-id-preview" alt="Selected borrower ID preview">
+          <iframe class="rf-id-preview" id="rf-id-pdf-preview" title="Selected borrower ID preview" style="width:100%;height:240px"></iframe>
         </div>
       </div>
 

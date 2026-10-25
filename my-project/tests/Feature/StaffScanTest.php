@@ -8,6 +8,7 @@ use App\Support\RentalPricing;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     Schema::dropIfExists('payment');
@@ -205,6 +206,62 @@ test('rented bike with an active rental returns the session details', function (
     expect(collect($response->json('rental.extend_options'))->pluck('minutes')->all())->toEqual([15, 30, 60]);
 });
 
+test('overdue fee uses the selected package rate and rounded-up overtime hours', function () {
+    $bike = makeScanBike('ES-009', 'rented', 'good', 'E-Scooter');
+    $borrower = Borrower::create(['full_name' => 'Juan Dela Cruz', 'contact_no' => '09171234567']);
+    Rental::create([
+        'borrower_id' => $borrower->borrower_id,
+        'bike_id' => $bike->bike_id,
+        'staff_id' => $this->staff->staff_id,
+        'start_time' => now()->subMinutes(45)->format('Y-m-d H:i:s'),
+        'rental_duration_hrs' => 0.50,
+        'base_fee' => 100,
+        'total_fee' => 100,
+        'status' => 'active',
+    ]);
+
+    $response = scanAsStaff($this, 'ES-009')
+        ->assertOk()
+        ->assertJsonPath('rental.overdue', true)
+        ->assertJsonPath('rental.overtime_rate_per_hour', 200)
+        ->assertJsonPath('rental.estimated_overtime_fee', 200);
+
+    expect($response->json('rental.overtime_minutes'))->toBeGreaterThanOrEqual(14);
+});
+
+test('rented bike scan includes a protected borrower ID preview URL', function () {
+    Storage::fake('local');
+    Storage::disk('local')->put('borrower-ids/borrower-id.pdf', '%PDF-1.4 test ID');
+
+    $bike = makeScanBike('ES-003', 'rented', 'good', 'E-Scooter');
+    $borrower = Borrower::create([
+        'full_name' => 'Maria Santos',
+        'contact_no' => '09171234567',
+        'id_photo_id' => 'borrower-ids/borrower-id.pdf',
+    ]);
+    $rental = Rental::create([
+        'borrower_id' => $borrower->borrower_id,
+        'bike_id' => $bike->bike_id,
+        'staff_id' => $this->staff->staff_id,
+        'start_time' => now()->subMinutes(5)->format('Y-m-d H:i:s'),
+        'rental_duration_hrs' => 0.50,
+        'base_fee' => 100,
+        'total_fee' => 100,
+        'status' => 'active',
+    ]);
+
+    $response = scanAsStaff($this, 'ES-003')
+        ->assertOk()
+        ->assertJsonPath('rental.borrower_name', 'Maria Santos')
+        ->assertJsonPath('rental.borrower_id_url', route('staff.rentals.borrower-id', $rental));
+
+    $this->withSession(['staff_id' => $this->staff->staff_id])
+        ->get($response->json('rental.borrower_id_url'))
+        ->assertOk()
+        ->assertHeader('content-disposition', 'inline; filename=borrower-id.pdf')
+        ->assertSee('%PDF-1.4 test ID', false);
+});
+
 test('rented bike without a rental record returns rental null', function () {
     makeScanBike('RB-011', 'rented', 'good');
 
@@ -233,9 +290,9 @@ test('rental pricing per bike type', function () {
     expect(RentalPricing::priceFor('E-Scooter', 15, true))->toEqual(50);
 });
 
-test('overtime penalty mirrors the database function', function () {
-    expect(RentalPricing::overtimePenalty(15, 0.25))->toEqual(0);
-    expect(RentalPricing::overtimePenalty(16, 0.25))->toEqual(30);
-    expect(RentalPricing::overtimePenalty(60, 1.0))->toEqual(0);
-    expect(RentalPricing::overtimePenalty(125, 1.0))->toEqual(60);
+test('overtime penalty applies the selected package rate per started hour', function () {
+    expect(RentalPricing::overtimePenalty(0, 200))->toEqual(0);
+    expect(RentalPricing::overtimePenalty(16, 200))->toEqual(200);
+    expect(RentalPricing::overtimePenalty(60, 200))->toEqual(200);
+    expect(RentalPricing::overtimePenalty(125, 200))->toEqual(600);
 });

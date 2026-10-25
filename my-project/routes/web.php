@@ -120,6 +120,9 @@ Route::prefix('staff')
         Route::post('/rentals', [RentalController::class, 'store'])
             ->name('staff.rentals.store');
 
+        Route::get('/rentals/{rental}/borrower-id', [RentalController::class, 'showBorrowerId'])
+            ->name('staff.rentals.borrower-id');
+
         Route::post('/rentals/{rental}/extend', [RentalController::class, 'extend'])
             ->name('staff.rentals.extend');
 

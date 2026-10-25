@@ -12,12 +12,13 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 
 /**
  * Staff rentals human ma-scan ang QR:
- *  - store  : i-open ang rental (gamit ang stored procedure sp_open_rental)
+ *  - store  : i-open ang rental (gamit ang stored procedure sp_open_rental_with_contact)
  *  - extend : dugangan ang oras sa active rental
  *  - end    : i-close ang rental (gamit ang stored procedure sp_close_rental)
  *
@@ -32,6 +33,7 @@ class RentalController extends Controller
             'code'          => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9_-]+$/'],
             'borrower_name' => ['required', 'string', 'max:150'],
             'contact_no'    => ['required', 'string', 'regex:/^[0-9+()\-\s]{7,30}$/'],
+            'borrower_id'   => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
             'minutes'       => ['required', 'integer'],
             'borrow_time'   => ['required', 'date_format:H:i'],
         ], [
@@ -72,13 +74,17 @@ class RentalController extends Controller
         }
 
         $staffId = (int) Session::get('staff_id');
+        $idPhotoPath = $request->file('borrower_id')->store('borrower-ids', 'local');
+        if (! $idPhotoPath) {
+            return response()->json(['message' => 'Could not save the borrower ID. Please try again.'], 500);
+        }
 
         try {
             // Ang procedure mo-create sa borrower, rental, payment ug i-set ang bike nga "rented"
-            DB::statement('CALL sp_open_rental(?, ?, ?, ?, ?, ?, ?, @new_rental_id)', [
+            DB::statement('CALL sp_open_rental_with_contact(?, ?, ?, ?, ?, ?, ?, @new_rental_id)', [
                 trim($data['borrower_name']),
                 trim($data['contact_no']),
-                null, // ID photo reference (wala pa gi-save)
+                $idPhotoPath,
                 $bike->bike_id,
                 $staffId,
                 $minutes / 60,
@@ -86,6 +92,8 @@ class RentalController extends Controller
             ]);
             $rentalId = (int) DB::selectOne('SELECT @new_rental_id AS id')->id;
         } catch (QueryException $e) {
+            Storage::disk('local')->delete($idPhotoPath);
+
             return response()->json(['message' => $this->dbMessage($e, 'Could not open the rental.')], 422);
         }
 
@@ -116,6 +124,15 @@ class RentalController extends Controller
             ],
             'rental' => RentalPricing::summary($rental, $bike->bike_type, RentalPricing::dbNow()),
         ], 201);
+    }
+
+    public function showBorrowerId(Rental $rental)
+    {
+        $path = $rental->borrower?->id_photo_id;
+        abort_unless($path && preg_match('#\Aborrower-ids/[A-Za-z0-9._-]+\z#D', $path), 404);
+        abort_unless(Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path, null, [], 'inline');
     }
 
     // POST /staff/rentals/{rental}/extend
@@ -202,10 +219,10 @@ class RentalController extends Controller
         try {
             // Ang procedure mo-compute sa overtime, i-complete ang rental, ug i-balik ang bike nga "available".
             // Ang overtime fee gi-collect karon (p_extra_payment).
-            DB::statement('CALL sp_close_rental(?, ?, ?)', [
+            DB::statement('CALL sp_close_rental_with_rate(?, ?, ?)', [
                 $rental->rental_id,
                 $staffId,
-                $summary['estimated_overtime_fee'],
+                $summary['overtime_rate_per_hour'],
             ]);
         } catch (QueryException $e) {
             return response()->json(['message' => $this->dbMessage($e, 'Could not end the session.')], 422);

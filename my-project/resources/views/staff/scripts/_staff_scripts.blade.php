@@ -8,6 +8,7 @@ function goTo(id) {
     } else if (id === 'report') {
       showToast('You do not have access to maintenance reports.\nPlease contact your administrator.');
     }
+
     return;
   }
 
@@ -257,8 +258,12 @@ function sendJson(method, url, payload) {
     },
   };
   if (payload !== undefined) {
-    options.headers['Content-Type'] = 'application/json';
-    options.body = JSON.stringify(payload);
+    if (payload instanceof FormData) {
+      options.body = payload;
+    } else {
+      options.headers['Content-Type'] = 'application/json';
+      options.body = JSON.stringify(payload);
+    }
   }
 
   return fetch(url, options).then(response => {
@@ -367,9 +372,12 @@ function openRentalForm(data) {
 
   document.getElementById('rf-bike-name').textContent = data.bike.name || data.bike.qr_code;
   document.getElementById('rf-bike-meta').textContent = `${data.bike.qr_code} · ${data.bike.bike_type} · ${data.pricing.rate_label}`;
+  document.getElementById('rf-bike-id').textContent = data.bike.qr_code;
   document.getElementById('rf-name').value = '';
   document.getElementById('rf-contact').value = '';
   document.getElementById('rf-borrow-time').value = data.server_time || '';
+  document.getElementById('rf-id-file').value = '';
+  resetBorrowerIdPreview();
 
   const wrap = document.getElementById('rf-packages');
   wrap.innerHTML = '';
@@ -395,6 +403,43 @@ function openRentalForm(data) {
 
   goTo('rental-form');
   showToast(`${data.bike.qr_code} is available.\nFill in the rental form.`);
+}
+
+let borrowerIdPreviewUrl = null;
+
+function resetBorrowerIdPreview() {
+  if (borrowerIdPreviewUrl) URL.revokeObjectURL(borrowerIdPreviewUrl);
+  borrowerIdPreviewUrl = null;
+  document.getElementById('rf-id-file-name').textContent = '';
+  document.getElementById('rf-id-preview').classList.remove('show');
+  document.getElementById('rf-id-preview').removeAttribute('src');
+  document.getElementById('rf-id-pdf-preview').classList.remove('show');
+  document.getElementById('rf-id-pdf-preview').removeAttribute('src');
+}
+
+function previewBorrowerId(input) {
+  resetBorrowerIdPreview();
+  const file = input.files && input.files[0];
+  if (!file) return;
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+  if (!allowedTypes.includes(file.type)) {
+    input.value = '';
+    showToast('Upload a JPG, PNG, WEBP, or PDF ID.');
+    return;
+  }
+
+  borrowerIdPreviewUrl = URL.createObjectURL(file);
+  document.getElementById('rf-id-file-name').textContent = file.name;
+  if (file.type === 'application/pdf') {
+    const preview = document.getElementById('rf-id-pdf-preview');
+    preview.src = borrowerIdPreviewUrl;
+    preview.classList.add('show');
+  } else {
+    const preview = document.getElementById('rf-id-preview');
+    preview.src = borrowerIdPreviewUrl;
+    preview.classList.add('show');
+  }
 }
 
 function selectPackage(minutes) {
@@ -435,9 +480,11 @@ function submitRental() {
   const name = document.getElementById('rf-name').value.trim();
   const contact = document.getElementById('rf-contact').value.trim();
   const borrowTime = document.getElementById('rf-borrow-time').value;
+  const idFile = document.getElementById('rf-id-file').files[0];
 
   if (!name) { showToast('Please enter the borrower name.'); return; }
   if (!contact) { showToast('Please enter the contact number.'); return; }
+  if (!idFile) { showToast('Please upload the borrower’s valid ID.'); return; }
   if (!borrowTime) { showToast('Please enter the borrow time.'); return; }
   if (!selectedMinutes) { showToast('Please select a rental duration.'); return; }
 
@@ -445,13 +492,15 @@ function submitRental() {
   const confirmBtn = document.getElementById('rf-confirm');
   confirmBtn.disabled = true;
 
-  sendJson('POST', '/staff/rentals', {
-    code: rentalBike.bike.qr_code,
-    borrower_name: name,
-    contact_no: contact,
-    minutes: selectedMinutes,
-    borrow_time: borrowTime,
-  })
+  const rentalFormData = new FormData();
+  rentalFormData.append('code', rentalBike.bike.qr_code);
+  rentalFormData.append('borrower_name', name);
+  rentalFormData.append('contact_no', contact);
+  rentalFormData.append('minutes', selectedMinutes);
+  rentalFormData.append('borrow_time', borrowTime);
+  rentalFormData.append('borrower_id', idFile);
+
+  sendJson('POST', '/staff/rentals', rentalFormData)
     .then(({ ok, data }) => {
       if (!ok) {
         showToast(data.message || 'Could not save the rental.');
@@ -476,6 +525,11 @@ function submitRental() {
       confirmBtn.disabled = false;
     });
 }
+
+let rentedModalRequestId = 0;
+let rentedModalTick = null;
+let rentedModalDeadline = 0;
+let rentedModalRate = 0;
 
 function startTimer(totalSeconds) {
   if (timerInterval) clearInterval(timerInterval);
@@ -571,11 +625,10 @@ function renderSession() {
     ssRow('Interval', rental.duration_label),
     ssRow('Expected return', rental.expected_end_label),
     ssRow('Time remaining', '', '', 'ss-remaining'),
+    ssRow('Status', 'OVERDUE', 'ss-over', 'ss-overdue-status'),
     ssRow('Paid so far', formatPeso(rental.amount_paid)),
+    ssRow('Overtime fee (est.)', formatPeso(rental.estimated_overtime_fee), 'ss-over', 'ss-overtime-fee'),
   );
-  if (rental.estimated_overtime_fee > 0) {
-    body.appendChild(ssRow('Overtime fee (est.)', formatPeso(rental.estimated_overtime_fee), 'ss-over'));
-  }
   updateSessionClock();
   renderExtendChips();
 }
@@ -584,8 +637,21 @@ function updateSessionClock() {
   const el = document.getElementById('ss-remaining');
   if (!el) return;
   const remaining = Math.round((sessionDeadline - Date.now()) / 1000);
-  el.textContent = remaining < 0 ? `Overtime ${formatCountdown(remaining)}` : formatCountdown(remaining);
-  el.classList.toggle('ss-over', remaining < 0);
+  const overdue = remaining < 0;
+  const overtimeMinutes = overdue ? Math.floor((Date.now() - sessionDeadline) / 60000) : 0;
+  const rate = Number(sessionData?.rental?.overtime_rate_per_hour) || 0;
+  const fee = overtimeMinutes > 0 ? Math.ceil(overtimeMinutes / 60) * rate : 0;
+  el.textContent = overdue ? `Overdue ${formatCountdown(remaining)}` : formatCountdown(remaining);
+  el.classList.toggle('ss-over', overdue);
+  sessionData.rental.overdue = overdue;
+  sessionData.rental.estimated_overtime_fee = fee;
+  const overdueStatus = document.getElementById('ss-overdue-status');
+  const overtimeFee = document.getElementById('ss-overtime-fee');
+  if (overdueStatus) overdueStatus.parentElement.hidden = !overdue;
+  if (overtimeFee) {
+    overtimeFee.textContent = formatPeso(fee);
+    overtimeFee.parentElement.hidden = !overdue;
+  }
 }
 
 function startSessionTick() {
@@ -1066,25 +1132,26 @@ function openModal(type, data = {}) {
         <div>
           <div class="modal-bike-title">${data.id ?? 'BK-102'}</div>
           <span class="badge badge-blue"><span class="badge-dot badge-dot-blue"></span>Rented</span>
+          <span class="badge badge-red" id="rented-modal-overdue-badge" hidden>Overdue</span>
         </div>
       </div>
-      <div class="modal-detail-row"><span class="label">Borrowed By</span><span class="value">${data.borrower ?? '—'}</span></div>
-      <div class="modal-detail-row"><span class="label">Borrow Time</span><span class="value">${data.borrowTime ?? '—'}</span></div>
-      <div class="modal-detail-row"><span class="label">Expected Return</span><span class="value">${data.returnTime ?? '—'}</span></div>
-      <div class="modal-detail-row"><span class="label">Status</span><span class="value">Active Rental</span></div>
+      <div class="modal-detail-row"><span class="label">Borrowed By</span><span class="value" id="rented-modal-borrower">Loading…</span></div>
+      <div class="modal-detail-row"><span class="label">Borrow Time</span><span class="value" id="rented-modal-borrow-time">Loading…</span></div>
+      <div class="modal-detail-row"><span class="label">Expected Return</span><span class="value" id="rented-modal-return-time">Loading…</span></div>
+      <div class="modal-detail-row"><span class="label">Status</span><span class="value" id="rented-modal-status">Active Rental</span></div>
+      <div class="modal-detail-row" id="rented-modal-fee-row" hidden><span class="label">Overtime fee (est.)</span><span class="value" id="rented-modal-overtime-fee">₱0</span></div>
       <div class="modal-actions">
         <button class="primary-btn" onclick="closeModal(); startScan('${data.id ?? ''}')">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx=".5"/><rect width="5" height="5" x="16" y="3" rx=".5"/><rect width="5" height="5" x="3" y="16" rx=".5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/></svg>
           Scan to Return
         </button>
-        <button class="primary-btn" onclick="toggleID()">
+        <button class="primary-btn" id="rented-modal-id-button" onclick="toggleID()" disabled>
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>
           View Borrower ID
         </button>
         <div id="idContainer" style="display:none">
           <div class="id-preview-box">
-            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>
-            <p>Borrower ID File Preview</p>
+            <iframe id="rented-modal-id-preview" title="Borrower ID preview" style="display:block;width:100%;height:320px;border:0"></iframe>
           </div>
         </div>
         <button class="primary-btn outline" onclick="closeModal()">Close</button>
@@ -1136,12 +1203,91 @@ function openModal(type, data = {}) {
   }
 
   document.getElementById('modalBg').classList.add('open');
+  if (type === 'rented' && data.id) loadRentedBikeDetails(data.id);
 }
-function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
+function closeModal() {
+  rentedModalRequestId++;
+  if (rentedModalTick) {
+    clearInterval(rentedModalTick);
+    rentedModalTick = null;
+  }
+  document.getElementById('modalBg').classList.remove('open');
+}
 function closeModalOutside(e) { if (e.target === document.getElementById('modalBg')) closeModal(); }
 function toggleID() {
   const c = document.getElementById('idContainer');
+  if (!c.dataset.idUrl) {
+    showToast('No borrower ID was saved for this rental.');
+    return;
+  }
   c.style.display = c.style.display === 'none' ? 'block' : 'none';
+}
+
+function loadRentedBikeDetails(bikeCode) {
+  const requestId = ++rentedModalRequestId;
+  if (rentedModalTick) {
+    clearInterval(rentedModalTick);
+    rentedModalTick = null;
+  }
+  sendJson('GET', `/staff/scan/${encodeURIComponent(bikeCode)}`)
+    .then(({ ok, data }) => {
+      if (requestId !== rentedModalRequestId || !document.getElementById('modalBg').classList.contains('open')) return;
+      if (!ok) throw new Error(data.message || 'Could not load rental details.');
+
+      const rental = data.rental;
+      document.getElementById('rented-modal-borrower').textContent = rental?.borrower_name || '—';
+      document.getElementById('rented-modal-borrow-time').textContent = rental?.start_label || '—';
+      document.getElementById('rented-modal-return-time').textContent = rental?.expected_end_label || '—';
+      rentedModalDeadline = Date.now() + (Number(rental?.seconds_remaining) || 0) * 1000;
+      rentedModalRate = Number(rental?.overtime_rate_per_hour) || 0;
+      updateRentedModalOverdue(rental);
+      if (rental) rentedModalTick = setInterval(() => updateRentedModalOverdue(rental), 1000);
+
+      const idButton = document.getElementById('rented-modal-id-button');
+      const idContainer = document.getElementById('idContainer');
+      const idUrl = rental?.borrower_id_url;
+      if (idUrl) {
+        idContainer.dataset.idUrl = idUrl;
+        document.getElementById('rented-modal-id-preview').src = idUrl;
+        idButton.disabled = false;
+      } else {
+        delete idContainer.dataset.idUrl;
+        idButton.disabled = true;
+      }
+    })
+    .catch(error => {
+      if (requestId === rentedModalRequestId) {
+        showToast(error.message || 'Could not load rental details.');
+        const borrower = document.getElementById('rented-modal-borrower');
+        if (borrower) borrower.textContent = 'Unavailable';
+      }
+    });
+}
+
+function updateRentedModalOverdue(rental) {
+  const badge = document.getElementById('rented-modal-overdue-badge');
+  const status = document.getElementById('rented-modal-status');
+  const feeElement = document.getElementById('rented-modal-overtime-fee');
+  const feeRow = document.getElementById('rented-modal-fee-row');
+  if (!rental) {
+    if (badge) badge.hidden = true;
+    if (status) status.textContent = 'No active rental';
+    if (feeRow) feeRow.hidden = true;
+    return;
+  }
+
+  const remaining = Math.round((rentedModalDeadline - Date.now()) / 1000);
+  const overdue = remaining < 0;
+  const overtimeMinutes = overdue ? Math.floor((Date.now() - rentedModalDeadline) / 60000) : 0;
+  const fee = overtimeMinutes > 0 ? Math.ceil(overtimeMinutes / 60) * rentedModalRate : 0;
+  if (!badge || !status || !feeElement) return;
+  badge.hidden = !overdue;
+  status.textContent = overdue ? 'Overdue' : 'Active Rental';
+  status.classList.toggle('ss-over', overdue);
+  feeElement.textContent = formatPeso(fee);
+  if (feeRow) feeRow.hidden = !overdue;
+  rental.overdue = overdue;
+  rental.estimated_overtime_fee = fee;
 }
 
 // ── REPORT ───────────────────────────────────────────────────────────────────

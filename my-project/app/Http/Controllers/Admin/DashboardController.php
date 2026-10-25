@@ -10,6 +10,7 @@ use App\Models\Bicycle;       // model sa bicycle table
 use App\Models\IssueReport;   // model sa issue report table
 use App\Models\Rental;        // model sa rental table
 use App\Models\Staff;         // model sa staff table 
+use App\Support\RentalPricing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -273,7 +274,15 @@ class DashboardController extends Controller
     })->toBase(); // downgrade to plain Support Collection so merge() doesn't call getKey() on stdClass
 
 
-    $bikes = Bicycle::orderBy('bike_id')->get()->map(function (Bicycle $bike) {
+    $activeRentals = Rental::with('payment')
+        ->where('status', 'active')
+        ->get()
+        ->keyBy('bike_id');
+    $now = RentalPricing::dbNow();
+    $bikes = Bicycle::orderBy('bike_id')->get()->map(function (Bicycle $bike) use ($activeRentals, $now) {
+        $rental = $activeRentals->get($bike->bike_id);
+        $summary = $rental ? RentalPricing::summary($rental, $bike->bike_type, $now) : null;
+
         return (object) [
             'bike_code' => $bike->qr_code,
             'name' => trim($bike->model . ' · ' . $bike->make),
@@ -282,6 +291,8 @@ class DashboardController extends Controller
             'status' => $bike->status === 'repair' ? 'Maintenance' : ucfirst($bike->status),
             'condition' => $bike->condition === 'repair' ? 'Needs Repair' : ucfirst($bike->condition),
             'last_maintenance' => null,
+            'overdue' => $summary['overdue'] ?? false,
+            'estimated_overtime_fee' => $summary['estimated_overtime_fee'] ?? 0.0,
         ];
     });
     $reports  = collect([]);

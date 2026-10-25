@@ -151,6 +151,9 @@
           <span class="badge {{ $statusBadge['class'] }}" style="flex-shrink:0;font-size:11px">
             {{ $statusBadge['label'] }}
           </span>
+          @if($statusVal === 'rented' && $bike->overdue)
+            <span class="badge badge-red" style="flex-shrink:0;font-size:11px">Overdue · ₱{{ number_format($bike->estimated_overtime_fee, 2) }}</span>
+          @endif
           @if(($canEditInventory ?? false) || ($canDeleteInventory ?? false))
             <div style="display:flex;gap:4px;flex-shrink:0">
               @if($canEditInventory ?? false)

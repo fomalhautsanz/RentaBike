@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bicycle;
+use App\Models\Rental;
 use App\Models\Staff;
+use App\Support\RentalPricing;
 use Illuminate\Support\Facades\Session;
 
 class DashboardController extends Controller
@@ -17,7 +19,21 @@ class DashboardController extends Controller
             'repair'    => Bicycle::where('condition', '!=', 'good')->count(),
             'total'     => Bicycle::count(),
         ];
-        $bikes = Bicycle::query()->latest('created_at')->get();
+        $activeRentals = Rental::with('payment')
+            ->where('status', 'active')
+            ->get()
+            ->keyBy('bike_id');
+        $now = RentalPricing::dbNow();
+        $addOverdueDetails = static function (Bicycle $bike) use ($activeRentals, $now): Bicycle {
+            $rental = $activeRentals->get($bike->bike_id);
+            $summary = $rental ? RentalPricing::summary($rental, $bike->bike_type, $now) : null;
+            $bike->setAttribute('overdue', $summary['overdue'] ?? false);
+            $bike->setAttribute('estimated_overtime_fee', $summary['estimated_overtime_fee'] ?? 0.0);
+
+            return $bike;
+        };
+
+        $bikes = Bicycle::query()->latest('created_at')->get()->map($addOverdueDetails);
         $bikeCategories = $bikes->groupBy('bike_type');
         $dashboardBikes = collect([
             'available' => Bicycle::query()
@@ -36,6 +52,7 @@ class DashboardController extends Controller
                 ->latest('bike_id')
                 ->first(),
         ])->filter();
+        $dashboardBikes->each($addOverdueDetails);
 
         $staff = Staff::find(Session::get('staff_id'));
         $staffPermissions = $staff?->permissions ?? [];
