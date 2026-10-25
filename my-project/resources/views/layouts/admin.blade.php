@@ -8,8 +8,7 @@
 <title>RentaBike — Admin Portal</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-  
-  /* ── fixed thi shi ── */
+
   /* ── RESET ── */
   *, *::before, *::after {
     box-sizing: border-box;
@@ -224,7 +223,7 @@
   /* ── STATS ── */
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 20px;
     margin-bottom: 24px;
   }
@@ -234,27 +233,6 @@
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     padding: 24px;
-  }
-
-  .reports-stats-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 24px;
-  }
-
-  .reports-stats-grid .stat-card {
-    min-height: 242px;
-    padding: 30px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-  }
-
-  @media (max-width: 900px) {
-    .reports-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  }
-
-  @media (max-width: 560px) {
-    .reports-stats-grid { grid-template-columns: 1fr; }
   }
 
   .stat-icon {
@@ -320,16 +298,6 @@
     position: relative;
     width: 100%;
     height: 280px;
-  }
-
-  .charts-grid > .card {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .charts-grid > .card .chart-wrap {
-    flex: 1;
-    min-height: 280px;
   }
 
   /* ── TABLES ── */
@@ -463,7 +431,6 @@
     border-radius: 999px;
     font-size: 12px;
     font-weight: 500;
-    white-space: nowrap;
   }
 
   .badge-green  { background: #f0fdf4; color: #15803d; }
@@ -853,21 +820,6 @@
   }
 
   .qr-box { display: inline-block; margin-bottom: 12px; }
-
-  .qr-sheet-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 12px;
-  }
-
-  .qr-sheet-item {
-    text-align: center;
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .qr-sheet-item img { width: 100%; max-width: 120px; display: block; margin: 0 auto 4px; }
 
   .qr-grid {
     display: grid;
