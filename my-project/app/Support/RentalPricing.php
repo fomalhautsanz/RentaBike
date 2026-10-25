@@ -16,9 +16,6 @@ use Illuminate\Support\Facades\DB;
  */
 class RentalPricing
 {
-    // Parehas sa DB function fn_compute_overtime_penalty (matag oras, gi-ceil, PHP 30)
-    public const OVERTIME_RATE_PER_HOUR = 30;
-
     // E-Scooter: fixed packages (minutes => price)
     private const SCOOTER_PACKAGES = [15 => 50, 30 => 100, 60 => 200];
 
@@ -49,7 +46,9 @@ class RentalPricing
 
     public static function hourlyRate(?string $type): int
     {
-        return self::HOURLY_RATES[self::normalize($type)] ?? self::DEFAULT_HOURLY_RATE;
+        return self::isScooter($type)
+            ? self::SCOOTER_PACKAGES[60]
+            : (self::HOURLY_RATES[self::normalize($type)] ?? self::DEFAULT_HOURLY_RATE);
     }
 
     /** minutes => price para sa bag-ong rental */
@@ -127,14 +126,13 @@ class RentalPricing
     }
 
     /**
-     * Overtime penalty, gi-mirror gikan sa sp_close_rental / fn_compute_overtime_penalty:
-     * ang actual hours gi-round sa 2 decimals, dayon matag oras (ceil) x PHP 30.
+     * Charge each started overtime hour at the effective rate of the selected package.
      */
-    public static function overtimePenalty(int $elapsedMinutes, float $agreedHours): float
+    public static function overtimePenalty(int $overtimeMinutes, float $hourlyRate): float
     {
-        $over = round(round($elapsedMinutes / 60, 2) - round($agreedHours, 2), 2);
-
-        return $over > 0 ? (float) (ceil($over) * self::OVERTIME_RATE_PER_HOUR) : 0.0;
+        return $overtimeMinutes > 0
+            ? round(ceil($overtimeMinutes / 60) * $hourlyRate, 2)
+            : 0.0;
     }
 
     /**
@@ -157,12 +155,17 @@ class RentalPricing
         $minutes = (int) round(((float) $rental->rental_duration_hrs) * 60);
         $end     = $start->copy()->addMinutes($minutes);
 
-        $elapsedMinutes   = max(0, intdiv($now->getTimestamp() - $start->getTimestamp(), 60));
         $secondsRemaining = $end->getTimestamp() - $now->getTimestamp();
+        $overtimeMinutes  = $secondsRemaining < 0
+            ? (int) floor(abs($secondsRemaining) / 60)
+            : 0;
 
         $baseFee = (float) $rental->base_fee;
         $paid    = (float) ($rental->payment?->amount_paid ?? 0);
-        $penalty = self::overtimePenalty($elapsedMinutes, $minutes / 60);
+        $hourlyRate = $minutes > 0
+            ? round($baseFee / ($minutes / 60), 2)
+            : (float) self::hourlyRate($bikeType);
+        $penalty = self::overtimePenalty($overtimeMinutes, $hourlyRate);
 
         $endLabel = $end->format('g:i A');
         if ($end->toDateString() !== $start->toDateString()) {
@@ -178,7 +181,9 @@ class RentalPricing
             'duration_label'         => self::durationLabel($minutes),
             'expected_end_label'     => $endLabel,
             'seconds_remaining'      => $secondsRemaining,
-            'overtime_minutes'       => $secondsRemaining < 0 ? (int) ceil(abs($secondsRemaining) / 60) : 0,
+            'overdue'                => $secondsRemaining < 0,
+            'overtime_minutes'       => $overtimeMinutes,
+            'overtime_rate_per_hour' => $hourlyRate,
             'base_fee'               => $baseFee,
             'amount_paid'            => $paid,
             'estimated_overtime_fee' => $penalty,

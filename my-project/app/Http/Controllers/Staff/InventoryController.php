@@ -7,12 +7,30 @@ use App\Models\Bicycle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class InventoryController extends Controller
 {
     public function index(): RedirectResponse
     {
         return redirect()->route('staff.home');
+    }
+
+    public function nextBikeCode(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'bike_type' => ['required', 'string', Rule::in(Bicycle::bikeTypes())],
+            'exclude_qr_code' => ['nullable', 'string', 'exists:bicycle,qr_code'],
+        ]);
+
+        return response()->json([
+            'bike_code' => Bicycle::nextQrCode(
+                $validated['bike_type'],
+                isset($validated['exclude_qr_code'])
+                    ? (int) Bicycle::where('qr_code', $validated['exclude_qr_code'])->value('bike_id')
+                    : null
+            ),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse|JsonResponse
@@ -25,12 +43,12 @@ class InventoryController extends Controller
         $validated = $request->validate([
             'model' => ['required', 'string', 'max:100'],
             'make' => ['required', 'string', 'max:100'],
-            'bike_type' => ['required', 'string', 'max:50'],
+            'bike_type' => ['required', 'string', Rule::in(Bicycle::bikeTypes())],
             'condition' => ['required', 'in:Good,Needs Repair,Missing'],
         ]);
 
         $bike = Bicycle::create([
-            'qr_code' => Bicycle::nextQrCode(),
+            'qr_code' => Bicycle::nextQrCode($validated['bike_type']),
             'model' => $validated['model'],
             'make' => $validated['make'],
             'bike_type' => $validated['bike_type'],
@@ -41,7 +59,7 @@ class InventoryController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'Bike added to inventory.',
-                'next_qr_code' => Bicycle::nextQrCode(),
+                'next_qr_code' => Bicycle::nextQrCode($bike->bike_type),
                 'bike' => [
                     'id' => $bike->qr_code,
                     'qr_code' => $bike->qr_code,
@@ -63,7 +81,10 @@ class InventoryController extends Controller
         $validated = $request->validate([
             'model' => ['required', 'string', 'max:100'],
             'make' => ['required', 'string', 'max:100'],
-            'bike_type' => ['required', 'string', 'max:50'],
+            'bike_type' => ['required', 'string', Rule::in(array_unique([
+                ...Bicycle::bikeTypes(),
+                $bike->bike_type,
+            ]))],
             'condition' => ['required', 'in:Good,Needs Repair,Missing'],
         ]);
 
@@ -72,6 +93,9 @@ class InventoryController extends Controller
             'model' => $validated['model'],
             'make' => $validated['make'],
             'bike_type' => $validated['bike_type'],
+            'qr_code' => $bike->bike_type === $validated['bike_type']
+                ? $bike->qr_code
+                : Bicycle::nextQrCode($validated['bike_type'], $bike->bike_id),
             'condition' => $condition === 'good' ? 'good' : ($condition === 'missing' ? 'missing' : 'repair'),
             'status' => $condition === 'good'
                 ? ($bike->status === 'rented' ? 'rented' : 'available')
@@ -82,13 +106,13 @@ class InventoryController extends Controller
             return response()->json([
                 'message' => 'Bike updated in inventory.',
                 'bike' => [
-                    'id' => $bike->fresh()->qr_code,
-                    'qr_code' => $bike->fresh()->qr_code,
-                    'model' => $bike->fresh()->model,
-                    'make' => $bike->fresh()->make,
-                    'bike_type' => $bike->fresh()->bike_type,
-                    'condition' => $bike->fresh()->condition,
-                    'status' => $bike->fresh()->status,
+                    'id' => $bike->qr_code,
+                    'qr_code' => $bike->qr_code,
+                    'model' => $bike->model,
+                    'make' => $bike->make,
+                    'bike_type' => $bike->bike_type,
+                    'condition' => $bike->condition,
+                    'status' => $bike->status,
                 ],
             ]);
         }

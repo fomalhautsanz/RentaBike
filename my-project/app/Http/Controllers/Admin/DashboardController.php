@@ -10,6 +10,7 @@ use App\Models\Bicycle;       // model sa bicycle table
 use App\Models\IssueReport;   // model sa issue report table
 use App\Models\Rental;        // model sa rental table
 use App\Models\Staff;         // model sa staff table 
+use App\Support\RentalPricing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -273,7 +274,15 @@ class DashboardController extends Controller
     })->toBase(); // downgrade to plain Support Collection so merge() doesn't call getKey() on stdClass
 
 
-    $bikes = Bicycle::orderBy('bike_id')->get()->map(function (Bicycle $bike) {
+    $activeRentals = Rental::with('payment')
+        ->where('status', 'active')
+        ->get()
+        ->keyBy('bike_id');
+    $now = RentalPricing::dbNow();
+    $bikes = Bicycle::orderBy('bike_id')->get()->map(function (Bicycle $bike) use ($activeRentals, $now) {
+        $rental = $activeRentals->get($bike->bike_id);
+        $summary = $rental ? RentalPricing::summary($rental, $bike->bike_type, $now) : null;
+
         return (object) [
             'bike_code' => $bike->qr_code,
             'name' => trim($bike->model . ' · ' . $bike->make),
@@ -282,6 +291,8 @@ class DashboardController extends Controller
             'status' => $bike->status === 'repair' ? 'Maintenance' : ucfirst($bike->status),
             'condition' => $bike->condition === 'repair' ? 'Needs Repair' : ucfirst($bike->condition),
             'last_maintenance' => null,
+            'overdue' => $summary['overdue'] ?? false,
+            'estimated_overtime_fee' => $summary['estimated_overtime_fee'] ?? 0.0,
         ];
     });
     $reports  = collect([]);
@@ -295,7 +306,7 @@ class DashboardController extends Controller
     $inProgressReports = IssueReport::where('status', 'in_progress')->count();
     $resolvedReports   = IssueReport::where('status', 'resolved')->count();
 
-    $nextBikeCode = Bicycle::nextQrCode();
+    $nextBikeCode = Bicycle::nextQrCode('Mountain Bike');
 
     return view('admin.dashboard', compact(
         'staff',
@@ -313,7 +324,7 @@ class DashboardController extends Controller
     $validator = Validator::make($request->all(), [
         'model' => ['required', 'string', 'max:100'],
         'make' => ['required', 'string', 'max:100'],
-        'bike_type' => ['required', 'string', 'max:50'],
+        'bike_type' => ['required', 'string', 'in:' . implode(',', Bicycle::bikeTypes())],
         'condition' => ['required', 'in:good,repair,missing'],
     ]);
 
@@ -327,13 +338,30 @@ class DashboardController extends Controller
 
     Bicycle::create([
         ...$validated,
-        'qr_code' => Bicycle::nextQrCode(),
+        'qr_code' => Bicycle::nextQrCode($validated['bike_type']),
         'status' => $validated['condition'] === 'good' ? 'available' : 'repair',
     ]);
 
     return $this->backToTab($request, 'bikes')
         ->with('success', 'Bike added successfully.');
 }
+
+    public function nextBikeCode(Request $request)
+    {
+        $validated = $request->validate([
+            'bike_type' => ['required', 'string', 'in:' . implode(',', Bicycle::bikeTypes())],
+            'exclude_qr_code' => ['nullable', 'string', 'exists:bicycle,qr_code'],
+        ]);
+
+        return response()->json([
+            'bike_code' => Bicycle::nextQrCode(
+                $validated['bike_type'],
+                isset($validated['exclude_qr_code'])
+                    ? (int) Bicycle::where('qr_code', $validated['exclude_qr_code'])->value('bike_id')
+                    : null
+            ),
+        ]);
+    }
 
     public function updateBike(Request $request, Bicycle $bike)
     {
@@ -345,7 +373,10 @@ class DashboardController extends Controller
         $validator = Validator::make($request->all(), [
             'model' => ['required', 'string', 'max:100'],
             'make' => ['required', 'string', 'max:100'],
-            'bike_type' => ['required', 'string', 'max:50'],
+            'bike_type' => ['required', 'string', Rule::in(array_unique([
+                ...Bicycle::bikeTypes(),
+                $bike->bike_type,
+            ]))],
             'status' => ['nullable', 'in:available,rented,repair'],
             'condition' => ['required', 'in:good,repair,missing'],
         ]);
@@ -369,6 +400,9 @@ class DashboardController extends Controller
             'model' => $validated['model'],
             'make' => $validated['make'],
             'bike_type' => $validated['bike_type'],
+            'qr_code' => $bike->bike_type === $validated['bike_type']
+                ? $bike->qr_code
+                : Bicycle::nextQrCode($validated['bike_type'], $bike->bike_id),
             'status' => $status,
             'condition' => $validated['condition'],
         ]);

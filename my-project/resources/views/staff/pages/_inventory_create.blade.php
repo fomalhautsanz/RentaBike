@@ -23,13 +23,13 @@
         </div>
       @endif
 
-      <form id="inventory-create-form" method="POST" action="{{ route('staff.inventory.store') }}" data-live-form="create">
+      <form id="inventory-create-form" method="POST" action="{{ route('staff.inventory.store') }}" data-live-form="create" data-bike-code-preview-url="{{ route('staff.inventory.next-code') }}">
         @csrf
 
         {{-- QR Code --}}
         <div class="form-group">
           <label class="form-label" for="qr-code">Bike ID</label>
-          <input id="qr-code" class="form-input" value="{{ $nextBikeCode }}" readonly>
+          <input id="qr-code" data-bike-code class="form-input" value="{{ $nextBikeCode }}" readonly>
         </div>
 
         {{-- Model --}}
@@ -49,7 +49,7 @@
         {{-- Bike Type --}}
         <div class="form-group">
           <label class="form-label" for="bike-type">Bike Type</label>
-          <select id="bike-type" name="bike_type" class="form-select" required>
+          <select id="bike-type" name="bike_type" class="form-select" onchange="updateStaffBikeCodePreview(this)" required>
             @foreach(['Mountain Bike','City Bike',"Lady's/Men's Bike",'E-Scooter','Road Bike','Sidecar Bike',"Children's Bike"] as $type)
               <option value="{{ $type }}" @selected(old('bike_type','Mountain Bike') === $type)>{{ $type }}</option>
             @endforeach

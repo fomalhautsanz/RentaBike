@@ -21,10 +21,10 @@ class DatabaseSeeder extends Seeder
 
         DB::table('bicycle')->insert(
             [
-                'qr_code' => 'RB-001',
+                'qr_code' => 'MB-001',
                 'model' => 'Test Bike',
                 'make' => 'Test',
-                'bike_type' => 'standard',
+                'bike_type' => 'Mountain Bike',
                 'status' => 'available',
                 'condition' => 'good',
                 'created_at' => now(),

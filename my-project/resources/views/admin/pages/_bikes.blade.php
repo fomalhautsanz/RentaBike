@@ -50,6 +50,9 @@
             <span class="badge {{ $bike->status === 'Available' ? 'badge-green' : ($bike->status === 'Rented' ? 'badge-blue' : 'badge-orange') }}">
               {{ $bike->status }}
             </span>
+            @if($bike->status === 'Rented' && $bike->overdue)
+              <span class="badge badge-red" style="margin-left:4px">Overdue · ₱{{ number_format($bike->estimated_overtime_fee, 2) }}</span>
+            @endif
           </td>
           <td>
             <span class="badge {{ $bike->condition === 'Good' ? 'badge-green' : ($bike->condition === 'Needs Repair' ? 'badge-yellow' : 'badge-red') }}">

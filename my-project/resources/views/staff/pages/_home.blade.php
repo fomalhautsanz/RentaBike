@@ -121,8 +121,18 @@ $repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $total
             <div class="dashboard-bike-icon dashboard-status-icon {{ $statusInfo['class'] }}" aria-hidden="true">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
             </div>
-            <div class="dashboard-bike-row-copy"><h4>{{ $bike->qr_code }}</h4><p>{{ $statusInfo['detail'] }}</p></div>
-            <span class="badge {{ $statusInfo['class'] === 'available' ? 'badge-green' : ($statusInfo['class'] === 'rented' ? 'badge-blue' : 'badge-orange') }}"><span class="badge-dot {{ $statusInfo['class'] === 'available' ? 'badge-dot-green' : ($statusInfo['class'] === 'rented' ? 'badge-dot-blue' : 'badge-dot-orange') }}"></span>{{ $statusInfo['label'] }}</span>
+            <div class="dashboard-bike-row-copy">
+              <h4>{{ $bike->qr_code }}</h4>
+              <p>{{ $statusInfo['detail'] }}</p>
+              @if($statusType === 'rented' && $bike->overdue)
+                <p style="color:var(--red-600);font-weight:600">Estimated overtime: ₱{{ number_format($bike->estimated_overtime_fee, 2) }}</p>
+              @endif
+            </div>
+            @if($statusType === 'rented' && $bike->overdue)
+              <span class="badge badge-red">Overdue</span>
+            @else
+              <span class="badge {{ $statusInfo['class'] === 'available' ? 'badge-green' : ($statusInfo['class'] === 'rented' ? 'badge-blue' : 'badge-orange') }}"><span class="badge-dot {{ $statusInfo['class'] === 'available' ? 'badge-dot-green' : ($statusInfo['class'] === 'rented' ? 'badge-dot-blue' : 'badge-dot-orange') }}"></span>{{ $statusInfo['label'] }}</span>
+            @endif
             <div class="bike-card-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
         </div>
       @empty
