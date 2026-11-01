@@ -1,7 +1,8 @@
 {{-- mao ni akong gi fix na ui kay naguba pag merge argh --}}
 
 {{-- update: CONNECTED NA SA REAL DATA --}}
-<section id="page-dashboard" class="page active">
+{{-- dili i-show ang dashboard kung lain nga tab ang i-open, para dili mo-flash pag reload --}}
+<section id="page-dashboard" class="page {{ in_array(request('tab', session('active_tab')), ['staff', 'bikes', 'maintenance', 'reports', 'rentals'], true) ? '' : 'active' }}">
   <div class="page-header">
     <div>
       <div class="page-title">Admin Dashboard</div>
@@ -26,7 +27,11 @@
         <div class="stat-icon" style="background:#f0fdf4">
           <svg width="22" height="22" fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
         </div>
-        <span class="stat-change up">↑ 12%</span>
+        @if (!is_null($stats['available_percent']))
+          <span class="stat-change" style="color:#16a34a" title="All {{ $stats['total_bikes'] }} bikes">
+            100%
+          </span>
+        @endif
       </div>
       <div class="stat-value">{{ $stats['total_bikes'] }}</div>
       <div class="stat-label">Total Bikes</div>
@@ -36,6 +41,9 @@
         <div class="stat-icon" style="background:#eff6ff">
           <svg width="22" height="22" fill="none" stroke="#2563eb" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         </div>
+        @if (!is_null($stats['active_percent']))
+          <span class="stat-change" style="color:#2563eb" title="{{ $stats['active_rentals'] }} of {{ $stats['total_bikes'] }} bikes are rented out">{{ $stats['active_percent'] }}%</span>
+        @endif
       </div>
       <div class="stat-value">{{ $stats['active_rentals'] }}</div>
       <div class="stat-label">Active Rentals</div>
@@ -45,6 +53,9 @@
         <div class="stat-icon" style="background:#fff7ed">
           <svg width="22" height="22" fill="none" stroke="#ea580c" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
         </div>
+        @if (!is_null($stats['maintenance_percent']))
+          <span class="stat-change" style="color:#ea580c" title="{{ $stats['under_maintenance'] }} of {{ $stats['total_bikes'] }} bikes are under maintenance">{{ $stats['maintenance_percent'] }}%</span>
+        @endif
       </div>
       <div class="stat-value">{{ $stats['under_maintenance'] }}</div>
       <div class="stat-label">Under Maintenance</div>
@@ -60,6 +71,9 @@
             <path d="M12 17.5V14l-3-3 4-3 2 3h2"/>
           </svg>
         </div>
+        @if (!is_null($stats['available_percent']))
+          <span class="stat-change" style="color:#14b8a6" title="{{ $stats['available_bikes'] }} of {{ $stats['total_bikes'] }} bikes are available">{{ $stats['available_percent'] }}%</span>
+        @endif
       </div>
       <div class="stat-value">{{ $stats['available_bikes'] }}</div>
       <div class="stat-label">Available Bikes</div>
@@ -69,6 +83,10 @@
         <div class="stat-icon" style="background:#f0fdf4">
           <svg width="22" height="22" fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         </div>
+        @php $revenueChange = $stats['revenue_change'] ?? 0; @endphp
+        <span class="stat-change" style="color:#16a34a" title="Compared with the same days last month">
+          {{ $revenueChange > 0 ? '↑ ' : ($revenueChange < 0 ? '↓ ' : '') }}{{ abs($revenueChange) }}%
+        </span>
       </div>
       <div class="stat-value">₱{{ number_format($stats['revenue'], 2) }}</div>
       <div class="stat-label">Revenue This Month</div>
@@ -141,7 +159,7 @@
             <div class="activity-meta">
               <span>
                 <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                {{ $log->timestamp->diffForHumans() }}
+                {{ $log->time_ago }}
               </span>
               <span>{{ ucfirst($log->user_type) }}: {{ $log->actor_name }}</span>
             </div>
