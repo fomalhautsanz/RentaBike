@@ -105,8 +105,11 @@ Route::prefix('staff')
         Route::get('/home', [StaffDashboardController::class, 'index'])
             ->name('staff.home');
 
-        Route::get('/export', [StaffDashboardController::class, 'exportStaffDashboardCsv'])
+        Route::get('/export', [StaffDashboardController::class, 'exportBikeInventoryData'])
             ->name('staff.export');
+
+        Route::get('/activity-logs/today', [StaffDashboardController::class, 'todayActivityLogs'])
+            ->name('staff.activity-logs.today');
 
         Route::get('/inventory', [InventoryController::class, 'index'])
             ->name('staff.inventory');

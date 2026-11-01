@@ -103,10 +103,21 @@ $repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $total
         <h3>Bike Inventory</h3>
         <p>Latest bike shown for each status</p>
       </div>
-      <a class="dashboard-view-all" onclick="goTo('inventory')">
-        View all
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-      </a>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button type="button" onclick="exportTodayActivityLogs()"
+          style="display:inline-flex;align-items:center;gap:5px;padding:8px 12px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-md);font-size:12.5px;font-weight:600;color:var(--gray-700);text-decoration:none;box-shadow:var(--shadow-sm);cursor:pointer">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Today's Logs
+        </button>
+        <a class="dashboard-view-all" onclick="goTo('inventory')">
+          View all
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </a>
+      </div>
     </div>
     <div class="dashboard-category-list dashboard-status-list">
       @forelse($dashboardBikes as $statusType => $bike)
@@ -142,3 +153,85 @@ $repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $total
   </div>
 
 </section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script>
+async function exportTodayActivityLogs() {
+  try {
+    const response = await fetch(@json(route('staff.activity-logs.today')), {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!response.ok) {
+      throw new Error('Could not load today’s activity logs.');
+    }
+
+    const { date, logs } = await response.json();
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Activity Logs');
+
+    worksheet.columns = [
+      { width: 12 }, { width: 24 }, { width: 16 },
+      { width: 24 }, { width: 60 }, { width: 24 },
+    ];
+
+    const thin = { style: 'thin' };
+    const border = { top: thin, left: thin, bottom: thin, right: thin };
+    const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+
+    worksheet.mergeCells('A1:F1');
+    const title = worksheet.getCell('A1');
+    title.value = 'RENTABIKE — ACTIVITY LOGS';
+    title.font = { bold: true, size: 16, color: { argb: 'FF1F3864' } };
+    title.fill = fill('FFFFFF00');
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    worksheet.getRow(1).height = 30;
+
+    worksheet.mergeCells('A2:F2');
+    const generated = worksheet.getCell('A2');
+    generated.value = new Date().toLocaleString('en-US', {
+      timeZone: 'Asia/Manila',
+      month: 'long', day: 'numeric', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true
+    });
+    generated.font = { italic: true, size: 11 };
+    generated.alignment = { horizontal: 'center' };
+
+    const headers = ['Log ID', 'Actor', 'User Type', 'Action', 'Details', 'Timestamp'];
+    const headerRow = worksheet.getRow(4);
+    headers.forEach((header, index) => {
+      const cell = headerRow.getCell(index + 1);
+      cell.value = header;
+      cell.font = { bold: true };
+      cell.fill = fill('FFD9EAF7');
+      cell.border = border;
+    });
+
+    logs.forEach((log, index) => {
+      const row = worksheet.getRow(index + 5);
+      [log.log_id, log.actor, log.user_type, log.action, log.details, log.timestamp]
+        .forEach((value, cellIndex) => {
+          const cell = row.getCell(cellIndex + 1);
+          cell.value = value;
+          cell.border = border;
+          cell.alignment = { vertical: 'top', wrapText: true };
+        });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `activity-logs-${date}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    showToast('Today’s activity logs exported successfully.');
+  } catch (error) {
+    showToast(error.message || 'Could not export today’s activity logs.');
+  }
+}
+</script>
