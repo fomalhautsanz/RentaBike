@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\StaffPasswordResetController;
 use App\Http\Controllers\Auth\StaffLoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
@@ -42,6 +43,18 @@ Route::get('/staff/login', [StaffLoginController::class, 'showLogin'])
 
 Route::post('/staff/login', [StaffLoginController::class, 'login'])
     ->name('staff.login.submit');
+
+Route::get('/staff/password/forgot', [StaffPasswordResetController::class, 'showRequestForm'])
+    ->name('staff.password.request');
+
+Route::post('/staff/password/forgot', [StaffPasswordResetController::class, 'sendOtp'])
+    ->name('staff.password.email');
+
+Route::get('/staff/password/reset', [StaffPasswordResetController::class, 'showResetForm'])
+    ->name('staff.password.reset');
+
+Route::post('/staff/password/reset', [StaffPasswordResetController::class, 'resetPassword'])
+    ->name('staff.password.update');
 
 Route::post('/staff/logout', [StaffLoginController::class, 'logout'])
     ->name('staff.logout');
