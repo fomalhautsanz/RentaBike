@@ -8,15 +8,15 @@
     </button>
     <h2>Bike Inventory</h2>
     <div style="display:flex;gap:6px;margin-left:auto;align-items:center">
-      <a href="{{ route('staff.export') }}"
-        style="display:inline-flex;align-items:center;gap:5px;padding:8px 12px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-md);font-size:12.5px;font-weight:600;color:var(--gray-700);text-decoration:none;box-shadow:var(--shadow-sm)">
+      <button type="button" onclick="exportBikeInventoryExcel()"
+        style="display:inline-flex;align-items:center;gap:5px;padding:8px 12px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-md);font-size:12.5px;font-weight:600;color:var(--gray-700);text-decoration:none;box-shadow:var(--shadow-sm);cursor:pointer">
         <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
           <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
         Export
-      </a>
+      </button>
       @if($canAddInventory ?? false)
         <button type="button" onclick="goTo('inventory-create')"
           style="display:inline-flex;align-items:center;gap:5px;padding:8px 12px;background:var(--green-600);border:none;border-radius:var(--radius-md);font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;box-shadow:0 2px 8px rgba(22,163,74,.25)">
@@ -237,6 +237,106 @@
 
   </div>
 </section>
+
+<script>
+async function exportBikeInventoryExcel() {
+  try {
+    const response = await fetch(@json(route('staff.export')), {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!response.ok) {
+      throw new Error('Could not load bike inventory for export.');
+    }
+
+    const { generated_at: generatedAt, bikes } = await response.json();
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Bike Inventory');
+    const columns = [
+      { header: 'Bike ID', key: 'bike_id', width: 12 },
+      { header: 'QR Code', key: 'qr_code', width: 18 },
+      { header: 'Model', key: 'model', width: 24 },
+      { header: 'Make', key: 'make', width: 20 },
+      { header: 'Bike Type', key: 'bike_type', width: 24 },
+      { header: 'Status', key: 'status', width: 18 },
+      { header: 'Condition', key: 'condition', width: 18 },
+    ];
+    worksheet.columns = columns;
+
+    const thin = { style: 'thin' };
+    const border = { top: thin, left: thin, bottom: thin, right: thin };
+    const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+
+    worksheet.mergeCells('A1:G1');
+    const title = worksheet.getCell('A1');
+    title.value = 'RENTABIKE';
+    title.font = { bold: true, size: 18, color: { argb: 'FF1F3864' } };
+    title.fill = fill('FFFFFF00');
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    worksheet.getRow(1).height = 32;
+
+    worksheet.mergeCells('A2:G2');
+    const reportTitle = worksheet.getCell('A2');
+    reportTitle.value = 'BIKE INVENTORY REPORT';
+    reportTitle.font = { bold: true, size: 12, color: { argb: 'FF1F3864' } };
+    reportTitle.fill = fill('FFFCE4D6');
+    reportTitle.alignment = { horizontal: 'center' };
+
+    worksheet.mergeCells('A3:G3');
+    const generated = worksheet.getCell('A3');
+    generated.value = generatedAt;
+    generated.font = { italic: true, size: 11 };
+    generated.alignment = { horizontal: 'center' };
+
+    const headerRow = worksheet.getRow(5);
+    const headerColors = [
+      'FF00B0F0', 'FF00B0F0', 'FFD9D2C0', 'FFD9D2C0',
+      'FFF4B183', 'FF92D050', 'FF92D050',
+    ];
+    columns.forEach(({ header }, index) => {
+      const cell = headerRow.getCell(index + 1);
+      cell.value = header;
+      cell.font = { bold: true };
+      cell.fill = fill(headerColors[index]);
+      cell.border = border;
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+    headerRow.height = 26;
+
+    bikes.forEach((bike, index) => {
+      const row = worksheet.getRow(index + 6);
+      columns.forEach(({ key }, columnIndex) => {
+        const cell = row.getCell(columnIndex + 1);
+        cell.value = bike[key] ?? '';
+        cell.border = border;
+        cell.alignment = { vertical: 'middle' };
+      });
+      row.getCell(1).font = { bold: true };
+
+      const statusCell = row.getCell(6);
+      if (bike.status === 'Available') statusCell.fill = fill('FFC6EFCE');
+      else if (bike.status === 'Rented') statusCell.fill = fill('FFBDD7EE');
+      else if (bike.status === 'Repair' || bike.status === 'Maintenance') statusCell.fill = fill('FFFFE699');
+      statusCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `bike-inventory-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    showToast('Bike inventory exported successfully.');
+  } catch (error) {
+    showToast(error.message || 'Could not export bike inventory.');
+  }
+}
+</script>
 
 <script>
 function filterInventory() {
