@@ -201,7 +201,7 @@ class DashboardController extends Controller
     }
 
     // kini ang function nga ma-run pag adto ka sa admin dashboard
-    public function index()
+    public function index(Request $request)
 {
     $stats = [
         'total_bikes'       => Bicycle::count(),
@@ -230,6 +230,67 @@ class DashboardController extends Controller
             $log->timestamp = \Carbon\Carbon::parse($log->timestamp);
             return $log;
         });
+
+    $logActionFilters = [
+        'rental' => ['OPEN_RENTAL', 'CLOSE_RENTAL', 'EXTEND_RENTAL'],
+        'maintenance' => ['UPDATE_BIKE_STATUS'],
+        'staff' => ['ADD_STAFF', 'UPDATE_STAFF', 'DEACTIVATE_STAFF'],
+        'payment' => ['PAYMENT_SETTLED'],
+        'reports' => ['GENERATE_REPORT'],
+    ];
+
+    $logFilters = $request->validate([
+        'log_action' => ['nullable', Rule::in(array_keys($logActionFilters))],
+        'log_period' => ['nullable', Rule::in(['all', '24', '168', '720', 'custom'])],
+        'log_user_type' => ['nullable', Rule::in(['admin', 'staff', 'system'])],
+        'log_from' => ['nullable', 'required_if:log_period,custom', 'date'],
+        'log_to' => ['nullable', 'required_if:log_period,custom', 'date', 'after_or_equal:log_from'],
+    ]);
+
+    $activityLogsQuery = ActivityLog::query();
+
+    if (!empty($logFilters['log_action'])) {
+        $activityLogsQuery->whereIn('action', $logActionFilters[$logFilters['log_action']]);
+    }
+
+    if (!empty($logFilters['log_user_type'])) {
+        $activityLogsQuery->where('user_type', $logFilters['log_user_type']);
+    }
+
+    $logPeriod = $logFilters['log_period'] ?? 'all';
+    if (in_array($logPeriod, ['24', '168', '720'], true)) {
+        $activityLogsQuery->where('timestamp', '>=', now()->subHours((int) $logPeriod));
+    } elseif ($logPeriod === 'custom') {
+        $activityLogsQuery
+            ->whereDate('timestamp', '>=', $logFilters['log_from'])
+            ->whereDate('timestamp', '<=', $logFilters['log_to']);
+    }
+
+    $activityLogs = $activityLogsQuery
+        ->orderByDesc('timestamp')
+        ->orderByDesc('log_id')
+        ->paginate(50)
+        ->withQueryString();
+
+    $logs = $activityLogs->getCollection();
+    $adminNames = Admin::whereIn('admin_id', $logs->where('user_type', 'admin')->pluck('user_id')->unique())
+        ->pluck('full_name', 'admin_id');
+    $staffMembers = Staff::whereIn('staff_id', $logs->where('user_type', 'staff')->pluck('user_id')->unique())
+        ->get(['staff_id', 'full_name', 'first_name', 'last_name'])
+        ->keyBy('staff_id');
+
+    $logs->each(function (ActivityLog $log) use ($adminNames, $staffMembers) {
+        $staffMember = $staffMembers->get($log->user_id);
+        $actorName = match ($log->user_type) {
+            'admin' => $adminNames->get($log->user_id, 'Unknown Admin'),
+            'staff' => $staffMember
+                ? (trim(($staffMember->first_name ?? '') . ' ' . ($staffMember->last_name ?? '')) ?: $staffMember->full_name)
+                : 'Unknown Staff',
+            default => 'System',
+        };
+
+        $log->setAttribute('display_actor_name', $actorName);
+    });
 
     // ── Bike type distribution ───────────────────────────────────────────
     $bikeTypeDistribution = Bicycle::selectRaw('bike_type, COUNT(*) as count')
@@ -295,12 +356,8 @@ class DashboardController extends Controller
             'estimated_overtime_fee' => $summary['estimated_overtime_fee'] ?? 0.0,
         ];
     });
-    $reports  = collect([]);
-    $rentals  = collect([]);
-
     $staff = $staff->merge($admins);
     $reports  = collect([]);
-    $rentals  = collect([]);
 
     $pendingReports    = IssueReport::where('status', 'pending')->count();
     $inProgressReports = IssueReport::where('status', 'in_progress')->count();
@@ -314,7 +371,7 @@ class DashboardController extends Controller
         'pendingReports', 'inProgressReports', 'resolvedReports',
         'recentActivity', 'bikeTypeDistribution',
         'weeklyRentals', 'revenueVsRentals', 'peakHours', 'bikes',
-        'nextBikeCode'
+        'nextBikeCode', 'activityLogs', 'logActionFilters', 'logFilters'
     ));
 }
 

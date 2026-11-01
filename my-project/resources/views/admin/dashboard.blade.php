@@ -21,10 +21,10 @@
     @include('admin.scripts._dashboard_charts')
     @include('admin.scripts._reports_charts')
 
-    @if(session('active_tab'))
+    @if(request('tab') || session('active_tab'))
         <script>
             window.addEventListener('DOMContentLoaded', function () {
-                var tab = @json(session('active_tab'));
+                var tab = @json(request('tab', session('active_tab')));
                 var btn = document.getElementById('nav-' + tab);
                 if (btn) {
                     nav(tab, btn);
