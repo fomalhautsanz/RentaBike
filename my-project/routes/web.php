@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StaffPasswordResetController;
 use App\Http\Controllers\Auth\StaffLoginController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
 use App\Http\Controllers\Staff\InventoryController;
 use App\Http\Controllers\Staff\RentalController;
@@ -91,6 +92,9 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
 
     Route::delete('/staff/{staff}', [DashboardController::class, 'destroyStaff'])
         ->name('admin.staff.destroy');
+
+    Route::get('/reports/data', [ReportController::class, 'data'])
+        ->name('admin.reports.data');
 });
 
 
