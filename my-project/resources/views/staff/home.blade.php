@@ -145,4 +145,14 @@
 
 @section('scripts')
     @include('staff.scripts._staff_scripts')
+    @if(in_array(request('screen'), ['report', 'report-form'], true) || session('success') || $errors->any())
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const screen = @json(request('screen', 'report'));
+                if (document.getElementById(screen)) {
+                    goTo(screen);
+                }
+            });
+        </script>
+    @endif
 @endsection
