@@ -10,6 +10,12 @@
   </div>
 
   <div class="content">
+    @if(session('success'))
+      <div role="status" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:11px 14px;margin-bottom:16px;color:#166534">
+        {{ session('success') }}
+      </div>
+    @endif
+
     <div class="report-types">
       <div class="report-card" onclick="openReportForm('damage')">
         <div class="report-icon orange">
@@ -56,6 +62,23 @@
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
       </div>
+    </div>
+
+    <div class="section-title" style="margin-top:24px">
+      <h3>Recent Reports</h3>
+    </div>
+    <div class="report-history">
+      @forelse($issueReports ?? [] as $issue)
+        <article class="report-card">
+          <div class="report-body">
+            <h4>{{ ucfirst(str_replace('_', ' ', $issue->issue_type)) }} · {{ $issue->qr_code }}</h4>
+            <p>{{ $issue->description }}</p>
+            <p>{{ \Illuminate\Support\Carbon::parse($issue->reported_at)->format('M d, Y h:i A') }} · {{ ucfirst(str_replace('_', ' ', $issue->status)) }}</p>
+          </div>
+        </article>
+      @empty
+        <p>No issue reports have been submitted yet.</p>
+      @endforelse
     </div>
   </div>
 </section>

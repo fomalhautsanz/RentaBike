@@ -182,20 +182,19 @@ function toggleID() {
 const reportTitles = { damage: 'Report Damage', missing: 'Report Missing Bike', other: 'Other Issue' };
 function openReportForm(type) {
   document.getElementById('reportFormTitle').textContent = reportTitles[type] ?? 'Report Issue';
+  document.getElementById('reportType').value = reportTitles[type] ? type : 'other';
   document.getElementById('reportBikeId').value = '';
   document.getElementById('reportDesc').value   = '';
+  document.getElementById('reportPhoto').value = '';
   goTo('report-form');
 }
 function submitReport() {
-  const bikeId = document.getElementById('reportBikeId').value.trim();
-  const desc   = document.getElementById('reportDesc').value.trim();
-  if (!bikeId || !desc) { showToast('Please fill in all required fields.'); return; }
-  openModal('report-confirm', { bikeId, description: desc });
+  const form = document.getElementById('issue-report-form');
+  if (form.reportValidity()) openModal('report-confirm');
 }
 function confirmReport() {
   closeModal();
-  goTo('home');
-  showToast('Report submitted successfully!');
+  document.getElementById('issue-report-form').requestSubmit();
 }
 
 // ── TOAST ────────────────────────────────────────────────────────────────────
