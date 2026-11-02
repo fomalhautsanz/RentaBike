@@ -13,9 +13,7 @@
     @if($canAddInventory ?? false)
         @include('staff.pages._inventory_create')
     @endif
-    @if($canHandleMaintenance ?? false)
-        @include('staff.pages._report')
-    @endif
+    @include('staff.pages._report')
     @if($canManageStaff ?? false)
         @include('staff.pages._staff_management')
     @endif

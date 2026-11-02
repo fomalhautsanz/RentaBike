@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Admin;
 use App\Models\Bicycle;
+use App\Models\IssueReport;
 use App\Models\Rental;
 use App\Models\Staff;
 use App\Support\RentalPricing;
@@ -59,6 +60,11 @@ class DashboardController extends Controller
 
         $staff = Staff::find(Session::get('staff_id'));
         $staffPermissions = $staff?->permissions ?? [];
+        $issueReports = IssueReport::with('bike')
+            ->where('staff_id', $staff?->staff_id)
+            ->latest('reported_at')
+            ->limit(10)
+            ->get();
         $canAddInventory = in_array('Add Inventory', $staffPermissions, true);
         $canEditInventory = in_array('Manage Inventory', $staffPermissions, true)
             || in_array('Edit Inventory', $staffPermissions, true);
@@ -71,6 +77,7 @@ class DashboardController extends Controller
             'bikes',
             'bikeCategories',
             'dashboardBikes',
+            'issueReports',
             'staffPermissions',
             'canAddInventory',
             'canEditInventory',

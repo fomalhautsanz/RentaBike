@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\StaffPasswordResetController;
 use App\Http\Controllers\Auth\StaffLoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
+use App\Http\Controllers\Staff\IssueReportController;
 use App\Http\Controllers\Staff\InventoryController;
 use App\Http\Controllers\Staff\RentalController;
 use App\Http\Controllers\Staff\ScanController;
@@ -32,6 +33,14 @@ Route::post('/admin/login', [LoginController::class, 'login'])
 
 Route::post('/admin/logout', [LoginController::class, 'logout'])
     ->name('logout');
+
+Route::get('/admin/password/forgot', function () {
+    return view('admin.passwords.request');
+})->name('admin.password.request');
+
+Route::get('/admin/password/reset', function () {
+    return view('admin.passwords.reset');
+})->name('admin.password.reset');
 
 
 // ======================================================
@@ -127,6 +136,9 @@ Route::prefix('staff')
 
         Route::patch('/inventory/{bike}/toggle-status', [InventoryController::class, 'toggleStatus'])
             ->name('staff.inventory.toggle-status');
+
+        Route::post('/issues', [IssueReportController::class, 'store'])
+            ->name('staff.issues.store');
 
         // QR scan lookup (read-only): GET /staff/scan/{code}
         Route::get('/scan/{code}', [ScanController::class, 'show'])

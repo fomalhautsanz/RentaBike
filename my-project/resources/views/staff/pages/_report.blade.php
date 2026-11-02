@@ -57,5 +57,22 @@
         </div>
       </div>
     </div>
+
+    <div class="section-header" style="margin-top:24px">
+      <h3>Recent Reports</h3>
+    </div>
+    <div class="report-history">
+      @forelse($issueReports as $issue)
+        <article class="report-card">
+          <div class="report-body">
+            <h4>{{ ucfirst(str_replace('_', ' ', $issue->issue_type)) }} · {{ $issue->bike?->qr_code ?? 'Unknown bike' }}</h4>
+            <p>{{ $issue->description }}</p>
+            <p>{{ $issue->reported_at?->format('M d, Y h:i A') }} · {{ ucfirst(str_replace('_', ' ', $issue->status)) }}</p>
+          </div>
+        </article>
+      @empty
+        <p>No issue reports have been submitted yet.</p>
+      @endforelse
+    </div>
   </div>
 </section>

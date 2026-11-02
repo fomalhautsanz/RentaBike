@@ -86,7 +86,7 @@
       <label>
         <input type="checkbox" name="remember"> Remember me
       </label>
-      <a href="#" class="login-link">Forgot password?</a>
+      <a href="{{ route('admin.password.request') }}" class="login-link">Forgot password?</a>
     </div>
 
     <button type="submit" class="login-submit">Sign In to Admin Portal</button>
