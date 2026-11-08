@@ -17,7 +17,7 @@
         </div>
       @endif
 
-      <form id="issue-report-form" method="POST" action="{{ route('staff.issues.store') }}" enctype="multipart/form-data">
+      <form id="issue-report-form" method="POST" action="{{ route('staff.issue-reports.store') }}" enctype="multipart/form-data">
         @csrf
         <input type="hidden" name="issue_type" id="reportType" value="{{ old('issue_type', 'damage') }}">
 

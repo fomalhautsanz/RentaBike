@@ -21,9 +21,11 @@ class IssueReportController extends Controller
             'bike_code' => ['required', 'string', 'max:100', 'exists:bicycle,qr_code'],
             'issue_type' => ['required', 'in:damage,missing,other'],
             'description' => ['required', 'string', 'max:5000'],
-            'photo' => ['nullable', 'image', 'max:5120'],
+            'photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ], [
             'bike_code.exists' => 'Enter a bike ID that exists in the inventory.',
+            'photo.mimes' => 'The photo must be a JPG, PNG or WEBP image.',
+            'photo.max' => 'The photo must not be larger than 5 MB.',
         ]);
 
         if ($validator->fails()) {
@@ -55,7 +57,7 @@ class IssueReportController extends Controller
         }
 
         DB::transaction(function () use ($bike, $validated, $request, $photoPath): void {
-            DB::table('issue_report')->insert([
+            $issueId = DB::table('issue_report')->insertGetId([
                 'bike_id' => $bike->bike_id,
                 'staff_id' => (int) $request->session()->get('staff_id'),
                 'issue_type' => $validated['issue_type'],
@@ -63,6 +65,14 @@ class IssueReportController extends Controller
                 'photo_ref' => $photoPath,
                 'status' => 'pending',
                 'reported_at' => now(),
+            ]);
+
+            DB::table('activity_log')->insert([
+                'user_id' => (int) $request->session()->get('staff_id'),
+                'user_type' => 'staff',
+                'action' => 'REPORT_ISSUE',
+                'details' => 'Issue #'.$issueId.' ('.$validated['issue_type'].') reported for '.$bike->qr_code,
+                'timestamp' => now(),
             ]);
 
             if (in_array($validated['issue_type'], ['damage', 'missing'], true)) {

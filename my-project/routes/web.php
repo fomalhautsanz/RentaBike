@@ -88,6 +88,6 @@ Route::prefix('staff')
         })
             ->name('staff.home');
 
-        Route::post('/issues', [IssueReportController::class, 'store'])
-            ->name('staff.issues.store');
+        Route::post('/issue-reports', [IssueReportController::class, 'store'])
+            ->name('staff.issue-reports.store');
     });
