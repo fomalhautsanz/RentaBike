@@ -1292,10 +1292,29 @@ function updateRentedModalOverdue(rental) {
 
 // ── REPORT ───────────────────────────────────────────────────────────────────
 const reportTitles = { damage: 'Report Damage', missing: 'Report Missing Bike', other: 'Other Issue' };
+let reportType = 'damage';
+let reportSubmitting = false;
+function resetReportPhoto() {
+  const input = document.getElementById('reportPhoto');
+  if (input) input.value = '';
+  const label = document.getElementById('reportPhotoName');
+  if (label) label.textContent = 'Tap to upload photo';
+}
+function onReportPhotoChange(input) {
+  const file = input.files && input.files[0];
+  if (file && file.size > 5 * 1024 * 1024) {
+    showToast('The photo must not be larger than 5 MB.');
+    resetReportPhoto();
+    return;
+  }
+  document.getElementById('reportPhotoName').textContent = file ? file.name : 'Tap to upload photo';
+}
 function openReportForm(type, bikeId = '') {
-  document.getElementById('reportFormTitle').textContent = reportTitles[type] ?? 'Report Issue';
+  reportType = reportTitles[type] ? type : 'other';
+  document.getElementById('reportFormTitle').textContent = reportTitles[reportType];
   document.getElementById('reportBikeId').value = bikeId;
   document.getElementById('reportDesc').value   = '';
+  resetReportPhoto();
   goTo('report-form');
 }
 function submitReport() {
@@ -1305,9 +1324,38 @@ function submitReport() {
   openModal('report-confirm', { bikeId, description: desc });
 }
 function confirmReport() {
+  if (reportSubmitting) return;
+
+  const formData = new FormData();
+  formData.append('issue_type', reportType);
+  formData.append('bike_code', document.getElementById('reportBikeId').value.trim());
+  formData.append('description', document.getElementById('reportDesc').value.trim());
+  const photo = document.getElementById('reportPhoto')?.files?.[0];
+  if (photo) formData.append('photo', photo);
+
+  reportSubmitting = true;
+  const submitBtn = document.getElementById('reportSubmitBtn');
+  if (submitBtn) submitBtn.disabled = true;
   closeModal();
-  goTo('home');
-  showToast('Report submitted successfully!');
+
+  sendJson('POST', '/staff/issue-reports', formData)
+    .then(({ ok, data }) => {
+      if (!ok) {
+        // Pakita ang message gikan sa server (e.g. "Bike not found"), magpabilin sa form
+        showToast(data.message || 'Could not submit the report.');
+        return;
+      }
+      document.getElementById('reportBikeId').value = '';
+      document.getElementById('reportDesc').value = '';
+      resetReportPhoto();
+      goTo('home');
+      showToast(data.message || 'Report submitted successfully!');
+    })
+    .catch(handleRequestError)
+    .finally(() => {
+      reportSubmitting = false;
+      if (submitBtn) submitBtn.disabled = false;
+    });
 }
 
 // ── TOAST ────────────────────────────────────────────────────────────────────

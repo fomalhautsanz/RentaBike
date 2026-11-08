@@ -262,7 +262,7 @@ class DashboardController extends Controller
 
     $logActionFilters = [
         'rental' => ['OPEN_RENTAL', 'CLOSE_RENTAL', 'EXTEND_RENTAL'],
-        'maintenance' => ['UPDATE_BIKE_STATUS'],
+        'maintenance' => ['UPDATE_BIKE_STATUS', 'REPORT_ISSUE'],
         'staff' => ['ADD_STAFF', 'UPDATE_STAFF', 'DEACTIVATE_STAFF'],
         'payment' => ['PAYMENT_SETTLED'],
         'reports' => ['GENERATE_REPORT'],

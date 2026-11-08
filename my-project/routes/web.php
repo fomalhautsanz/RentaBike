@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
 use App\Http\Controllers\Staff\InventoryController;
+use App\Http\Controllers\Staff\IssueReportController;
 use App\Http\Controllers\Staff\RentalController;
 use App\Http\Controllers\Staff\ScanController;
 
@@ -161,4 +162,8 @@ Route::prefix('staff')
 
         Route::post('/rentals/{rental}/end', [RentalController::class, 'end'])
             ->name('staff.rentals.end');
+
+        // Issue reports (damage / missing / other) para sa Admin review
+        Route::post('/issue-reports', [IssueReportController::class, 'store'])
+            ->name('staff.issue-reports.store');
     });
