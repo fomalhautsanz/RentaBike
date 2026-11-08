@@ -1,10 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StaffLoginController;
-use App\Http\Controllers\Admin\DashboardController;
-
+use App\Http\Controllers\Staff\IssueReportController;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 // ======================================================
 // ROOT
@@ -13,7 +14,6 @@ use App\Http\Controllers\Admin\DashboardController;
 Route::get('/', function () {
     return redirect()->route('login');
 });
-
 
 // ======================================================
 // ADMIN AUTHENTICATION
@@ -28,6 +28,13 @@ Route::post('/admin/login', [LoginController::class, 'login'])
 Route::post('/admin/logout', [LoginController::class, 'logout'])
     ->name('logout');
 
+Route::get('/admin/password/forgot', function () {
+    return view('admin.passwords.request');
+})->name('admin.password.request');
+
+Route::get('/admin/password/reset', function () {
+    return view('admin.passwords.reset');
+})->name('admin.password.reset');
 
 // ======================================================
 // STAFF AUTHENTICATION
@@ -42,7 +49,6 @@ Route::post('/staff/login', [StaffLoginController::class, 'login'])
 Route::post('/staff/logout', [StaffLoginController::class, 'logout'])
     ->name('staff.logout');
 
-
 // ======================================================
 // ADMIN PROTECTED ROUTES
 // ======================================================
@@ -55,7 +61,6 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
         ->name('admin.bikes.store');
 });
 
-
 // ======================================================
 // STAFF PROTECTED ROUTES
 // ======================================================
@@ -64,6 +69,25 @@ Route::prefix('staff')
     ->middleware('staff.auth')
     ->group(function () {
 
-        Route::get('/home', fn () => view('staff.home'))
+        Route::get('/home', function () {
+            $issueReports = DB::table('issue_report')
+                ->join('bicycle', 'issue_report.bike_id', '=', 'bicycle.bike_id')
+                ->where('issue_report.staff_id', session('staff_id'))
+                ->orderByDesc('issue_report.reported_at')
+                ->limit(10)
+                ->get([
+                    'issue_report.issue_id',
+                    'issue_report.issue_type',
+                    'issue_report.description',
+                    'issue_report.status',
+                    'issue_report.reported_at',
+                    'bicycle.qr_code',
+                ]);
+
+            return view('staff.home', compact('issueReports'));
+        })
             ->name('staff.home');
+
+        Route::post('/issue-reports', [IssueReportController::class, 'store'])
+            ->name('staff.issue-reports.store');
     });
