@@ -123,6 +123,7 @@ class MaintenanceLogs
         $type = self::TYPES[$report->issue_type] ?? ucfirst((string) $report->issue_type);
 
         return (object) [
+            'issue_id'    => (int) $report->issue_id,
             'report_code' => self::reportCode((int) $report->issue_id),
             'type'        => $type,
             'bike_name'   => $report->bike?->name ?? 'N/A',

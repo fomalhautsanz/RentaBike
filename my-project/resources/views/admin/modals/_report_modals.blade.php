@@ -79,7 +79,7 @@
     openModal('view-report-modal');
   }
 
-  function updateReportStatus() {
+  async function updateReportStatus() {
     const reportCode = window._viewingReportCode;
     if (!reportCode) return;
 
@@ -91,6 +91,31 @@
 
     // TODO: once backend exists, replace the row-patching below with:
     // fetch(`/reports/${reportCode}`, { method: 'PUT', body: JSON.stringify({ status: newStatus, notes }), headers: {...} })
+
+    // naa na ang backend: i-save sa database una, dayon i-update ang row
+    const viewedRow = Array.from(document.querySelectorAll('#page-maintenance table tbody tr'))
+      .find(row => row.querySelector('td')?.textContent.trim() === reportCode);
+    const issueId = viewedRow?.dataset.issueId;
+    if (!issueId) return;
+
+    const statusValues = { 'Pending': 'pending', 'In Progress': 'in_progress', 'Resolved': 'resolved' };
+    let result = {};
+    try {
+      const response = await fetch(`/admin/maintenance/${issueId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        },
+        body: JSON.stringify({ status: statusValues[newStatus] }),
+      });
+      if (!response.ok) throw new Error();
+      result = await response.json();
+    } catch (e) {
+      showToast(`Could not update ${reportCode}. Please try again.`);
+      return;
+    }
 
     const rows = document.querySelectorAll('#page-maintenance table tbody tr');
     rows.forEach(row => {
@@ -110,7 +135,10 @@
     filterMaintenanceStatus(maintenanceStatusFilter);
 
     closeModal('view-report-modal');
-    showToast(`${reportCode} status updated to ${newStatus}.`);
+    // kung na-release ang bike, ipahibalo pud
+    showToast(result.bike_released
+      ? `${reportCode} resolved. Bike is now Available.`
+      : `${reportCode} status updated to ${newStatus}.`);
     window._viewingReportCode = null;
   }
 </script>

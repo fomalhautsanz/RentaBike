@@ -68,7 +68,7 @@
         {{-- kani gi add sad nako --}}
         {{-- hardcoded shi to see unsay gama ani niya --}}
         @forelse($reports ?? [] as $report)
-        <tr data-status="{{ $report->status }}">
+        <tr data-status="{{ $report->status }}" data-issue-id="{{ $report->issue_id }}">
           <td style="font-weight:600">{{ $report->report_code }}</td>
           <td>
             <span class="badge {{ $report->type === 'Damage' ? 'badge-orange' : ($report->type === 'Missing Bike' ? 'badge-red' : 'badge-blue') }}">
