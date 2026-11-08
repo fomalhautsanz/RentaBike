@@ -113,6 +113,18 @@ $repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $total
           </svg>
           Today's Logs
         </button>
+        {{-- Maintenance logs export: Handle Maintenance ra ang makakita --}}
+        @if($canHandleMaintenance ?? false)
+        <button type="button" onclick="exportMaintenanceLogs()"
+          style="display:inline-flex;align-items:center;gap:5px;padding:8px 12px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-md);font-size:12.5px;font-weight:600;color:var(--gray-700);text-decoration:none;box-shadow:var(--shadow-sm);cursor:pointer">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Maintenance Logs
+        </button>
+        @endif
         <a class="dashboard-view-all" onclick="goTo('inventory')">
           View all
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
@@ -235,3 +247,90 @@ async function exportTodayActivityLogs() {
   }
 }
 </script>
+
+@if($canHandleMaintenance ?? false)
+<script>
+// Maintenance logs export: JSON gikan sa backend, ExcelJS ang mohimo sa file
+async function exportMaintenanceLogs() {
+  try {
+    const response = await fetch(@json(route('staff.maintenance-logs.export')), {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!response.ok) {
+      throw new Error(response.status === 403
+        ? 'You do not have access to maintenance logs.'
+        : 'Could not load maintenance logs.');
+    }
+
+    const { date, generated_at, logs } = await response.json();
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Maintenance Logs');
+
+    worksheet.columns = [
+      { width: 12 }, { width: 14 }, { width: 12 }, { width: 26 }, { width: 22 },
+      { width: 50 }, { width: 14 }, { width: 22 }, { width: 22 },
+    ];
+
+    const thin = { style: 'thin' };
+    const border = { top: thin, left: thin, bottom: thin, right: thin };
+    const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+
+    worksheet.mergeCells('A1:I1');
+    const title = worksheet.getCell('A1');
+    title.value = 'RENTABIKE — MAINTENANCE LOGS';
+    title.font = { bold: true, size: 16, color: { argb: 'FF1F3864' } };
+    title.fill = fill('FFFFFF00');
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    worksheet.getRow(1).height = 30;
+
+    worksheet.mergeCells('A2:I2');
+    const generated = worksheet.getCell('A2');
+    generated.value = generated_at;
+    generated.font = { italic: true, size: 11 };
+    generated.alignment = { horizontal: 'center' };
+
+    const headers = ['Report ID', 'Type', 'Bike Code', 'Bike', 'Reported By', 'Description', 'Status', 'Reported At', 'Resolved At'];
+    const headerRow = worksheet.getRow(4);
+    headers.forEach((header, index) => {
+      const cell = headerRow.getCell(index + 1);
+      cell.value = header;
+      cell.font = { bold: true };
+      cell.fill = fill('FFD9EAF7');
+      cell.border = border;
+    });
+
+    // kolor sa status para dali makita (parehas sa badges)
+    const statusFill = { 'Pending': 'FFFEF9C3', 'In Progress': 'FFDBEAFE', 'Resolved': 'FFDCFCE7' };
+
+    logs.forEach((log, index) => {
+      const row = worksheet.getRow(index + 5);
+      [log.report_code, log.type, log.bike_code, log.bike_name, log.reporter,
+       log.description, log.status, log.date, log.resolved_at || '—']
+        .forEach((value, cellIndex) => {
+          const cell = row.getCell(cellIndex + 1);
+          cell.value = value;
+          cell.border = border;
+          cell.alignment = { vertical: 'top', wrapText: true };
+        });
+      if (statusFill[log.status]) row.getCell(7).fill = fill(statusFill[log.status]);
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `maintenance-logs-${date}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    showToast(logs.length ? 'Maintenance logs exported successfully.' : 'Exported — no maintenance logs yet.');
+  } catch (error) {
+    showToast(error.message || 'Could not export maintenance logs.');
+  }
+}
+</script>
+@endif

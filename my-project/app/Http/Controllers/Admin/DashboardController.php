@@ -10,6 +10,7 @@ use App\Models\Bicycle;       // model sa bicycle table
 use App\Models\IssueReport;   // model sa issue report table
 use App\Models\Rental;        // model sa rental table
 use App\Models\Staff;         // model sa staff table 
+use App\Support\MaintenanceLogs;
 use App\Support\RentalPricing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -383,7 +384,10 @@ class DashboardController extends Controller
         ];
     });
     $staff = $staff->merge($admins);
-    $reports  = collect([]);
+    // Maintenance logs: real data gikan sa issue_report + filters (logic naa sa MaintenanceLogs)
+    $maintenanceFilters = MaintenanceLogs::validateFilters($request);
+    $reports = MaintenanceLogs::filtered($maintenanceFilters)->get()
+        ->map(fn (IssueReport $report) => MaintenanceLogs::present($report));
 
     $pendingReports    = IssueReport::where('status', 'pending')->count();
     $inProgressReports = IssueReport::where('status', 'in_progress')->count();
@@ -397,7 +401,8 @@ class DashboardController extends Controller
         'pendingReports', 'inProgressReports', 'resolvedReports',
         'recentActivity', 'bikeTypeDistribution',
         'weeklyRentals', 'revenueVsRentals', 'peakHours', 'bikes',
-        'nextBikeCode', 'activityLogs', 'logActionFilters', 'logFilters'
+        'nextBikeCode', 'activityLogs', 'logActionFilters', 'logFilters',
+        'reports', 'maintenanceFilters'
     ));
 }
 

@@ -20,6 +20,46 @@
     </div>
   </div>
   <div class="table-wrap">
+    {{-- Maintenance filters: GET form parehas sa Activity Logs, maint_* ang names --}}
+    @php($maintenanceFilters = $maintenanceFilters ?? [])
+    <form class="table-toolbar" id="maint-filter-panel" style="flex-wrap:wrap" method="GET" action="{{ route('admin.dashboard') }}">
+      <input type="hidden" name="tab" value="maintenance">
+      <div class="search-wrap" style="min-width:220px">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" class="search-input" name="maint_search" maxlength="100"
+               placeholder="Search report ID, bike, staff, description..."
+               value="{{ $maintenanceFilters['maint_search'] ?? '' }}">
+      </div>
+      <select class="filter-select" name="maint_type" aria-label="Filter by type">
+        <option value="">All Types</option>
+        @foreach(\App\Support\MaintenanceLogs::TYPES as $value => $label)
+          <option value="{{ $value }}" @selected(($maintenanceFilters['maint_type'] ?? '') === $value)>{{ $label }}</option>
+        @endforeach
+      </select>
+      <select class="filter-select" name="maint_status" aria-label="Filter by status">
+        <option value="">All Status</option>
+        @foreach(\App\Support\MaintenanceLogs::STATUSES as $value => $label)
+          <option value="{{ $value }}" @selected(($maintenanceFilters['maint_status'] ?? '') === $value)>{{ $label }}</option>
+        @endforeach
+      </select>
+      <select class="filter-select" id="maint-period-select" name="maint_period" aria-label="Filter by date">
+        <option value="all" @selected(($maintenanceFilters['maint_period'] ?? 'all') === 'all')>All Time</option>
+        <option value="24" @selected(($maintenanceFilters['maint_period'] ?? '') === '24')>Last 24 Hours</option>
+        <option value="168" @selected(($maintenanceFilters['maint_period'] ?? '') === '168')>Last 7 Days</option>
+        <option value="720" @selected(($maintenanceFilters['maint_period'] ?? '') === '720')>Last 30 Days</option>
+        <option value="custom" @selected(($maintenanceFilters['maint_period'] ?? '') === 'custom')>Custom Range</option>
+      </select>
+      <div id="maint-custom-range" style="display:none;align-items:center;gap:8px">
+        <input type="date" class="filter-select" name="maint_from" aria-label="From date"
+               value="{{ $maintenanceFilters['maint_from'] ?? '' }}">
+        <span style="color:#9ca3af;font-size:13px">to</span>
+        <input type="date" class="filter-select" name="maint_to" aria-label="To date"
+               value="{{ $maintenanceFilters['maint_to'] ?? '' }}">
+      </div>
+      <button class="btn btn-primary" type="submit">Apply Filters</button>
+      <a class="btn" href="{{ route('admin.dashboard', ['tab' => 'maintenance']) }}">Clear</a>
+    </form>
+
     <table>
       <thead>
         <tr><th>Report ID</th><th>Type</th><th>Bike</th><th>Reported By</th><th>Description</th><th>Date</th><th>Status</th><th>Actions</th></tr>
@@ -27,62 +67,7 @@
       <tbody id="maintenance-tbody">
         {{-- kani gi add sad nako --}}
         {{-- hardcoded shi to see unsay gama ani niya --}}
-        @if(count($reports ?? []) === 0)
-          <tr data-status="Pending">
-            <td style="font-weight:600">RPT-1008</td>
-            <td><span class="badge badge-orange">Damage</span></td>
-            <td>
-              <div style="font-weight:500">Mountain Trail M2</div>
-              <div style="font-size:12px;color:#9ca3af">BK-005</div>
-            </td>
-            <td>David Lee</td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Flat rear tire, needs replacement">Flat rear tire, needs replacement</td>
-            <td style="color:#6b7280;font-size:13px">Aug 22, 2026</td>
-            <td><span class="badge status-pending">Pending</span></td>
-            <td><button class="btn btn-outline btn-sm" onclick="openViewReport('RPT-1008')">View</button></td>
-          </tr>
-          <tr data-status="Pending">
-            <td style="font-weight:600">RPT-1007</td>
-            <td><span class="badge badge-red">Missing Bike</span></td>
-            <td>
-              <div style="font-weight:500">City Explorer C3</div>
-              <div style="font-size:12px;color:#9ca3af">BK-004</div>
-            </td>
-            <td>Carol Martinez</td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Bike not returned after rental period">Bike not returned after rental period</td>
-            <td style="color:#6b7280;font-size:13px">Aug 21, 2026</td>
-            <td><span class="badge status-pending">Pending</span></td>
-            <td><button class="btn btn-outline btn-sm" onclick="openViewReport('RPT-1007')">View</button></td>
-          </tr>
-          <tr data-status="In Progress">
-            <td style="font-weight:600">RPT-1006</td>
-            <td><span class="badge badge-blue">Mechanical</span></td>
-            <td>
-              <div style="font-weight:500">City Cruiser C1</div>
-              <div style="font-size:12px;color:#9ca3af">BK-003</div>
-            </td>
-            <td>Alice Cooper</td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Brake lever loose, being repaired">Brake lever loose, being repaired</td>
-            <td style="color:#6b7280;font-size:13px">Aug 20, 2026</td>
-            <td><span class="badge status-inprogress">In Progress</span></td>
-            <td><button class="btn btn-outline btn-sm" onclick="openViewReport('RPT-1006')">View</button></td>
-          </tr>
-          <tr data-status="Resolved">
-            <td style="font-weight:600">RPT-1005</td>
-            <td><span class="badge badge-orange">Damage</span></td>
-            <td>
-              <div style="font-weight:500">Tricycle Comfort T2</div>
-              <div style="font-size:12px;color:#9ca3af">BK-002</div>
-            </td>
-            <td>Bob Wilson</td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Seat torn, repaired same day">Seat torn, repaired same day</td>
-            <td style="color:#6b7280;font-size:13px">Aug 18, 2026</td>
-            <td><span class="badge status-resolved">Resolved</span></td>
-            <td><button class="btn btn-outline btn-sm" onclick="openViewReport('RPT-1005')">View</button></td>
-          </tr>
-        @endif
-
-        @foreach($reports ?? [] as $report)
+        @forelse($reports ?? [] as $report)
         <tr data-status="{{ $report->status }}">
           <td style="font-weight:600">{{ $report->report_code }}</td>
           <td>
@@ -91,12 +76,12 @@
             </span>
           </td>
           <td>
-            <div style="font-weight:500">{{ $report->bike->name ?? 'N/A' }}</div>
-            <div style="font-size:12px;color:#9ca3af">{{ $report->bike->bike_code ?? '' }}</div>
+            <div style="font-weight:500">{{ $report->bike_name }}</div>
+            <div style="font-size:12px;color:#9ca3af">{{ $report->bike_code }}</div>
           </td>
-          <td>{{ $report->reporter->name ?? 'Unknown' }}</td>
+          <td>{{ $report->reporter }}</td>
           <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ $report->description }}">{{ $report->description }}</td>
-          <td style="color:#6b7280;font-size:13px">{{ $report->created_at->format('M d, Y') }}</td>
+          <td style="color:#6b7280;font-size:13px">{{ $report->date }}</td>
           <td>
             <span class="badge {{ $report->status === 'Pending' ? 'status-pending' : ($report->status === 'In Progress' ? 'status-inprogress' : 'status-resolved') }}">
               {{ $report->status }}
@@ -106,7 +91,12 @@
             <button class="btn btn-outline btn-sm" onclick="openViewReport('{{ $report->report_code }}')">View</button>
           </td>
         </tr>
-        @endforeach
+        @empty
+          {{-- walay data-status para dili maapil sa counters --}}
+          <tr>
+            <td colspan="8" style="text-align:center;color:#6b7280">No maintenance reports match these filters.</td>
+          </tr>
+        @endforelse
       </tbody>
     </table>
     <div class="table-footer">
@@ -147,7 +137,8 @@
 <script>
   // recomputes counter numbers from whatever rows currently exist in the table
   function updateMaintenanceCounters() {
-    const rows = document.querySelectorAll('#maintenance-tbody tr');
+    // tr[data-status] ra, para dili maapil ang "No reports" row
+    const rows = document.querySelectorAll('#maintenance-tbody tr[data-status]');
     let pending = 0, inProgress = 0, resolved = 0;
 
     rows.forEach(row => {
@@ -169,7 +160,7 @@
   function filterMaintenanceStatus(status) {
     maintenanceStatusFilter = status;
 
-    document.querySelectorAll('#maintenance-tbody tr').forEach(row => {
+    document.querySelectorAll('#maintenance-tbody tr[data-status]').forEach(row => {
       row.style.display = (!status || row.dataset.status === status) ? '' : 'none';
     });
 
@@ -185,12 +176,29 @@
   }
 
   function updateMaintenanceFooterCount() {
-    const visibleRows = document.querySelectorAll('#maintenance-tbody tr:not([style*="display: none"])');
+    const visibleRows = document.querySelectorAll('#maintenance-tbody tr[data-status]:not([style*="display: none"])');
     document.getElementById('maintenance-footer-count').textContent = `Showing ${visibleRows.length} reports`;
   }
 
   document.addEventListener('DOMContentLoaded', function () {
     updateMaintenanceCounters();
     filterMaintenanceStatus(''); // sa all mag start biskan i refresh
+
+    // ipakita ang from/to dates kung "Custom Range" ang gi-pili
+    const period = document.getElementById('maint-period-select');
+    const customRange = document.getElementById('maint-custom-range');
+    const fromDate = document.querySelector('[name="maint_from"]');
+    const toDate = document.querySelector('[name="maint_to"]');
+    const toggleMaintCustomRange = () => {
+      const isCustom = period.value === 'custom';
+      customRange.style.display = isCustom ? 'flex' : 'none';
+      fromDate.required = isCustom;
+      toDate.required = isCustom;
+      toDate.min = fromDate.value;
+    };
+
+    period.addEventListener('change', toggleMaintCustomRange);
+    fromDate.addEventListener('change', toggleMaintCustomRange);
+    toggleMaintCustomRange();
   });
 </script>
