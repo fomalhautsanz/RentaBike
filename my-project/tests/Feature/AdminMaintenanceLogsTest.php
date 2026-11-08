@@ -9,6 +9,7 @@ beforeEach(function () {
     Schema::dropIfExists('issue_report');
     Schema::dropIfExists('bicycle');
     Schema::dropIfExists('staff');
+    Schema::dropIfExists('admin');
 
     Schema::create('staff', function (Blueprint $table) {
         $table->increments('staff_id');
@@ -17,6 +18,15 @@ beforeEach(function () {
         $table->string('last_name')->nullable();
         $table->string('status')->default('active');
         $table->text('permissions')->nullable();
+    });
+
+    Schema::create('admin', function (Blueprint $table) {
+        $table->increments('admin_id');
+        $table->string('username');
+        $table->string('password_hash');
+        $table->string('full_name');
+        $table->string('email');
+        $table->string('email_hash')->nullable();
     });
 
     Schema::create('bicycle', function (Blueprint $table) {
@@ -109,4 +119,67 @@ test('staff without Handle Maintenance cannot export maintenance logs', function
 test('maintenance logs export requires a staff session', function () {
     $this->get(route('staff.maintenance-logs.export'))
         ->assertRedirect(route('staff.login'));
+});
+
+test('admin can save a maintenance report status', function () {
+    $admin = \App\Models\Admin::forceCreate([
+        'admin_id' => 1, 'username' => 'admin', 'password_hash' => 'x', 'full_name' => 'Admin', 'email' => 'a@a.com',
+    ]);
+
+    $this->actingAs($admin)
+        ->patchJson(route('admin.maintenance.status', 1), ['status' => 'resolved'])
+        ->assertOk()
+        ->assertJsonPath('report.status', 'Resolved');
+
+    expect(DB::table('issue_report')->where('issue_id', 1)->value('status'))->toBe('resolved')
+        ->and(DB::table('issue_report')->where('issue_id', 1)->value('resolved_at'))->not->toBeNull();
+
+    // i-balik sa pending: ma-clear ang resolved_at
+    $this->actingAs($admin)
+        ->patchJson(route('admin.maintenance.status', 1), ['status' => 'pending'])
+        ->assertOk();
+    expect(DB::table('issue_report')->where('issue_id', 1)->value('resolved_at'))->toBeNull();
+
+    $this->actingAs($admin)
+        ->patchJson(route('admin.maintenance.status', 1), ['status' => 'fixed'])
+        ->assertUnprocessable();
+});
+
+test('saving a report status requires an admin session', function () {
+    $this->patchJson(route('admin.maintenance.status', 1), ['status' => 'resolved'])
+        ->assertUnauthorized();
+
+    expect(DB::table('issue_report')->where('issue_id', 1)->value('status'))->toBe('pending');
+});
+
+test('resolving the last open report sets the bike back to available', function () {
+    $admin = \App\Models\Admin::forceCreate([
+        'admin_id' => 1, 'username' => 'admin', 'password_hash' => 'x', 'full_name' => 'Admin', 'email' => 'a@a.com',
+    ]);
+    // bike 1 (repair) naay 2 ka report: #1 pending ug #3 resolved na
+
+    $this->actingAs($admin)
+        ->patchJson(route('admin.maintenance.status', 1), ['status' => 'resolved'])
+        ->assertOk()
+        ->assertJsonPath('bike_released', true);
+
+    $bike = DB::table('bicycle')->where('bike_id', 1)->first();
+    expect($bike->status)->toBe('available')->and($bike->condition)->toBe('good');
+});
+
+test('bike stays under maintenance while another report is still open', function () {
+    $admin = \App\Models\Admin::forceCreate([
+        'admin_id' => 1, 'username' => 'admin', 'password_hash' => 'x', 'full_name' => 'Admin', 'email' => 'a@a.com',
+    ]);
+    DB::table('issue_report')->insert([
+        'issue_id' => 4, 'bike_id' => 1, 'staff_id' => 7, 'issue_type' => 'damage',
+        'description' => 'Loose pedal', 'status' => 'in_progress', 'reported_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->patchJson(route('admin.maintenance.status', 1), ['status' => 'resolved'])
+        ->assertOk()
+        ->assertJsonPath('bike_released', false);
+
+    expect(DB::table('bicycle')->where('bike_id', 1)->value('status'))->toBe('repair');
 });
