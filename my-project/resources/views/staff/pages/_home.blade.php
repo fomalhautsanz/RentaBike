@@ -98,12 +98,11 @@ $repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $total
     </div>
 
     {{-- BIKE LIST --}}
-    <div class="section-title">
+    <div class="section-title dashboard-inventory-section-title">
       <div class="dashboard-section-heading">
         <h3>Bike Inventory</h3>
-        <p>Latest bike shown for each status</p>
       </div>
-      <div style="display:flex;align-items:center;gap:12px">
+      <div class="dashboard-inventory-actions">
         <button type="button" onclick="exportTodayActivityLogs()"
           style="display:inline-flex;align-items:center;gap:5px;padding:8px 12px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-md);font-size:12.5px;font-weight:600;color:var(--gray-700);text-decoration:none;box-shadow:var(--shadow-sm);cursor:pointer">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">

@@ -8,10 +8,20 @@ use App\Support\MaintenanceLogs;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class MaintenanceController extends Controller
 {
+    public function photo(IssueReport $issueReport)
+    {
+        $path = $issueReport->photo_ref;
+        abort_unless($path && preg_match('#\Aissue-reports/[A-Za-z0-9._-]+\z#D', $path), 404);
+        abort_unless(Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path, null, [], 'inline');
+    }
+
     /**
      * I-save ang status sa issue report gikan sa "Update Report" modal.
      * Kung "resolved", butangan og resolved_at; kung i-balik, i-clear.
@@ -42,7 +52,19 @@ class MaintenanceController extends Controller
                 ->whereIn('status', ['pending', 'in_progress'])
                 ->exists();
 
-            if ($hasOpenReports || $bike->status === 'rented') {
+            if ($hasOpenReports) {
+                return false;
+            }
+
+            $hasActiveRental = DB::table('rental')
+                ->where('bike_id', $bike->bike_id)
+                ->where('status', 'active')
+                ->exists();
+
+            if ($bike->status === 'rented' || $hasActiveRental) {
+                $bike->status = 'rented';
+                $bike->save();
+
                 return false;
             }
 

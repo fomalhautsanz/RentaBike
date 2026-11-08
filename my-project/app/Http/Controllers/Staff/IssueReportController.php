@@ -75,6 +75,9 @@ class IssueReportController extends Controller
                     'status'      => 'pending',
                 ]);
 
+                $bike->status = 'repair';
+                $bike->save();
+
                 DB::table('activity_log')->insert([
                     'user_id'   => $staffId,
                     'user_type' => 'staff',

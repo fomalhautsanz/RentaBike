@@ -130,6 +130,9 @@ class MaintenanceLogs
             'bike_code'   => $report->bike?->bike_code ?? '',
             'reporter'    => $reporter,
             'description' => (string) $report->description,
+            'photo_url'   => $report->photo_ref
+                ? route('admin.maintenance.photo', $report->issue_id)
+                : null,
             // Activity Logs format ang gigamit: walay timezone conversion
             'date'        => $report->reported_at?->format('M d, Y h:i A') ?? '—',
             'resolved_at' => $report->resolved_at?->format('M d, Y h:i A') ?? '',

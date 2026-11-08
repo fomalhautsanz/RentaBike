@@ -130,6 +130,8 @@ body{background:#f9fafb;color:#111827;font-family:'DM Sans',sans-serif;-webkit-f
 .section-title h3{font-size:12px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.7px}
 .section-title a{font-size:12px;font-weight:600;color:var(--green-600);text-decoration:none;cursor:pointer}
 .dashboard-section-heading p{font-size:10px;color:var(--gray-400);margin-top:3px}
+.dashboard-inventory-section-title{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+.dashboard-inventory-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
 .dashboard-view-all{display:inline-flex;align-items:center;gap:4px;padding:8px 12px;border:1px solid var(--green-600);border-radius:10px;background:var(--green-600);font-size:12px!important;font-weight:700!important;color:#fff!important;line-height:1;box-shadow:0 3px 8px rgba(22,163,74,.2)}
 .dashboard-view-all:active{transform:scale(.98);box-shadow:none}
 .dashboard-view-all svg{width:13px;height:13px}

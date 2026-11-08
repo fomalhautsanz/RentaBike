@@ -4,9 +4,12 @@ use App\Support\MaintenanceLogs;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
+    Schema::dropIfExists('activity_log');
     Schema::dropIfExists('issue_report');
+    Schema::dropIfExists('rental');
     Schema::dropIfExists('bicycle');
     Schema::dropIfExists('staff');
     Schema::dropIfExists('admin');
@@ -39,6 +42,12 @@ beforeEach(function () {
         $table->string('condition');
     });
 
+    Schema::create('rental', function (Blueprint $table) {
+        $table->increments('rental_id');
+        $table->unsignedInteger('bike_id');
+        $table->string('status');
+    });
+
     Schema::create('issue_report', function (Blueprint $table) {
         $table->increments('issue_id');
         $table->unsignedInteger('bike_id');
@@ -47,8 +56,17 @@ beforeEach(function () {
         $table->text('description');
         $table->string('photo_ref')->nullable();
         $table->string('status');
-        $table->dateTime('reported_at');
+        $table->dateTime('reported_at')->useCurrent();
         $table->dateTime('resolved_at')->nullable();
+    });
+
+    Schema::create('activity_log', function (Blueprint $table) {
+        $table->increments('log_id');
+        $table->integer('user_id');
+        $table->string('user_type');
+        $table->string('action');
+        $table->dateTime('timestamp')->useCurrent();
+        $table->text('details')->nullable();
     });
 
     DB::table('staff')->insert([
@@ -116,6 +134,19 @@ test('staff without Handle Maintenance cannot export maintenance logs', function
         ->assertForbidden();
 });
 
+test('submitting an issue report marks its bike for maintenance', function () {
+    $this->withSession(['staff_id' => 7])
+        ->postJson(route('staff.issue-reports.store'), [
+            'issue_type' => 'damage',
+            'bike_code' => 'CB-001',
+            'description' => 'Brake needs inspection',
+        ])
+        ->assertCreated()
+        ->assertJsonPath('report.bike_code', 'CB-001');
+
+    expect(DB::table('bicycle')->where('bike_id', 2)->value('status'))->toBe('repair');
+});
+
 test('maintenance logs export requires a staff session', function () {
     $this->get(route('staff.maintenance-logs.export'))
         ->assertRedirect(route('staff.login'));
@@ -145,6 +176,22 @@ test('admin can save a maintenance report status', function () {
         ->assertUnprocessable();
 });
 
+test('admin can view a staff uploaded issue report photo', function () {
+    $admin = \App\Models\Admin::forceCreate([
+        'admin_id' => 1, 'username' => 'admin', 'password_hash' => 'x', 'full_name' => 'Admin', 'email' => 'a@a.com',
+    ]);
+    Storage::fake('local');
+    Storage::disk('local')->put('issue-reports/report.png', 'image-bytes');
+    DB::table('issue_report')->where('issue_id', 1)->update([
+        'photo_ref' => 'issue-reports/report.png',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.maintenance.photo', 1))
+        ->assertOk()
+        ->assertHeader('content-disposition', 'inline; filename=report.png');
+});
+
 test('saving a report status requires an admin session', function () {
     $this->patchJson(route('admin.maintenance.status', 1), ['status' => 'resolved'])
         ->assertUnauthorized();
@@ -165,6 +212,20 @@ test('resolving the last open report sets the bike back to available', function 
 
     $bike = DB::table('bicycle')->where('bike_id', 1)->first();
     expect($bike->status)->toBe('available')->and($bike->condition)->toBe('good');
+});
+
+test('resolving a report keeps an actively rented bike rented', function () {
+    $admin = \App\Models\Admin::forceCreate([
+        'admin_id' => 1, 'username' => 'admin', 'password_hash' => 'x', 'full_name' => 'Admin', 'email' => 'a@a.com',
+    ]);
+    DB::table('rental')->insert(['rental_id' => 1, 'bike_id' => 1, 'status' => 'active']);
+
+    $this->actingAs($admin)
+        ->patchJson(route('admin.maintenance.status', 1), ['status' => 'resolved'])
+        ->assertOk()
+        ->assertJsonPath('bike_released', false);
+
+    expect(DB::table('bicycle')->where('bike_id', 1)->value('status'))->toBe('rented');
 });
 
 test('bike stays under maintenance while another report is still open', function () {

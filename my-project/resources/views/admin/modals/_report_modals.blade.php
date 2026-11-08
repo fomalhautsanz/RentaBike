@@ -18,6 +18,12 @@
         <span class="vr-label">Description</span>
         <p id="vrDescription">-</p>
       </div>
+      <div class="vr-photo-row" id="vrPhotoRow" hidden>
+        <span class="vr-label">Staff Photo</span>
+        <a id="vrPhotoLink" target="_blank" rel="noopener noreferrer">
+          <img id="vrPhoto" alt="Photo uploaded with this issue report">
+        </a>
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">Update Status</label>
@@ -44,6 +50,9 @@
   .vr-label { color: #6b7280; font-weight: 500; }
   .vr-desc-row { flex-direction: column; gap: 4px; }
   .vr-desc-row p { margin: 0; color: #374151; }
+  .vr-photo-row { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+  .vr-photo-row[hidden] { display: none; }
+  .vr-photo-row img { display: block; max-width: 100%; max-height: 360px; border: 1px solid #e5e7eb; border-radius: 8px; object-fit: contain; }
 </style>
 
 <script>
@@ -70,6 +79,12 @@
     document.getElementById('vrBike').textContent = cells[2].textContent.trim().split('\n')[0].trim();
     document.getElementById('vrReporter').textContent = cells[3].textContent.trim();
     document.getElementById('vrDescription').textContent = cells[4].getAttribute('title') || cells[4].textContent.trim();
+    const photoUrl = targetRow.dataset.photoUrl;
+    const photoRow = document.getElementById('vrPhotoRow');
+    const photo = document.getElementById('vrPhoto');
+    photoRow.hidden = !photoUrl;
+    photo.src = photoUrl || '';
+    document.getElementById('vrPhotoLink').href = photoUrl || '#';
     document.getElementById('vrDate').textContent = cells[5].textContent.trim();
     document.getElementById('view-report-status').value = cells[6].textContent.trim();
     document.getElementById('view-report-notes').value = window._reportNotes[reportCode] || '';

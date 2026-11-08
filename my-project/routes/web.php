@@ -113,6 +113,8 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
         ->name('admin.reports.data');
 
     // Maintenance: i-save ang status gikan sa Update Report modal
+    Route::get('/maintenance/{issueReport}/photo', [MaintenanceController::class, 'photo'])
+        ->name('admin.maintenance.photo');
     Route::patch('/maintenance/{issueReport}/status', [MaintenanceController::class, 'updateStatus'])
         ->name('admin.maintenance.status');
 });
