@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\AdminPasswordResetController;
 use App\Http\Controllers\Auth\StaffPasswordResetController;
 use App\Http\Controllers\Auth\StaffLoginController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -33,6 +34,18 @@ Route::post('/admin/login', [LoginController::class, 'login'])
 
 Route::post('/admin/logout', [LoginController::class, 'logout'])
     ->name('logout');
+
+Route::get('/admin/password/forgot', [AdminPasswordResetController::class, 'showRequestForm'])
+    ->name('admin.password.request');
+
+Route::post('/admin/password/forgot', [AdminPasswordResetController::class, 'sendOtp'])
+    ->name('admin.password.email');
+
+Route::get('/admin/password/reset', [AdminPasswordResetController::class, 'showResetForm'])
+    ->name('admin.password.reset');
+
+Route::post('/admin/password/reset', [AdminPasswordResetController::class, 'resetPassword'])
+    ->name('admin.password.update');
 
 
 // ======================================================

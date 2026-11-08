@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Helpers\HashHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Staff;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -18,7 +19,8 @@ class LoginController extends Controller
 
     public function showLogin()
     {
-        if (Auth::check()) {
+        $staffAdmin = Auth::guard('staff_admin')->user();
+        if (Auth::guard('web')->check() || ($staffAdmin instanceof Staff && $staffAdmin->hasAdminPortalAccess())) {
             return redirect()->route('admin.dashboard');
         }
 
@@ -55,35 +57,49 @@ class LoginController extends Controller
 
         $admin = Admin::where('email_hash', $emailHash)->first();
 
-        if (
-            !$admin ||
-            !Hash::check($request->password, $admin->password_hash)
-        ) {
+        if ($admin && Hash::check($request->password, $admin->password_hash)) {
+            RateLimiter::clear($key);
 
-            RateLimiter::hit($key, self::LOCKOUT_SECONDS);
+            Auth::guard('staff_admin')->logout();
+            Auth::guard('web')->login(
+                $admin,
+                $request->boolean('remember')
+            );
 
-            return back()
-                ->withErrors([
-                    'email' => 'Invalid email or password.',
-                ])
-                ->onlyInput('email');
+            $request->session()->regenerate();
+
+            return redirect()->route('admin.dashboard');
         }
 
-        RateLimiter::clear($key);
+        // Staff accounts with role "Admin" also have Admin Portal access.
+        $staffAdmin = $admin ? null : Staff::where('email_hash', $emailHash)
+            ->adminPortalEligible()
+            ->first();
 
-        Auth::login(
-            $admin,
-            $request->boolean('remember')
-        );
+        if ($staffAdmin && Hash::check($request->password, $staffAdmin->password_hash)) {
+            RateLimiter::clear($key);
 
-        $request->session()->regenerate();
+            Auth::guard('web')->logout();
+            Auth::guard('staff_admin')->login($staffAdmin);
 
-        return redirect()->route('admin.dashboard');
+            $request->session()->regenerate();
+
+            return redirect()->route('admin.dashboard');
+        }
+
+        RateLimiter::hit($key, self::LOCKOUT_SECONDS);
+
+        return back()
+            ->withErrors([
+                'email' => 'Invalid email or password.',
+            ])
+            ->onlyInput('email');
     }
 
     public function logout(Request $request)
     {
-        Auth::logout();
+        Auth::guard('web')->logout();
+        Auth::guard('staff_admin')->logout();
 
         $request->session()->invalidate();
 

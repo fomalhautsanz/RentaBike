@@ -78,7 +78,9 @@ class DashboardController extends Controller
         $fullName = trim($validated['first_name'] . ' ' . $validated['last_name']);
 
         Staff::create([
-            'admin_id' => auth()->id(),
+            // staff.admin_id must reference the admin table. A staff member with
+            // role "Admin" files new staff under the admin who owns them.
+            'admin_id' => auth()->user() instanceof Staff ? auth()->user()->admin_id : auth()->id(),
             'username' => $username,
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],

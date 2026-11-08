@@ -37,6 +37,7 @@
   .login-footer{margin-top:28px;text-align:center;font-size:13px;color:#9ca3af}
   .login-help{text-align:center;font-size:13px;color:#6b7280}
   .alert-error{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
+  .alert-success{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
   #pw-input{padding-right:40px}
 </style>
 </head>
@@ -50,6 +51,10 @@
     <div class="login-title">RentaBike</div>
     <div class="login-sub">Admin Portal · Sign in to continue</div>
   </div>
+
+  @if (session('status'))
+    <div class="alert-success" role="status">{{ session('status') }}</div>
+  @endif
 
   @if ($errors->any())
     <div class="alert-error">
@@ -86,7 +91,7 @@
       <label>
         <input type="checkbox" name="remember"> Remember me
       </label>
-      <a href="#" class="login-link">Forgot password?</a>
+      <a href="{{ route('admin.password.request') }}" class="login-link">Forgot password?</a>
     </div>
 
     <button type="submit" class="login-submit">Sign In to Admin Portal</button>

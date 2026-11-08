@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class Staff extends Model
+class Staff extends Authenticatable
 {
     protected $table      = 'staff';
     protected $primaryKey = 'staff_id';
@@ -25,9 +25,39 @@ class Staff extends Model
         'status',
     ];
 
+    protected $hidden = [
+        'password_hash',
+    ];
+
     protected $casts = [
         'permissions' => 'array',
     ];
+
+    /**
+     * Staff with role "Admin" and an active status may use the Admin Portal.
+     */
+    public function hasAdminPortalAccess(): bool
+    {
+        return strcasecmp((string) $this->role, 'Admin') === 0
+            && strtolower((string) $this->status) === 'active';
+    }
+
+    public function scopeAdminPortalEligible($query)
+    {
+        return $query->where('role', 'Admin')->where('status', 'active');
+    }
+
+    // Authenticate against password_hash instead of a "password" column.
+    public function getAuthPassword()
+    {
+        return $this->password_hash;
+    }
+
+    // The staff table has no remember_token column.
+    public function getRememberTokenName()
+    {
+        return '';
+    }
 
     protected static function booted(): void
         {
