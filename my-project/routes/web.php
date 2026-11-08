@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
 use App\Http\Controllers\Staff\InventoryController;
+use App\Http\Controllers\Staff\MaintenanceExportController;
 use App\Http\Controllers\Staff\IssueReportController;
 use App\Http\Controllers\Staff\RentalController;
 use App\Http\Controllers\Staff\ScanController;
@@ -128,6 +129,10 @@ Route::prefix('staff')
 
         Route::get('/activity-logs/today', [StaffDashboardController::class, 'todayActivityLogs'])
             ->name('staff.activity-logs.today');
+
+        // Maintenance logs export (Handle Maintenance ra, gi-check sa controller)
+        Route::get('/maintenance-logs/export', [MaintenanceExportController::class, 'export'])
+            ->name('staff.maintenance-logs.export');
 
         Route::get('/inventory', [InventoryController::class, 'index'])
             ->name('staff.inventory');
