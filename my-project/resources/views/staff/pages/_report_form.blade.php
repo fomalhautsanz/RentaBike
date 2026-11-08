@@ -30,13 +30,13 @@
               <circle cx="9" cy="9" r="2"/>
               <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
             </svg>
-            <p>Tap to upload photo</p>
-            <input type="file" accept="image/*">
+            <p id="reportPhotoName">Tap to upload photo</p>
+            <input type="file" accept="image/jpeg,image/png,image/webp" id="reportPhoto" onchange="onReportPhotoChange(this)">
           </div>
         </div>
       </div>
 
-      <button class="primary-btn" onclick="submitReport()">
+      <button class="primary-btn" id="reportSubmitBtn" onclick="submitReport()">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <polyline points="20 6 9 17 4 12"/>
         </svg>

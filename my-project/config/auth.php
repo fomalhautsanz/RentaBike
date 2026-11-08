@@ -42,6 +42,14 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Staff accounts whose role is "Admin" sign in to the Admin Portal
+        // through this guard. Kept separate from "web" so a staff_id is never
+        // looked up in the admin table (IDs overlap between the two tables).
+        'staff_admin' => [
+            'driver' => 'session',
+            'provider' => 'staff',
+        ],
     ],
 
     /*
@@ -65,6 +73,10 @@ return [
     'users' => [
         'driver' => 'eloquent',
         'model'  => App\Models\Admin::class, // ← change this
+    ],
+    'staff' => [
+        'driver' => 'eloquent',
+        'model'  => App\Models\Staff::class,
     ],
 ],
 
