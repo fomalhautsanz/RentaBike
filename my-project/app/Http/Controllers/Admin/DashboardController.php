@@ -203,17 +203,43 @@ class DashboardController extends Controller
     // kini ang function nga ma-run pag adto ka sa admin dashboard
     public function index(Request $request)
 {
+    // MySQL ang nag-save sa created_at ug timestamp, so ang DB clock ang gamiton (UTC ang app).
+    $now = RentalPricing::dbNow();
+
+    $totalBikes = Bicycle::count();
+    $availableBikes = Bicycle::where('condition', 'good')
+        ->where('status', 'available')
+        ->count();
+
+    $activeRentals = Rental::where('status', 'active')->count();
+    $underMaintenance = Bicycle::whereIn('status', ['maintenance', 'repair'])->count();
+
+    // pila ka percent sa tanan bikes
+    $shareOfBikes = fn (int $count) => $totalBikes > 0
+        ? (int) round(($count / $totalBikes) * 100)
+        : null;
+
+    $completedRevenue = fn ($start, $end) => (float) Rental::where('status', 'completed')
+        ->whereBetween('start_time', [$start, $end])
+        ->sum('total_fee');
+
+    // revenue karong bulana vs parehas nga mga adlaw sa miaging bulan
+    $revenue = $completedRevenue($now->copy()->startOfMonth(), $now);
+    $lastMonth = $now->copy()->subMonthNoOverflow();
+    $lastMonthRevenue = $completedRevenue($lastMonth->copy()->startOfMonth(), $lastMonth);
+
     $stats = [
-        'total_bikes'       => Bicycle::count(),
-        'available_bikes'   => Bicycle::where('condition', 'good')
-            ->where('status', 'available')
-            ->count(),
-        'active_rentals'    => Bicycle::where('status', 'rented')->count(),
-        'under_maintenance' => Bicycle::whereIn('status', ['maintenance', 'repair'])->count(),
-        'revenue'           => (float) Rental::where('status', 'completed')
-            ->whereMonth('start_time', now()->month)
-            ->whereYear('start_time', now()->year)
-            ->sum('total_fee'),
+        'total_bikes'       => $totalBikes,
+        'available_percent' => $shareOfBikes($availableBikes),
+        'available_bikes'   => $availableBikes,
+        'active_rentals'    => $activeRentals,
+        'active_percent'    => $shareOfBikes($activeRentals),
+        'under_maintenance' => $underMaintenance,
+        'maintenance_percent' => $shareOfBikes($underMaintenance),
+        'revenue'           => $revenue,
+        'revenue_change'    => $lastMonthRevenue > 0
+            ? round((($revenue - $lastMonthRevenue) / $lastMonthRevenue) * 100, 1)
+            : null,
     ];
 
     // ── Call the helper methods ──────────────────────────────────────────
@@ -224,10 +250,11 @@ class DashboardController extends Controller
     // ── Recent activity from the view ────────────────────────────────────
     $recentActivity = \DB::table('vw_staff_activity_log')
         ->latest('timestamp')
-        ->limit(10)
+        ->limit(5)
         ->get()
-        ->map(function ($log) {
-            $log->timestamp = \Carbon\Carbon::parse($log->timestamp);
+        ->map(function ($log) use ($now) {
+            $log->time_ago = \Carbon\Carbon::parse($log->timestamp)
+                ->diffForHumans($now, \Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW);
             return $log;
         });
 
@@ -335,13 +362,12 @@ class DashboardController extends Controller
     })->toBase(); // downgrade to plain Support Collection so merge() doesn't call getKey() on stdClass
 
 
-    $activeRentals = Rental::with('payment')
+    $activeRentalsByBike = Rental::with('payment')
         ->where('status', 'active')
         ->get()
         ->keyBy('bike_id');
-    $now = RentalPricing::dbNow();
-    $bikes = Bicycle::orderBy('bike_id')->get()->map(function (Bicycle $bike) use ($activeRentals, $now) {
-        $rental = $activeRentals->get($bike->bike_id);
+    $bikes =Bicycle::orderBy('bike_id')->get()->map(function (Bicycle $bike) use ($activeRentalsByBike, $now) {
+        $rental = $activeRentalsByBike->get($bike->bike_id);
         $summary = $rental ? RentalPricing::summary($rental, $bike->bike_type, $now) : null;
 
         return (object) [
@@ -596,8 +622,8 @@ class DashboardController extends Controller
    // rental counts grouped by 2-hour block, based on sa start 
     protected function peakRentalHours(): array
     {
-        // ihap tanan rentals per hr
-        $counts = Rental::selectRaw('HOUR(start_time) as hr, COUNT(*) as total')
+        // ihap tanan rentals per 2-hour block (e.g. 7AM goes to the 6AM block)
+        $counts = Rental::selectRaw('FLOOR(HOUR(start_time) / 2) * 2 as hr, COUNT(*) as total')
             ->groupBy('hr')
             ->pluck('total', 'hr');
 
