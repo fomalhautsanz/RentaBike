@@ -10,6 +10,7 @@ use App\Models\Bicycle;       // model sa bicycle table
 use App\Models\IssueReport;   // model sa issue report table
 use App\Models\Rental;        // model sa rental table
 use App\Models\Staff;         // model sa staff table 
+use App\Support\AdminAccess;
 use App\Support\MaintenanceLogs;
 use App\Support\RentalPricing;
 use Illuminate\Http\Request;
@@ -144,6 +145,9 @@ class DashboardController extends Controller
 
         if (!empty($validated['password'])) {
             $staff->password_hash = Hash::make($validated['password']);
+            // Bag-ong password = i-logout ang "remember me" devices niini nga staff
+            $staff->remember_token = null;
+            $staff->portal_remember_token = null;
         }
 
         if ($request->hasFile('profile_picture')) {
@@ -528,6 +532,11 @@ class DashboardController extends Controller
             'action' => ['required', 'in:edit,delete'],
             'password' => ['required', 'string'],
         ]);
+
+        $privilege = $validated['action'] === 'edit' ? 'Edit Inventory' : 'Delete Inventory';
+        if (!AdminAccess::allows($privilege)) {
+            return response()->json(['message' => "You do not have the \"{$privilege}\" privilege."], 403);
+        }
 
         if (!Hash::check($validated['password'], $request->user()->password_hash)) {
             return response()->json(['message' => 'The password is incorrect.'], 422);

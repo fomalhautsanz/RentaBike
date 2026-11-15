@@ -141,6 +141,11 @@ class AdminPasswordResetController extends Controller
             }
 
             $user->password_hash = Hash::make($validated['password']);
+            // I-logout ang tanan "remember me" devices human ma-reset ang password
+            $user->remember_token = null;
+            if ($user instanceof \App\Models\Staff) {
+                $user->portal_remember_token = null;
+            }
             $user->save();
 
             DB::table($table)

@@ -19,6 +19,7 @@ class Admin extends Authenticatable
 
     protected $hidden = [
         'password_hash',
+        'remember_token',
     ];
 
     // Tell Laravel to use password_hash instead of password

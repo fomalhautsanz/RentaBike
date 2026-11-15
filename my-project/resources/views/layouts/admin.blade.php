@@ -944,24 +944,30 @@
             Dashboard
           </button>
         </li>
+        @adminCan('Manage Staff')
         <li>
           <button class="nav-btn" id="nav-staff" onclick="nav('staff', this)">
             <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             Staff Management
           </button>
         </li>
+        @endadminCan
+        @adminCan('View Inventory')
         <li>
           <button class="nav-btn" id="nav-bikes" onclick="nav('bikes', this)">
             <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/><path d="M3 17V7h4l4-4 4 4h2l1 4h1v6"/></svg>
             Bike Inventory
           </button>
         </li>
+        @endadminCan
+        @adminCan('Handle Maintenance')
         <li>
           <button class="nav-btn" id="nav-maintenance" onclick="nav('maintenance', this)">
             <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
             Maintenance
           </button>
         </li>
+        @endadminCan
         <li>
           <button class="nav-btn" id="nav-reports" onclick="nav('reports', this)">
             <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>

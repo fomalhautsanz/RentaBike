@@ -120,6 +120,9 @@ class StaffPasswordResetController extends Controller
             }
 
             $staff->password_hash = Hash::make($validated['password']);
+            // I-logout ang tanan "remember me" devices human ma-reset ang password
+            $staff->remember_token = null;
+            $staff->portal_remember_token = null;
             $staff->save();
 
             DB::table('staff_password_reset_otps')

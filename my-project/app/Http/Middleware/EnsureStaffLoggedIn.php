@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use App\Models\Staff;
+use App\Support\StaffPortalRemember;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,6 +21,16 @@ class EnsureStaffLoggedIn
         $staff = Session::has('staff_id')
             ? Staff::find(Session::get('staff_id'))
             : null;
+
+        // "Remember me": kung expired na ang session, i-restore gikan sa cookie
+        if (!$staff && ($remembered = StaffPortalRemember::resolve($request))
+            && strtolower((string) $remembered->status) === 'active') {
+            $request->session()->regenerate();
+            Session::put('staff_id', $remembered->staff_id);
+            Session::put('staff_name', trim(($remembered->first_name ?? '') . ' ' . ($remembered->last_name ?? '')) ?: $remembered->full_name);
+            Session::put('staff_role', $remembered->role);
+            $staff = $remembered;
+        }
 
         if (!$staff || strtolower((string) $staff->status) !== 'active') {
             return redirect()->route('staff.login')
@@ -42,10 +53,6 @@ class EnsureStaffLoggedIn
             ->all();
         view()->share('staffPermissions', $staffPermissions);
         $request->attributes->set('staffPermissions', $staffPermissions);
-
-        if (in_array('Manage Staff', $staffPermissions, true)) {
-            view()->share('staffMembers', Staff::orderBy('staff_id')->get());
-        }
 
         return $next($request);
     }

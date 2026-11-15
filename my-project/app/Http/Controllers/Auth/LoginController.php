@@ -80,7 +80,7 @@ class LoginController extends Controller
             RateLimiter::clear($key);
 
             Auth::guard('web')->logout();
-            Auth::guard('staff_admin')->login($staffAdmin);
+            Auth::guard('staff_admin')->login($staffAdmin, $request->boolean('remember'));
 
             $request->session()->regenerate();
 

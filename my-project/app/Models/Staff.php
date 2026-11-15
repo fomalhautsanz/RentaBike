@@ -27,6 +27,8 @@ class Staff extends Authenticatable
 
     protected $hidden = [
         'password_hash',
+        'remember_token',
+        'portal_remember_token',
     ];
 
     protected $casts = [
@@ -42,6 +44,20 @@ class Staff extends Authenticatable
             && strtolower((string) $this->status) === 'active';
     }
 
+    // Case-insensitive, para mo-match bisan "view inventory" ang na-save
+    public function hasPermission(string $permission): bool
+    {
+        $wanted = strtolower(trim($permission));
+
+        foreach ((array) ($this->permissions ?? []) as $granted) {
+            if (is_string($granted) && strtolower(trim($granted)) === $wanted) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function scopeAdminPortalEligible($query)
     {
         return $query->where('role', 'Admin')->where('status', 'active');
@@ -51,12 +67,6 @@ class Staff extends Authenticatable
     public function getAuthPassword()
     {
         return $this->password_hash;
-    }
-
-    // The staff table has no remember_token column.
-    public function getRememberTokenName()
-    {
-        return '';
     }
 
     protected static function booted(): void

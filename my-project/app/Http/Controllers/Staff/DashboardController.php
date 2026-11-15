@@ -16,11 +16,16 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        // Ang tulo ka buckets dili mag-overlap ug mo-total sa tanan bikes:
+        // ang na-report nga bike (status "repair", condition "good") maihap na sa Repair.
+        $total     = Bicycle::count();
+        $available = Bicycle::where('condition', 'good')->where('status', 'available')->count();
+        $rented    = Bicycle::where('condition', 'good')->where('status', 'rented')->count();
         $stats = [
-            'available' => Bicycle::where('condition', 'good')->where('status', 'available')->count(),
-            'rented'    => Bicycle::where('condition', 'good')->where('status', 'rented')->count(),
-            'repair'    => Bicycle::where('condition', '!=', 'good')->count(),
-            'total'     => Bicycle::count(),
+            'available' => $available,
+            'rented'    => $rented,
+            'repair'    => $total - $available - $rented,
+            'total'     => $total,
         ];
         $activeRentals = Rental::with('payment')
             ->where('status', 'active')
@@ -57,13 +62,11 @@ class DashboardController extends Controller
         ])->filter();
         $dashboardBikes->each($addOverdueDetails);
 
-        $staff = Staff::find(Session::get('staff_id'));
-        $staffPermissions = $staff?->permissions ?? [];
+        // Parehas nga listahan sa gi-check sa server (gi-normalize sa EnsureStaffLoggedIn)
+        $staffPermissions = request()->attributes->get('staffPermissions', []);
         $canAddInventory = in_array('Add Inventory', $staffPermissions, true);
-        $canEditInventory = in_array('Manage Inventory', $staffPermissions, true)
-            || in_array('Edit Inventory', $staffPermissions, true);
-        $canDeleteInventory = in_array('Manage Inventory', $staffPermissions, true)
-            || in_array('Delete Inventory', $staffPermissions, true);
+        $canEditInventory = in_array('Edit Inventory', $staffPermissions, true);
+        $canDeleteInventory = in_array('Delete Inventory', $staffPermissions, true);
         $nextBikeCode = Bicycle::nextQrCode('Mountain Bike');
 
         return view('staff.home', compact(

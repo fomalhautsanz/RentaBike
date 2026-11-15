@@ -3,7 +3,6 @@
 @section('content')
     @php($staffPermissions = $staffPermissions ?? [])
     @php($canViewInventory = in_array('View Inventory', $staffPermissions, true))
-    @php($canManageStaff = in_array('Manage Staff', $staffPermissions, true))
     @php($canHandleMaintenance = in_array('Handle Maintenance', $staffPermissions, true))
     @include('staff.pages._home')
     @include('staff.pages._scanner')
@@ -16,10 +15,9 @@
     @if($canHandleMaintenance ?? false)
         @include('staff.pages._report')
     @endif
-    @if($canManageStaff ?? false)
-        @include('staff.pages._staff_management')
+    @if($canHandleMaintenance ?? false)
+        @include('staff.pages._report_form')
     @endif
-    @include('staff.pages._report_form')
     @include('staff.pages._rental_form')
     @include('staff.pages._success')
     <nav class="bottom-nav">
@@ -33,10 +31,13 @@
             </div>
             <span>Scan QR</span>
         </button>
+        {{-- Report tab: Handle Maintenance ra --}}
+        @if($canHandleMaintenance ?? false)
         <button class="nav-btn" onclick="navActive(this); goTo('report')">
             <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             <span>Report</span>
         </button>
+        @endif
     </nav>
 @endsection
 

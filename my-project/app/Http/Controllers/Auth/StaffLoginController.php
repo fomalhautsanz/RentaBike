@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Helpers\HashHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Staff;
+use App\Support\StaffPortalRemember;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
@@ -64,9 +65,17 @@ class StaffLoginController extends Controller
         
             RateLimiter::clear($key);
 
+            // Security: bag-ong session ID human mag-login (session fixation)
+            $request->session()->regenerate();
+
             Session::put('staff_id', $staff->staff_id);
             Session::put('staff_name', trim(($staff->first_name ?? '') . ' ' . ($staff->last_name ?? '')) ?: $staff->full_name);
             Session::put('staff_role', $staff->role);
+
+            if ($request->boolean('remember')) {
+                StaffPortalRemember::issue($staff);
+            }
+
             return redirect()->route('staff.home');
         }
 
@@ -80,6 +89,11 @@ class StaffLoginController extends Controller
 
     public function logout(Request $request)
     {
+        // I-clear ang "remember me" token ug cookie
+        StaffPortalRemember::forget(
+            Staff::find(Session::get('staff_id')) ?? StaffPortalRemember::resolve($request)
+        );
+
         Session::forget([
             'staff_id',
             'staff_name',

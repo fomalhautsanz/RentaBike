@@ -819,11 +819,28 @@ function hideSessionSheet() {
 function pad(n) { return String(n).padStart(2, '0'); }
 
 // ── MODALS ───────────────────────────────────────────────────────────────────
+// ── Security: i-escape ang text gikan sa user bago i-butang sa innerHTML (XSS) ──
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+  }[character]));
+}
+// Para sa value nga gamiton sulod sa onclick="..." (JS string + HTML attribute)
+function jsArg(value) {
+  return escapeHtml(JSON.stringify(String(value ?? '')));
+}
+// Handle Maintenance ra ang maka-file og issue report (gi-check pud sa server)
+const staffCanReport = @json(in_array('Handle Maintenance', $staffPermissions ?? [], true));
+const staffInventoryCan = @json([
+  'edit' => (bool) ($canEditInventory ?? false),
+  'delete' => (bool) ($canDeleteInventory ?? false),
+]);
+
 function openBikeAction(action, data = {}) {
   const content = document.getElementById('modalContent');
-  const title = action === 'edit' ? `Edit ${data.id ?? 'Bike'}` : 'Delete Bike';
+  const title = action === 'edit' ? `Edit ${escapeHtml(data.id ?? 'Bike')}` : 'Delete Bike';
   const body = action === 'delete'
-    ? `<p class="modal-confirmation-message">Are you sure you want to remove ${data.id ?? 'this bike'} from inventory?</p>
+    ? `<p class="modal-confirmation-message">Are you sure you want to remove ${escapeHtml(data.id ?? 'this bike')} from inventory?</p>
        <form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}" data-live-form="delete">
          @csrf
          @method('DELETE')
@@ -832,9 +849,9 @@ function openBikeAction(action, data = {}) {
     : `<form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}" data-live-form="edit" data-bike-code-preview-url="{{ route('staff.inventory.next-code') }}">
          @csrf
          @method('PATCH')
-         <div class="form-group"><label class="form-label" for="edit-qr-code">Bike ID</label><input id="edit-qr-code" data-bike-code class="form-input" value="${data.qrCode ?? ''}" readonly></div>
-         <div class="form-group"><label class="form-label" for="edit-model">Model</label><input id="edit-model" name="model" class="form-input" value="${data.model ?? ''}" required></div>
-         <div class="form-group"><label class="form-label" for="edit-make">Make</label><input id="edit-make" name="make" class="form-input" value="${data.make ?? ''}" required></div>
+         <div class="form-group"><label class="form-label" for="edit-qr-code">Bike ID</label><input id="edit-qr-code" data-bike-code class="form-input" value="${escapeHtml(data.qrCode)}" readonly></div>
+         <div class="form-group"><label class="form-label" for="edit-model">Model</label><input id="edit-model" name="model" class="form-input" value="${escapeHtml(data.model)}" required></div>
+         <div class="form-group"><label class="form-label" for="edit-make">Make</label><input id="edit-make" name="make" class="form-input" value="${escapeHtml(data.make)}" required></div>
          <div class="form-group"><label class="form-label" for="edit-bike-type">Bike Type</label><select id="edit-bike-type" name="bike_type" class="form-select" onchange="updateStaffBikeCodePreview(this)" required>${['Mountain Bike', 'City Bike', "Lady's/Men's Bike", 'E-Scooter', 'Road Bike', 'Sidecar Bike', "Children's Bike"].map(type => `<option value="${type}" ${data.type === type ? 'selected' : ''}>${type}</option>`).join('')}</select></div>
          <div class="form-group"><label class="form-label" for="edit-condition">Condition</label><select id="edit-condition" name="condition" class="form-select" required><option value="Good" ${data.condition === 'Good' ? 'selected' : ''}>Good</option><option value="Needs Repair" ${data.condition === 'Needs Repair' ? 'selected' : ''}>Needs Repair</option><option value="Missing" ${data.condition === 'Missing' ? 'selected' : ''}>Missing</option></select></div>
          <div class="modal-actions"><button type="submit" class="primary-btn">Save Changes</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
@@ -843,8 +860,8 @@ function openBikeAction(action, data = {}) {
   if (action === 'edit') {
     const form = content.querySelector('[data-live-form="edit"]');
     const typeSelect = form.querySelector('[name="bike_type"]');
-    if (![...typeSelect.options].some(option => option.value === data.type)) {
-      typeSelect.add(new Option(data.type, data.type));
+    if (data.type && ![...typeSelect.options].some(option => option.value === data.type)) {
+      typeSelect.add(new Option(data.type, data.type, true, true));
     }
     form.dataset.originalBikeType = data.type ?? '';
     form.dataset.originalBikeCode = data.qrCode ?? '';
@@ -891,16 +908,40 @@ function confirmDeleteBike(id, qrCode) {
   openBikeAction('delete', { id: id || qrCode || '' });
 }
 
+// Ang sulod sa usa ka inventory row; tanan nga text gikan sa user gi-escape
+function inventoryRowHtml(bike, bikeCode, statusValue, statusLabel, statusClass, conditionLabel) {
+  const editCondition = conditionLabel === 'Repair' ? 'Needs Repair' : (conditionLabel === 'Missing' ? 'Missing' : 'Good');
+  const editButton = staffInventoryCan.edit
+    ? `<button type="button" onclick="openBikeAction('edit', { id: ${jsArg(bikeCode)}, qrCode: ${jsArg(bikeCode)}, model: ${jsArg(bike.model)}, make: ${jsArg(bike.make)}, type: ${jsArg(bike.bike_type)}, condition: ${jsArg(editCondition)} })" class="action-btn" style="width:30px;height:30px" title="Edit ${escapeHtml(bikeCode)}">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>`
+    : '';
+  const deleteButton = staffInventoryCan.delete && statusValue !== 'rented'
+    ? `<button type="button" onclick="openBikeAction('delete', { id: ${jsArg(bikeCode)} })" class="action-btn" style="width:30px;height:30px;color:#ef4444" title="Delete ${escapeHtml(bikeCode)}">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>`
+    : '';
+
+  return `
+      <div style="flex:1;min-width:0">
+        <div class="inv-row-id">${escapeHtml(bikeCode)}</div>
+        <div class="inv-row-name">${escapeHtml(bike.model)} · ${escapeHtml(bike.make)}</div>
+      </div>
+      <span class="badge ${statusClass}" style="flex-shrink:0;font-size:11px">${statusLabel}</span>
+      ${editButton || deleteButton ? `<div style="display:flex;gap:4px;flex-shrink:0">${editButton}${deleteButton}</div>` : ''}`;
+}
+
 function updateInventoryRowFromBike(bike, previousBikeCode = null) {
-  const bikeCode = bike.qr_code || bike.id;
+  const bikeCode = String(bike.qr_code || bike.id || '');
   const category = bike.bike_type || 'Unknown';
   const statusValue = bike.status || 'available';
   const conditionLabel = bike.condition === 'repair' ? 'Repair' : (bike.condition === 'missing' ? 'Missing' : 'Available');
   const statusLabel = statusValue === 'rented' ? 'Rented' : (statusValue === 'repair' ? 'Repair' : 'Available');
   const statusClass = statusValue === 'rented' ? 'badge-blue' : (statusValue === 'repair' ? 'badge-orange' : 'badge-green');
+  const findCategoryBlock = name => [...document.querySelectorAll('.inv-category-block')].find(block => block.dataset.category === name) || null;
 
   function syncCategoryBlock(categoryName) {
-    const block = document.querySelector(`.inv-category-block[data-category="${categoryName}"]`);
+    const block = findCategoryBlock(categoryName);
     if (!block) return null;
 
     const rows = block.querySelectorAll('.inv-bike-row');
@@ -926,23 +967,10 @@ function updateInventoryRowFromBike(bike, previousBikeCode = null) {
     existingRow.dataset.model = `${(bike.model || '').toLowerCase()} ${(bike.make || '').toLowerCase()}`.trim();
     existingRow.dataset.category = category;
     existingRow.dataset.status = statusValue;
-    existingRow.innerHTML = `
-      <div style="flex:1;min-width:0">
-        <div class="inv-row-id">${bikeCode}</div>
-        <div class="inv-row-name">${bike.model} · ${bike.make}</div>
-      </div>
-      <span class="badge ${statusClass}" style="flex-shrink:0;font-size:11px">${statusLabel}</span>
-      <div style="display:flex;gap:4px;flex-shrink:0">
-        <button type="button" onclick="openBikeAction('edit', { id: '${bikeCode}', qrCode: '${bikeCode}', model: '${(bike.model || '').replace(/'/g, "\\'")}', make: '${(bike.make || '').replace(/'/g, "\\'")}', type: '${(bike.bike_type || '').replace(/'/g, "\\'")}', condition: '${conditionLabel === 'Repair' ? 'Needs Repair' : (conditionLabel === 'Missing' ? 'Missing' : 'Good')}' })" class="action-btn" style="width:30px;height:30px" title="Edit ${bikeCode}">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        </button>
-        <button type="button" onclick="openBikeAction('delete', { id: '${bikeCode}' })" class="action-btn" style="width:30px;height:30px;color:#ef4444" title="Delete ${bikeCode}">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-        </button>
-      </div>`;
+    existingRow.innerHTML = inventoryRowHtml(bike, bikeCode, statusValue, statusLabel, statusClass, conditionLabel);
 
     if (oldCategory && oldCategory !== category) {
-      const oldBlock = document.querySelector(`.inv-category-block[data-category="${oldCategory}"]`);
+      const oldBlock = findCategoryBlock(oldCategory);
       if (oldBlock) {
         const oldList = oldBlock.querySelector('.inv-list');
         if (oldList && existingRow.parentNode === oldList) {
@@ -951,7 +979,7 @@ function updateInventoryRowFromBike(bike, previousBikeCode = null) {
       }
     }
 
-    let targetBlock = document.querySelector(`.inv-category-block[data-category="${category}"]`);
+    let targetBlock = findCategoryBlock(category);
     if (!targetBlock) {
       const template = document.querySelector('.inv-category-block');
       if (!template) return;
@@ -975,7 +1003,7 @@ function updateInventoryRowFromBike(bike, previousBikeCode = null) {
     return;
   }
 
-  let targetBlock = document.querySelector(`.inv-category-block[data-category="${category}"]`);
+  let targetBlock = findCategoryBlock(category);
   if (!targetBlock) {
     const template = document.querySelector('.inv-category-block');
     if (!template) return;
@@ -997,20 +1025,7 @@ function updateInventoryRowFromBike(bike, previousBikeCode = null) {
   el.dataset.status = statusValue;
   el.style.gap = '8px';
   el.style.alignItems = 'center';
-  el.innerHTML = `
-    <div style="flex:1;min-width:0">
-      <div class="inv-row-id">${bikeCode}</div>
-      <div class="inv-row-name">${bike.model} · ${bike.make}</div>
-    </div>
-    <span class="badge ${statusClass}" style="flex-shrink:0;font-size:11px">${statusLabel}</span>
-    <div style="display:flex;gap:4px;flex-shrink:0">
-      <button type="button" onclick="openBikeAction('edit', { id: '${bikeCode}', qrCode: '${bikeCode}', model: '${(bike.model || '').replace(/'/g, "\\'")}', make: '${(bike.make || '').replace(/'/g, "\\'")}', type: '${(bike.bike_type || '').replace(/'/g, "\\'")}', condition: '${conditionLabel === 'Repair' ? 'Needs Repair' : (conditionLabel === 'Missing' ? 'Missing' : 'Good')}' })" class="action-btn" style="width:30px;height:30px" title="Edit ${bikeCode}">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </button>
-      <button type="button" onclick="openBikeAction('delete', { id: '${bikeCode}' })" class="action-btn" style="width:30px;height:30px;color:#ef4444" title="Delete ${bikeCode}">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-      </button>
-    </div>`;
+  el.innerHTML = inventoryRowHtml(bike, bikeCode, statusValue, statusLabel, statusClass, conditionLabel);
   list.appendChild(el);
   syncCategoryBlock(category);
 }
@@ -1079,18 +1094,6 @@ function handleLiveInventorySubmit(event) {
 }
 
 document.addEventListener('submit', handleLiveInventorySubmit);
-
-function openStaffAction(action, name = '') {
-  const content = document.getElementById('modalContent');
-  const title = action === 'add' ? 'Add Staff Account' : action === 'edit' ? `Edit ${name}` : `Delete ${name}`;
-  const body = action === 'delete'
-    ? `<p class="modal-confirmation-message">Are you sure you want to remove this staff account?</p>`
-    : `<div class="form-group"><label class="form-label">Full Name</label><input class="form-input" value="${name}" placeholder="Enter full name"></div>
-       <div class="form-group"><label class="form-label">Email Address</label><input class="form-input" type="email" placeholder="staff@rentabike.com"></div>
-       <div class="form-group"><label class="form-label">Role</label><select class="form-select"><option>Staff</option><option>Admin</option></select></div>`;
-  content.innerHTML = `<div class="modal-bike-title">${title}</div>${body}<div class="modal-actions"><button class="primary-btn" onclick="showToast('Staff account ${action} action submitted'); closeModal()">${action === 'delete' ? 'Delete Account' : 'Save Account'}</button><button class="primary-btn outline" onclick="closeModal()">Cancel</button></div>`;
-  document.getElementById('modalBg').classList.add('open');
-}
 
 function openModal(type, data = {}) {
   const bikeIconHtml = (cls) => `
@@ -1171,10 +1174,10 @@ function openModal(type, data = {}) {
       <div class="modal-detail-row"><span class="label">Updated By</span><span class="value">${data.updatedBy ?? '—'}</span></div>
       <div class="modal-detail-row"><span class="label">Date Flagged</span><span class="value">${data.date ?? '—'}</span></div>
       <div class="modal-actions">
-        <button class="primary-btn" data-report-type="${data.reportType ?? 'damage'}" data-bike-id="${data.id ?? ''}" onclick="closeModal(); openReportForm(this.dataset.reportType, this.dataset.bikeId)">
+        ${staffCanReport ? `<button class="primary-btn" data-report-type="${escapeHtml(data.reportType ?? 'damage')}" data-bike-id="${escapeHtml(data.id)}" onclick="closeModal(); openReportForm(this.dataset.reportType, this.dataset.bikeId)">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
           ${data.reportType === 'missing' ? 'Report Missing Bike' : 'File Damage Report'}
-        </button>
+        </button>` : ''}
         <button class="primary-btn outline" onclick="closeModal()">Close</button>
       </div>`;
   }
@@ -1310,6 +1313,10 @@ function onReportPhotoChange(input) {
   document.getElementById('reportPhotoName').textContent = file ? file.name : 'Tap to upload photo';
 }
 function openReportForm(type, bikeId = '') {
+  if (!staffCanReport || !document.getElementById('report-form')) {
+    showToast('You do not have access to maintenance reports.\nPlease contact your administrator.');
+    return;
+  }
   reportType = reportTitles[type] ? type : 'other';
   document.getElementById('reportFormTitle').textContent = reportTitles[reportType];
   document.getElementById('reportBikeId').value = bikeId;
