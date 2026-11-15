@@ -124,10 +124,13 @@ $repairPercent = $totalBikes > 0 ? round(((int) ($stats['repair'] ?? 0) / $total
           Maintenance Logs
         </button>
         @endif
+        {{-- "View all" moadto sa Inventory: View Inventory ra --}}
+        @if($canViewInventory ?? false)
         <a class="dashboard-view-all" onclick="goTo('inventory')">
           View all
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         </a>
+        @endif
       </div>
     </div>
     <div class="dashboard-category-list dashboard-status-list">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bicycle;
+use App\Models\Rental;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -78,6 +79,13 @@ class InventoryController extends Controller
 
     public function update(Request $request, Bicycle $bike): RedirectResponse|JsonResponse
     {
+        // Security: dili lang i-hide ang button, i-check pud sa server
+        abort_unless(
+            in_array('Edit Inventory', $request->attributes->get('staffPermissions', []), true),
+            403,
+            'You do not have the "Edit Inventory" privilege.'
+        );
+
         $validated = $request->validate([
             'model' => ['required', 'string', 'max:100'],
             'make' => ['required', 'string', 'max:100'],
@@ -123,6 +131,12 @@ class InventoryController extends Controller
 
     public function destroy(Request $request, Bicycle $bike): RedirectResponse|JsonResponse
     {
+        abort_unless(
+            in_array('Delete Inventory', $request->attributes->get('staffPermissions', []), true),
+            403,
+            'You do not have the "Delete Inventory" privilege.'
+        );
+
         if ($bike->status === 'rented') {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -147,21 +161,30 @@ class InventoryController extends Controller
             ->with('success', 'Bike removed from inventory.');
     }
 
+    /**
+     * Fallback "return" para sa rented bike nga walay active rental record.
+     * Security: rented → available ra; ang pag-rent kinahanglan moagi sa rental flow
+     * (para naay borrower, ID ug payment record).
+     */
     public function toggleStatus(Bicycle $bike): JsonResponse
     {
-        if ($bike->condition !== 'good') {
+        if ($bike->status !== 'rented') {
             return response()->json([
-                'message' => 'This bike is marked Repair and cannot be rented.',
+                'message' => 'Use the rental form to rent out a bike.',
             ], 422);
         }
 
-        $bike->update([
-            'status' => $bike->status === 'rented' ? 'available' : 'rented',
-        ]);
+        if (Rental::where('bike_id', $bike->bike_id)->where('status', 'active')->exists()) {
+            return response()->json([
+                'message' => 'This bike has an active rental. End the rental session instead.',
+            ], 422);
+        }
+
+        $bike->update(['status' => 'available']);
 
         return response()->json([
             'status' => $bike->status,
-            'message' => $bike->status === 'rented' ? 'Bike marked as rented.' : 'Bike marked as available.',
+            'message' => 'Bike marked as available.',
         ]);
     }
 }

@@ -86,37 +86,47 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('admin.dashboard');
 
+    // Role-based: ang staff nga Admin role kinahanglan sa privilege (admin table = full access)
     Route::post('/bikes', [DashboardController::class, 'storeBike'])
+        ->middleware('admin.can:Add Inventory')
         ->name('admin.bikes.store');
     Route::get('/bikes/next-code', [DashboardController::class, 'nextBikeCode'])
+        ->middleware('admin.can:View Inventory')
         ->name('admin.bikes.next-code');
     Route::patch('/bikes/{bike}', [DashboardController::class, 'updateBike'])
+        ->middleware('admin.can:Edit Inventory')
         ->name('admin.bikes.update');
+    // Edit o Delete privilege, gi-check sa controller base sa "action"
     Route::post('/bikes/{bike}/verify', [DashboardController::class, 'verifyBikeAction'])
         ->name('admin.bikes.verify');
     Route::delete('/bikes/{bike}', [DashboardController::class, 'destroyBike'])
+        ->middleware('admin.can:Delete Inventory')
         ->name('admin.bikes.destroy');
 
-    Route::post('/staff', [DashboardController::class, 'storeStaff'])
-        ->name('admin.staff.store');
+    Route::middleware('admin.can:Manage Staff')->group(function () {
+        Route::post('/staff', [DashboardController::class, 'storeStaff'])
+            ->name('admin.staff.store');
 
-    Route::post('/staff/{staff}/verify', [DashboardController::class, 'verifyStaffAction'])
-        ->name('admin.staff.verify');
+        Route::post('/staff/{staff}/verify', [DashboardController::class, 'verifyStaffAction'])
+            ->name('admin.staff.verify');
 
-    Route::patch('/staff/{staff}', [DashboardController::class, 'updateStaff'])
-        ->name('admin.staff.update');
+        Route::patch('/staff/{staff}', [DashboardController::class, 'updateStaff'])
+            ->name('admin.staff.update');
 
-    Route::delete('/staff/{staff}', [DashboardController::class, 'destroyStaff'])
-        ->name('admin.staff.destroy');
+        Route::delete('/staff/{staff}', [DashboardController::class, 'destroyStaff'])
+            ->name('admin.staff.destroy');
+    });
 
     Route::get('/reports/data', [ReportController::class, 'data'])
         ->name('admin.reports.data');
 
     // Maintenance: i-save ang status gikan sa Update Report modal
-    Route::get('/maintenance/{issueReport}/photo', [MaintenanceController::class, 'photo'])
-        ->name('admin.maintenance.photo');
-    Route::patch('/maintenance/{issueReport}/status', [MaintenanceController::class, 'updateStatus'])
-        ->name('admin.maintenance.status');
+    Route::middleware('admin.can:Handle Maintenance')->group(function () {
+        Route::get('/maintenance/{issueReport}/photo', [MaintenanceController::class, 'photo'])
+            ->name('admin.maintenance.photo');
+        Route::patch('/maintenance/{issueReport}/status', [MaintenanceController::class, 'updateStatus'])
+            ->name('admin.maintenance.status');
+    });
 });
 
 

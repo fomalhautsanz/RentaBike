@@ -194,39 +194,13 @@
 
     @empty
 
-    {{-- Static placeholder --}}
-    @foreach([
-      ['Mountain Bike',   '🚵', '#f0fdf4', [['MB-001','Mountain Pro','Trek','available'],['MB-002','Mountain Pro','Trek','rented']]],
-      ['City Bike',       '🚲', '#eff6ff', [['CB-001','City Cruiser','Giant','available'],['CB-002','City Cruiser','Giant','repair']]],
-      ['E-Scooter',       '🛴', '#fff7ed', [['ES-001','E-Scooter X1','Segway','available']]],
-      ['Road Bike',       '🚴', '#f0fdf4', [['RB-001','Road Racer','Specialized','available'],['RB-002','Road Racer','Specialized','rented']]],
-      ["Children's Bike", '🚲', '#fdf4ff', [['CH-001','Kids 16"','Trek','available'],['CH-002','Kids 16"','Trek','rented']]],
-    ] as [$cat, $emoji, $bg, $rows])
-    <div class="inv-category inv-category-block" data-category="{{ $cat }}" style="margin-bottom:12px">
-      <div class="inv-cat-header">
-        <div class="inv-cat-icon" style="background:{{ $bg }};font-size:20px">{{ $emoji }}</div>
-        <h3>{{ $cat }}</h3>
-        <span class="cat-count">{{ count($rows) }} {{ count($rows) === 1 ? 'unit' : 'units' }}</span>
-      </div>
-      <div class="inv-list">
-        @foreach($rows as [$id, $model, $make, $status])
-        @php $cls = match($status) { 'available'=>'badge-green','rented'=>'badge-blue',default=>'badge-orange' }; @endphp
-        <div class="inv-row inv-bike-row"
-          data-qr="{{ strtolower($id) }}"
-          data-model="{{ strtolower($model) }}"
-          data-category="{{ $cat }}"
-          data-status="{{ $status }}"
-          style="gap:8px;align-items:center">
-          <div style="flex:1;min-width:0">
-            <div class="inv-row-id">{{ $id }}</div>
-            <div class="inv-row-name">{{ $model }} · {{ $make }}</div>
-          </div>
-          <span class="badge {{ $cls }}" style="flex-shrink:0;font-size:11px">{{ ucfirst($status) }}</span>
-        </div>
-        @endforeach
-      </div>
+    {{-- Walay bike sa database --}}
+    <div id="inv-empty" style="text-align:center;padding:32px 16px;color:var(--gray-400);font-size:13px">
+      No bikes yet.
+      @if($canAddInventory ?? false)
+        Tap <b>Add Bike</b> to register your first bike.
+      @endif
     </div>
-    @endforeach
 
     @endforelse
 
@@ -358,7 +332,9 @@ function filterInventory() {
     if (catHasVisible) anyVisible = true;
   });
 
-  document.getElementById('inv-no-results').style.display = anyVisible ? 'none' : 'block';
+  // Kung walay bike sa database, ang "No bikes yet" ra ang ipakita
+  const hasBikes = !document.getElementById('inv-empty');
+  document.getElementById('inv-no-results').style.display = (anyVisible || !hasBikes) ? 'none' : 'block';
 }
 
 function toggleInventoryFilters() {

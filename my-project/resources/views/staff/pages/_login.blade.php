@@ -66,7 +66,7 @@
       <div class="input-icon-wrap">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
         <input type="email" name="email" class="form-input" placeholder="staff@rentabike.com"
-               value="{{ old('email') }}" required autofocus>
+               value="{{ old('email') }}" autocomplete="username" required autofocus>
       </div>
     </div>
 
@@ -74,7 +74,7 @@
       <label class="form-label">Password</label>
       <div class="input-icon-wrap">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <input type="password" name="password" id="pw-input" class="form-input" placeholder="••••••••" required>
+        <input type="password" name="password" id="pw-input" class="form-input" placeholder="••••••••" autocomplete="current-password" required>
         <button type="button" class="eye-btn" onclick="togglePasswordVisibility()" aria-label="Show password">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" id="pwEyeIcon">
             <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>

@@ -2,9 +2,16 @@
 
 @section('content')
     @include('admin.pages._dashboard')
-    @include('admin.pages._staff')
-    @include('admin.pages._bikes')
-    @include('admin.pages._maintenance')
+    {{-- Role-based: ang page ma-include ra kung naa ang privilege --}}
+    @adminCan('Manage Staff')
+        @include('admin.pages._staff')
+    @endadminCan
+    @adminCan('View Inventory')
+        @include('admin.pages._bikes')
+    @endadminCan
+    @adminCan('Handle Maintenance')
+        @include('admin.pages._maintenance')
+    @endadminCan
     @include('admin.pages._logs')
     @include('admin.pages._reports')
 @endsection
@@ -29,6 +36,14 @@
                 if (btn) {
                     nav(tab, btn);
                 }
+            });
+        </script>
+    @endif
+
+    @if($errors->has('permission'))
+        <script>
+            window.addEventListener('DOMContentLoaded', function () {
+                showToast(@json($errors->first('permission')));
             });
         </script>
     @endif

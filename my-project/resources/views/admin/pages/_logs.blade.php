@@ -44,7 +44,10 @@
                value="{{ $logFilters['log_to'] ?? '' }}">
       </div>
       <button class="btn btn-primary" type="submit">Apply Filters</button>
-      <a class="btn" href="{{ route('admin.dashboard', ['tab' => 'rentals']) }}">Clear</a>
+      <a class="btn btn-outline" href="{{ route('admin.dashboard', ['tab' => 'rentals']) }}" title="Reset all filters">
+        <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        Clear
+      </a>
     </form>
 
     <table>

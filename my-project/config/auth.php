@@ -41,6 +41,7 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            'remember' => 43200, // "Remember me" = 30 days (minutes)
         ],
 
         // Staff accounts whose role is "Admin" sign in to the Admin Portal
@@ -49,6 +50,7 @@ return [
         'staff_admin' => [
             'driver' => 'session',
             'provider' => 'staff',
+            'remember' => 43200, // 30 days
         ],
     ],
 

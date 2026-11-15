@@ -9,10 +9,12 @@
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx=".5"/><rect width="5" height="5" x="16" y="3" rx=".5"/><rect width="5" height="5" x="3" y="16" rx=".5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/></svg>
         Generate QR Codes
       </button>
+      @adminCan('Add Inventory')
       <button class="btn btn-primary" onclick="openModal('add-bike-modal')">
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Add New Bike
       </button>
+      @endadminCan
     </div>
   </div>
   <div class="table-wrap">
@@ -61,12 +63,16 @@
           </td>
           <td style="color:#6b7280;font-size:13px">{{ $bike->last_maintenance ? $bike->last_maintenance->format('Y-m-d') : 'N/A' }}</td>
           <td>
+            @adminCan('Edit Inventory')
             <button class="action-btn" onclick="openEditBike(@js($bike->bike_code), @js($bike->name), @js($bike->type), @js($bike->status), @js($bike->condition))">
               <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
+            @endadminCan
+            @adminCan('Delete Inventory')
             <button class="action-btn" onclick="openDeleteBike(@js($bike->bike_code), @js($bike->name))">
               <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             </button>
+            @endadminCan
           </td>
         </tr>
         @endforeach
