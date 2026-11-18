@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Helpers\HashHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Staff;
+use App\Support\SessionTimeout;
 use App\Support\StaffPortalRemember;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -67,6 +68,7 @@ class StaffLoginController extends Controller
 
             // Security: bag-ong session ID human mag-login (session fixation)
             $request->session()->regenerate();
+            SessionTimeout::touch($request);
 
             Session::put('staff_id', $staff->staff_id);
             Session::put('staff_name', trim(($staff->first_name ?? '') . ' ' . ($staff->last_name ?? '')) ?: $staff->full_name);

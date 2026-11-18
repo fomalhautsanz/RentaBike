@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use App\Models\Staff;
+use App\Support\SessionTimeout;
 use App\Support\StaffPortalRemember;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
@@ -18,6 +19,21 @@ class EnsureStaffLoggedIn
      */
     public function handle(Request $request, Closure $next): Response
     {
+        if (SessionTimeout::hasExpired($request)) {
+            StaffPortalRemember::forget(
+                Staff::find(Session::get('staff_id')) ?? StaffPortalRemember::resolve($request)
+            );
+            Session::forget(['staff_id', 'staff_name', 'staff_role']);
+            SessionTimeout::clear($request);
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('staff.login')
+                ->withErrors(['email' => 'Your session expired due to inactivity.']);
+        }
+
+        SessionTimeout::touch($request);
+
         $staff = Session::has('staff_id')
             ? Staff::find(Session::get('staff_id'))
             : null;

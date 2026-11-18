@@ -403,6 +403,7 @@ body{background:#f9fafb;color:#111827;font-family:'DM Sans',sans-serif;-webkit-f
 
 {{-- SCRIPTS --}}
 @yield('scripts')
+@include('partials._session_timeout', ['logoutUrl' => route('staff.logout')])
 
 </body>
 </html>

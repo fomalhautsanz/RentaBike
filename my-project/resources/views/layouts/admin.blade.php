@@ -1026,5 +1026,6 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 function closeModalOutside(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
 </script>
 @yield('scripts')
+@include('partials._session_timeout', ['logoutUrl' => route('logout')])
 </body>
 </html>

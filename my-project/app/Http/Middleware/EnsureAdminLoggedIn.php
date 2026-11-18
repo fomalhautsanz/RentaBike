@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use App\Support\SessionTimeout;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
@@ -11,6 +12,18 @@ class EnsureAdminLoggedIn
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if (SessionTimeout::hasExpired($request)) {
+            Auth::guard('web')->logout();
+            Auth::guard('staff_admin')->logout();
+            SessionTimeout::clear($request);
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return $this->deny($request, 'Your session expired due to inactivity.');
+        }
+
+        SessionTimeout::touch($request);
+
         // 1) Accounts from the admin table.
         if (Auth::guard('web')->check()) {
             return $next($request);

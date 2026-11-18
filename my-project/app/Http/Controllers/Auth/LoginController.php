@@ -6,6 +6,7 @@ use App\Helpers\HashHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\Staff;
+use App\Support\SessionTimeout;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -67,6 +68,7 @@ class LoginController extends Controller
             );
 
             $request->session()->regenerate();
+            SessionTimeout::touch($request);
 
             return redirect()->route('admin.dashboard');
         }
@@ -83,6 +85,7 @@ class LoginController extends Controller
             Auth::guard('staff_admin')->login($staffAdmin, $request->boolean('remember'));
 
             $request->session()->regenerate();
+            SessionTimeout::touch($request);
 
             return redirect()->route('admin.dashboard');
         }
