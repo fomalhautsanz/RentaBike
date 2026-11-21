@@ -25,6 +25,15 @@ use Carbon\Carbon; // para sa pag-handle og dates/time
 
 class DashboardController extends Controller
 {
+    private const SUPER_ADMIN_PERMISSIONS = [
+        'View Inventory',
+        'Add Inventory',
+        'Edit Inventory',
+        'Delete Inventory',
+        'Manage Staff',
+        'Handle Maintenance',
+    ];
+
     /**
      * Redirect back to the admin dashboard, reopening whichever tab the
      * request says it came from. Every store/update method funnels its
@@ -45,7 +54,7 @@ class DashboardController extends Controller
             'last_name' => ['required', 'string', 'max:75'],
             'email' => ['required', 'email', 'max:150', 'unique:staff,email'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'role' => ['required', 'in:Staff,Admin'],
+            'role' => ['required', 'in:Staff,Admin,Super Admin'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', 'max:100'],
             'password' => ['required', 'string', 'min:9', 'confirmed'],
@@ -62,9 +71,19 @@ class DashboardController extends Controller
 
         $validated = $validator->validated();
         $permissions = $validated['permissions'] ?? [];
+        if ($validated['role'] === 'Super Admin') {
+            abort_unless(AdminAccess::canManageSuperAdmins(), 403);
+            if (!$this->hasAllSuperAdminPermissions($permissions)) {
+                return $this->backToTab($request, 'staff')
+                    ->withErrors(['permissions' => 'Super Admin accounts must have all permissions.'])
+                    ->withInput();
+            }
+            $permissions = self::SUPER_ADMIN_PERMISSIONS;
+        }
         if ($validated['role'] === 'Staff') {
             $permissions = array_values(array_diff($permissions, ['Manage Staff']));
         }
+        $permissions = $this->ensureInventoryViewPermission($permissions);
 
         $username = Str::before($validated['email'], '@');
         $baseUsername = $username;
@@ -81,7 +100,7 @@ class DashboardController extends Controller
 
         Staff::create([
             // staff.admin_id must reference the admin table. A staff member with
-            // role "Admin" files new staff under the admin who owns them.
+            // Admin-portal staff files new staff under the admin who owns them.
             'admin_id' => auth()->user() instanceof Staff ? auth()->user()->admin_id : auth()->id(),
             'username' => $username,
             'first_name' => $validated['first_name'],
@@ -107,7 +126,7 @@ class DashboardController extends Controller
             'last_name' => ['required', 'string', 'max:75'],
             'email' => ['required', 'email', 'max:150', Rule::unique('staff', 'email')->ignore($staff->staff_id, 'staff_id')],
             'phone' => ['nullable', 'string', 'max:30'],
-            'role' => ['required', 'in:Staff,Admin'],
+            'role' => ['required', 'in:Staff,Admin,Super Admin'],
             'status' => ['required', 'in:Active,On Leave'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', 'max:100'],
@@ -123,16 +142,32 @@ class DashboardController extends Controller
                 ->withInput();
         }
 
-            if (!$this->consumeStaffConfirmation($request, $staff, 'edit')) {
-                return $this->backToTab($request, 'staff')
-                    ->withErrors(['staff_confirmation' => 'Confirm your password before editing this account.']);
-            }
-
         $validated = $validator->validated();
         $permissions = $validated['permissions'] ?? [];
+        $isSuperAdminTarget = $staff->isSuperAdmin();
+        $isSuperAdminRequest = $validated['role'] === 'Super Admin';
+
+        if (($isSuperAdminTarget || $isSuperAdminRequest) && !AdminAccess::canManageSuperAdmins()) {
+            abort(403);
+        }
+        if ($isSuperAdminRequest && !$this->hasAllSuperAdminPermissions($permissions)) {
+            return $this->backToTab($request, 'staff')
+                ->withErrors(['permissions' => 'Super Admin accounts must have all permissions.'])
+                ->withInput();
+        }
+
+        if (!$this->consumeStaffConfirmation($request, $staff, 'edit')) {
+            return $this->backToTab($request, 'staff')
+                ->withErrors(['staff_confirmation' => 'Confirm your password before editing this account.']);
+        }
+
+        if ($isSuperAdminRequest) {
+            $permissions = self::SUPER_ADMIN_PERMISSIONS;
+        }
         if ($validated['role'] === 'Staff') {
             $permissions = array_values(array_diff($permissions, ['Manage Staff']));
         }
+        $permissions = $this->ensureInventoryViewPermission($permissions);
 
         $staff->first_name = $validated['first_name'];
         $staff->last_name = $validated['last_name'];
@@ -171,6 +206,10 @@ class DashboardController extends Controller
             'password' => ['required', 'string'],
         ]);
 
+        if ($staff->isSuperAdmin() && !AdminAccess::canManageSuperAdmins()) {
+            abort(403);
+        }
+
         if (!Hash::check($validated['password'], $request->user()->password_hash)) {
             return response()->json(['message' => 'The password is incorrect.'], 422);
         }
@@ -185,6 +224,10 @@ class DashboardController extends Controller
 
     public function destroyStaff(Request $request, Staff $staff)
     {
+        if ($staff->isSuperAdmin() && !AdminAccess::canManageSuperAdmins()) {
+            abort(403);
+        }
+
         if (!$this->consumeStaffConfirmation($request, $staff, 'delete')) {
             return response()->json(['message' => 'Confirm your password before removing this account.'], 403);
         }
@@ -350,6 +393,8 @@ class DashboardController extends Controller
                 ['Process Rentals', 'View Reports']
             )),
             'is_staff'    => true,
+            'is_super_admin' => $member->isSuperAdmin(),
+            'is_main_admin' => false,
         ];
     })->toBase(); // downgrade to plain Support Collection so merge() doesn't call getKey() on stdClass
 
@@ -363,8 +408,9 @@ class DashboardController extends Controller
             'phone'       => $admin->phone ?? 'N/A',
             'role'        => 'Admin',
             'status'      => 'Active',
-            'permissions' => ['Manage Staff', 'View Inventory'],
+            'permissions' => [],
             'is_staff'    => false,
+            'is_main_admin' => true,
         ];
     })->toBase(); // downgrade to plain Support Collection so merge() doesn't call getKey() on stdClass
 
@@ -582,6 +628,20 @@ class DashboardController extends Controller
             static fn ($permission) => is_string($permission) ? trim($permission) : null,
             $permissions
         )));
+    }
+
+    private function ensureInventoryViewPermission(array $permissions): array
+    {
+        if (array_intersect(['Add Inventory', 'Edit Inventory', 'Delete Inventory'], $permissions)) {
+            $permissions[] = 'View Inventory';
+        }
+
+        return array_values(array_unique($permissions));
+    }
+
+    private function hasAllSuperAdminPermissions(array $permissions): bool
+    {
+        return array_diff(self::SUPER_ADMIN_PERMISSIONS, $permissions) === [];
     }
 
     // Rental counts for the last 7 days, oldest first.

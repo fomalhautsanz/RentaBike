@@ -71,7 +71,7 @@
               <rect width="14" height="18" x="5" y="3" rx="2"/>
               <path d="M9 7h6M9 11h6M9 15h4"/>
             </svg>
-            <p>Tap to upload a valid ID image or PDF</p>
+            <p>Tap to upload a valid ID image or PDF (max 2 MB)</p>
             <input id="rf-id-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required onchange="previewBorrowerId(this)">
           </div>
           <div class="rf-id-file-name" id="rf-id-file-name"></div>

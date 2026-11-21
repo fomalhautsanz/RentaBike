@@ -24,7 +24,7 @@ use Illuminate\Support\Str;
  * account exists for the submitted email.
  *
  * Covers everyone who can sign in at /admin/login: accounts in the admin
- * table, and active staff accounts whose role is "Admin".
+ * table, and active staff accounts with an admin-level role.
  */
 class AdminPasswordResetController extends Controller
 {
@@ -175,7 +175,7 @@ class AdminPasswordResetController extends Controller
     /**
      * Resolve the Admin Portal account for an email hash, using the same
      * precedence as the admin sign-in: the admin table first, then active
-     * staff with role "Admin". Returns [model, otp table, otp key column].
+     * staff with an admin-level role. Returns [model, otp table, otp key column].
      *
      * @return array{0: Model, 1: string, 2: string}|null
      */

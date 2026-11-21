@@ -64,6 +64,14 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .logo-icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
   }
 
   .logo-icon svg { color: #fff; }
@@ -207,6 +215,27 @@
   }
 
   .btn-outline:hover { background: #f9fafb; }
+
+  .btn-super-admin-promotion {
+    display: flex;
+    box-sizing: border-box;
+    width: 100%;
+    margin-top: 8px;
+    justify-content: center;
+    background: #16a34a;
+    color: #fff;
+    border: 1px solid #16a34a;
+  }
+
+  .btn-super-admin-promotion:hover { background: #15803d; }
+
+  .btn-super-admin-warning {
+    background: #facc15;
+    color: #713f12;
+    font-weight: 600;
+  }
+
+  .btn-super-admin-warning:hover { background: #eab308; }
 
   .btn-sm {
     padding: 6px 12px;
@@ -689,6 +718,58 @@
     margin-top: 8px;
   }
 
+  .inventory-permission-group {
+    grid-column: 1 / -1;
+  }
+
+  .inventory-view-option {
+    flex-wrap: wrap;
+  }
+
+  .inventory-view-hint {
+    flex-basis: 100%;
+    padding-left: 24px;
+    color: #6b7280;
+    font-size: 11px;
+  }
+
+  .inventory-subpermissions {
+    margin: 8px 0 0;
+    padding: 0;
+  }
+
+  .inventory-subpermissions p {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto 8px;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .inventory-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .inventory-actions-grid .permission-option {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 6px 8px;
+    justify-content: center;
+  }
+
+  @media (max-width: 480px) {
+    .inventory-actions-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
   .permission-option {
     display: flex;
     align-items: center;
@@ -727,9 +808,20 @@
     white-space: nowrap;
   }
 
+  .permission-pill-full {
+    background: #faf5ff;
+    color: #7e22ce;
+  }
+
   .permission-pill.more {
     background: #eff6ff;
     color: #1d4ed8;
+    cursor: default;
+  }
+
+  .permission-pill.more:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
   }
 
   /* ── DELETE WARNING ── */
@@ -753,6 +845,9 @@
   }
 
   .delete-icon svg { color: #ef4444; }
+
+  .super-admin-warning-icon { background: #fef3c7; }
+  .super-admin-warning-icon svg { color: #d97706; }
 
   .delete-title {
     font-size: 20px;

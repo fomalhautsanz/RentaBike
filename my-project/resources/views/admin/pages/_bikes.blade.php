@@ -1,3 +1,9 @@
+@php
+  $canEditInventory = \App\Support\AdminAccess::allows('Edit Inventory');
+  $canDeleteInventory = \App\Support\AdminAccess::allows('Delete Inventory');
+  $showInventoryActions = $canEditInventory || $canDeleteInventory;
+@endphp
+
 <section id="page-bikes" class="page">
   <div class="page-header">
     <div>
@@ -34,7 +40,12 @@
     </div>
     <table>
       <thead>
-        <tr><th>Bike ID</th><th>Bike Name</th><th>Type</th><th>QR Code</th><th>Status</th><th>Condition</th><th>Last Maintenance</th><th>Actions</th></tr>
+        <tr>
+          <th>Bike ID</th><th>Bike Name</th><th>Type</th><th>QR Code</th><th>Status</th><th>Condition</th><th>Last Maintenance</th>
+          @if($showInventoryActions)
+            <th>Actions</th>
+          @endif
+        </tr>
       </thead>
       <tbody id="bikes-tbody">
         @foreach($bikes ?? [] as $bike)
@@ -62,18 +73,20 @@
             </span>
           </td>
           <td style="color:#6b7280;font-size:13px">{{ $bike->last_maintenance ? $bike->last_maintenance->format('Y-m-d') : 'N/A' }}</td>
-          <td>
-            @adminCan('Edit Inventory')
-            <button class="action-btn" onclick="openEditBike(@js($bike->bike_code), @js($bike->name), @js($bike->type), @js($bike->status), @js($bike->condition))">
-              <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </button>
-            @endadminCan
-            @adminCan('Delete Inventory')
-            <button class="action-btn" onclick="openDeleteBike(@js($bike->bike_code), @js($bike->name))">
-              <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-            </button>
-            @endadminCan
-          </td>
+          @if($showInventoryActions)
+            <td>
+              @if($canEditInventory)
+              <button class="action-btn" onclick="openEditBike(@js($bike->bike_code), @js($bike->name), @js($bike->type), @js($bike->status), @js($bike->condition))">
+                <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              @endif
+              @if($canDeleteInventory)
+              <button class="action-btn" onclick="openDeleteBike(@js($bike->bike_code), @js($bike->name))">
+                <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              </button>
+              @endif
+            </td>
+          @endif
         </tr>
         @endforeach
       </tbody>

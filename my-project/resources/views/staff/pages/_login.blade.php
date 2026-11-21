@@ -12,8 +12,8 @@
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(135deg,#f0fdf4,#dcfce7);min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px}
   .login-card{background:#fff;border-radius:20px;padding:40px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.1)}
   .login-logo{text-align:center;margin-bottom:32px}
-  .login-logo-icon{width:72px;height:72px;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 16px}
-  .login-logo-icon img{width:72px;height:72px;object-fit:contain}
+  .login-logo-icon{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 16px}
+  .login-logo-icon img{width:auto;height:40px;object-fit:contain}
   .login-title{font-size:28px;font-weight:700;color:#111827;letter-spacing:-.5px}
   .login-sub{font-size:14px;color:#6b7280;margin-top:8px}
   .login-form{margin-top:28px}

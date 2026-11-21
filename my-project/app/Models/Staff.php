@@ -36,31 +36,49 @@ class Staff extends Authenticatable
     ];
 
     /**
-     * Staff with role "Admin" and an active status may use the Admin Portal.
+     * Staff with an admin-level role and an active status may use the Admin Portal.
      */
     public function hasAdminPortalAccess(): bool
     {
-        return strcasecmp((string) $this->role, 'Admin') === 0
+        return in_array(strtolower((string) $this->role), ['admin', 'super admin'], true)
             && strtolower((string) $this->status) === 'active';
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return strcasecmp((string) $this->role, 'Super Admin') === 0;
     }
 
     // Case-insensitive, para mo-match bisan "view inventory" ang na-save
     public function hasPermission(string $permission): bool
     {
         $wanted = strtolower(trim($permission));
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        $grantedPermissions = [];
 
         foreach ((array) ($this->permissions ?? []) as $granted) {
-            if (is_string($granted) && strtolower(trim($granted)) === $wanted) {
-                return true;
+            if (is_string($granted)) {
+                $grantedPermissions[] = strtolower(trim($granted));
             }
         }
 
-        return false;
+        if (in_array($wanted, $grantedPermissions, true)) {
+            return true;
+        }
+
+        return $wanted === 'view inventory'
+            && (bool) array_intersect(
+                ['add inventory', 'edit inventory', 'delete inventory'],
+                $grantedPermissions
+            );
     }
 
     public function scopeAdminPortalEligible($query)
     {
-        return $query->where('role', 'Admin')->where('status', 'active');
+        return $query->whereIn('role', ['Admin', 'Super Admin'])->where('status', 'active');
     }
 
     // Authenticate against password_hash instead of a "password" column.

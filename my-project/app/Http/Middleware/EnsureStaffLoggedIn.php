@@ -51,6 +51,18 @@ class EnsureStaffLoggedIn
             ->unique()
             ->values()
             ->all();
+        if ($staff->isSuperAdmin()) {
+            $staffPermissions = array_values(array_unique([
+                ...$staffPermissions,
+                ...array_values($permissionNames),
+            ]));
+        }
+        if (
+            !in_array('View Inventory', $staffPermissions, true)
+            && array_intersect(['Add Inventory', 'Edit Inventory', 'Delete Inventory'], $staffPermissions)
+        ) {
+            $staffPermissions[] = 'View Inventory';
+        }
         view()->share('staffPermissions', $staffPermissions);
         $request->attributes->set('staffPermissions', $staffPermissions);
 

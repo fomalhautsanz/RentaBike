@@ -71,7 +71,7 @@ class LoginController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
-        // Staff accounts with role "Admin" also have Admin Portal access.
+        // Staff accounts with role "Admin" or "Super Admin" also have Admin Portal access.
         $staffAdmin = $admin ? null : Staff::where('email_hash', $emailHash)
             ->adminPortalEligible()
             ->first();
