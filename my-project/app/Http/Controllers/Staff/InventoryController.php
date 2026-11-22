@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use App\Models\Bicycle;
 use App\Models\Rental;
+use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -57,6 +58,16 @@ class InventoryController extends Controller
             'status' => strtolower($validated['condition']) === 'good' ? 'available' : 'repair',
         ]);
 
+        ActivityLogger::record(
+            $request,
+            'ADD_BIKE',
+            'Added bike: ' . $bike->model . ' ' . $bike->make
+                . ' (' . $bike->qr_code . ')'
+                . ' | Bike type: ' . $bike->bike_type
+                . ' | Condition: ' . $bike->condition
+                . ' | Status: ' . $bike->status
+        );
+
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'Bike added to inventory.',
@@ -96,6 +107,15 @@ class InventoryController extends Controller
             'condition' => ['required', 'in:Good,Needs Repair,Missing'],
         ]);
 
+        $before = [
+            'Model' => $bike->model,
+            'Make' => $bike->make,
+            'Bike type' => $bike->bike_type,
+            'Bike code' => $bike->qr_code,
+            'Status' => $bike->status,
+            'Condition' => $bike->condition,
+        ];
+
         $condition = strtolower($validated['condition']);
         $bike->update([
             'model' => $validated['model'],
@@ -109,6 +129,30 @@ class InventoryController extends Controller
                 ? ($bike->status === 'rented' ? 'rented' : 'available')
                 : 'repair',
         ]);
+
+        $after = [
+            'Model' => $bike->model,
+            'Make' => $bike->make,
+            'Bike type' => $bike->bike_type,
+            'Bike code' => $bike->qr_code,
+            'Status' => $bike->status,
+            'Condition' => $bike->condition,
+        ];
+        $changes = [];
+        foreach ($before as $label => $oldValue) {
+            if ($oldValue !== $after[$label]) {
+                $changes[$label] = ['before' => $oldValue, 'after' => $after[$label]];
+            }
+        }
+
+        ActivityLogger::record(
+            $request,
+            'UPDATE_BIKE',
+            'Updated bike: ' . $bike->model . ' ' . $bike->make
+                . ' (' . $bike->qr_code . ')'
+                . ' | Bike ID: ' . $bike->bike_id
+                . ' | Changes: ' . ActivityLogger::formatChanges($changes)
+        );
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -150,6 +194,17 @@ class InventoryController extends Controller
 
         $bike->delete();
 
+        ActivityLogger::record(
+            $request,
+            'DELETE_BIKE',
+            'Deleted bike: ' . $bike->model . ' ' . $bike->make
+                . ' (' . $bike->qr_code . ')'
+                . ' | Bike ID: ' . $bike->bike_id
+                . ' | Bike type: ' . $bike->bike_type
+                . ' | Condition: ' . $bike->condition
+                . ' | Status: ' . $bike->status
+        );
+
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'Bike removed from inventory.',
@@ -166,7 +221,7 @@ class InventoryController extends Controller
      * Security: rented → available ra; ang pag-rent kinahanglan moagi sa rental flow
      * (para naay borrower, ID ug payment record).
      */
-    public function toggleStatus(Bicycle $bike): JsonResponse
+    public function toggleStatus(Request $request, Bicycle $bike): JsonResponse
     {
         if ($bike->status !== 'rented') {
             return response()->json([
@@ -181,6 +236,13 @@ class InventoryController extends Controller
         }
 
         $bike->update(['status' => 'available']);
+        ActivityLogger::record(
+            $request,
+            'UPDATE_BIKE_STATUS',
+            'Bike: ' . $bike->model . ' ' . $bike->make
+                . ' (' . $bike->qr_code . ')'
+                . ' | Status: rented -> available'
+        );
 
         return response()->json([
             'status' => $bike->status,
