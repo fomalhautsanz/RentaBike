@@ -19,7 +19,7 @@ function initCharts() {
   new Chart(document.getElementById('weeklyChart'), {
     type: 'bar',
     data: { labels: dashboardData.weekly.labels, datasets: [{ label: 'Rentals', data: dashboardData.weekly.data, backgroundColor: '#22c55e', borderRadius: 6, borderSkipped: false }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#9ca3af' } }, y: { grid: { color: '#f3f4f6' }, ticks: { color: '#9ca3af' } } } }
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { title: items => dashboardData.weekly.dates?.[items[0].dataIndex] ?? items[0].label } } }, scales: { x: { grid: { display: false }, ticks: { color: '#9ca3af' } }, y: { grid: { color: '#f3f4f6' }, ticks: { color: '#9ca3af' } } } }
   });
 
   const bikeTypeLabels = Object.keys(dashboardData.bikeTypes);

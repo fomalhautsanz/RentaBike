@@ -16,6 +16,18 @@ use Illuminate\Support\Facades\DB;
  */
 class RentalPricing
 {
+    public const MANAGED_HOURLY_TYPES = [
+        'city_bike' => 'City Bike',
+        'lady_mens_bike' => "Lady's/Men's Bike",
+        'mountain_bike' => 'Mountain Bike',
+        'sidecar_bike' => 'Sidecar Bike',
+        'road_bike' => 'Road Bike',
+        'childrens_bike' => "Children's Bike",
+        'standard' => 'Standard',
+    ];
+
+    public const SCOOTER_PACKAGE_MINUTES = [15, 30, 60];
+
     // E-Scooter: fixed packages (minutes => price)
     private const SCOOTER_PACKAGES = [15 => 50, 30 => 100, 60 => 200];
 
@@ -44,18 +56,30 @@ class RentalPricing
         return in_array(self::normalize($type), ['e-scooter', 'e scooter', 'escooter', 'scooter'], true);
     }
 
-    public static function hourlyRate(?string $type): int
+    public static function hourlyRate(?string $type): float
     {
+        $normalizedType = self::normalize($type);
+        $bikeType = self::isScooter($type)
+            ? 'E-Scooter'
+            : ($normalizedType === 'tricycle'
+                ? 'Sidecar Bike'
+                : ($normalizedType === '' ? 'Standard' : ucwords($normalizedType)));
+
+        $configuredRate = self::configuredPrice($bikeType, 60);
+        if ($configuredRate !== null) {
+            return $configuredRate;
+        }
+
         return self::isScooter($type)
-            ? self::SCOOTER_PACKAGES[60]
-            : (self::HOURLY_RATES[self::normalize($type)] ?? self::DEFAULT_HOURLY_RATE);
+            ? (float) self::SCOOTER_PACKAGES[60]
+            : (float) (self::HOURLY_RATES[$normalizedType] ?? self::DEFAULT_HOURLY_RATE);
     }
 
     /** minutes => price para sa bag-ong rental */
     public static function startOptions(?string $type): array
     {
         return self::isScooter($type)
-            ? self::SCOOTER_PACKAGES
+            ? self::configuredScooterPackages()
             : self::hourlyOptions($type, self::HOURLY_START_MINUTES);
     }
 
@@ -63,7 +87,7 @@ class RentalPricing
     public static function extendOptions(?string $type): array
     {
         return self::isScooter($type)
-            ? self::SCOOTER_PACKAGES
+            ? self::configuredScooterPackages()
             : self::hourlyOptions($type, self::HOURLY_EXTEND_MINUTES);
     }
 
@@ -86,13 +110,59 @@ class RentalPricing
         return isset($options[$minutes]) ? (float) $options[$minutes] : null;
     }
 
+    public static function adminSettings(): array
+    {
+        $hourlyRates = [];
+        foreach (self::MANAGED_HOURLY_TYPES as $key => $bikeType) {
+            $hourlyRates[$key] = self::configuredPrice($bikeType, 60)
+                ?? (float) (self::HOURLY_RATES[self::normalize($bikeType)] ?? self::DEFAULT_HOURLY_RATE);
+        }
+
+        $packages = [];
+        foreach (self::SCOOTER_PACKAGE_MINUTES as $minutes) {
+            $packages[$minutes] = self::configuredPrice('E-Scooter', $minutes)
+                ?? (float) (self::SCOOTER_PACKAGES[$minutes] ?? self::SCOOTER_PACKAGES[60]);
+        }
+
+        return ['hourly_rates' => $hourlyRates, 'scooter_packages' => $packages];
+    }
+
+    private static function configuredScooterPackages(): array
+    {
+        $packages = [];
+        foreach (self::SCOOTER_PACKAGE_MINUTES as $minutes) {
+            $packages[$minutes] = self::configuredPrice('E-Scooter', $minutes)
+                ?? (float) (self::SCOOTER_PACKAGES[$minutes] ?? self::SCOOTER_PACKAGES[60]);
+        }
+
+        return $packages;
+    }
+
+    private static function configuredPrice(string $bikeType, int $minutes): ?float
+    {
+        $price = DB::table('rental_price_settings')
+            ->whereRaw('LOWER(bike_type) = ?', [strtolower($bikeType)])
+            ->where('duration_minutes', $minutes)
+            ->value('price');
+
+        return $price === null ? null : (float) $price;
+    }
+
     public static function rateLabel(?string $type): string
     {
         if (self::isScooter($type)) {
-            return '₱50 / 15 min · ₱100 / 30 min · ₱200 / 1 hour';
+            $packages = self::configuredScooterPackages();
+            return '₱' . self::formatMoney($packages[15]) . ' / 15 min · ₱'
+                . self::formatMoney($packages[30]) . ' / 30 min · ₱'
+                . self::formatMoney($packages[60]) . ' / 1 hour';
         }
 
-        return '₱' . self::hourlyRate($type) . ' / hour';
+        return '₱' . self::formatMoney(self::hourlyRate($type)) . ' / hour';
+    }
+
+    private static function formatMoney(float $amount): string
+    {
+        return number_format($amount, fmod($amount, 1.0) === 0.0 ? 0 : 2);
     }
 
     /** Para sa JSON: list sa {minutes, label, price} */

@@ -11,6 +11,7 @@ use App\Models\IssueReport;   // model sa issue report table
 use App\Models\Rental;        // model sa rental table
 use App\Models\Staff;         // model sa staff table 
 use App\Support\AdminAccess;
+use App\Support\ActivityLogger;
 use App\Support\MaintenanceLogs;
 use App\Support\RentalPricing;
 use Illuminate\Http\Request;
@@ -32,6 +33,7 @@ class DashboardController extends Controller
         'Delete Inventory',
         'Manage Staff',
         'Handle Maintenance',
+        'Manage Pricing',
     ];
 
     /**
@@ -81,7 +83,7 @@ class DashboardController extends Controller
             $permissions = self::SUPER_ADMIN_PERMISSIONS;
         }
         if ($validated['role'] === 'Staff') {
-            $permissions = array_values(array_diff($permissions, ['Manage Staff']));
+            $permissions = array_values(array_diff($permissions, ['Manage Staff', 'Manage Pricing']));
         }
         $permissions = $this->ensureInventoryViewPermission($permissions);
 
@@ -98,7 +100,7 @@ class DashboardController extends Controller
 
         $fullName = trim($validated['first_name'] . ' ' . $validated['last_name']);
 
-        Staff::create([
+        $staff = Staff::create([
             // staff.admin_id must reference the admin table. A staff member with
             // Admin-portal staff files new staff under the admin who owns them.
             'admin_id' => auth()->user() instanceof Staff ? auth()->user()->admin_id : auth()->id(),
@@ -115,12 +117,34 @@ class DashboardController extends Controller
             'permissions' => $permissions,
         ]);
 
+        ActivityLogger::record(
+            $request,
+            'ADD_STAFF',
+            'Added staff account: ' . $fullName
+                . ' (' . $staff->username . ')'
+                . ' | Email: ' . $staff->email
+                . ' | Phone: ' . ActivityLogger::displayValue($staff->phone)
+                . ' | Role: ' . $staff->role
+                . ' | Status: ' . $staff->status
+                . ' | Permissions: ' . ActivityLogger::displayValue($staff->permissions)
+        );
+
         return $this->backToTab($request, 'staff')
             ->with('success', 'Staff member added successfully.');
     }
 
     public function updateStaff(Request $request, Staff $staff)
     {
+        $before = [
+            'First name' => $staff->first_name,
+            'Last name' => $staff->last_name,
+            'Email' => $staff->email,
+            'Phone' => $staff->phone,
+            'Role' => $staff->role,
+            'Status' => $staff->status,
+            'Permissions' => $staff->permissions,
+        ];
+
         $validator = Validator::make($request->all(), [
             'first_name' => ['required', 'string', 'max:75'],
             'last_name' => ['required', 'string', 'max:75'],
@@ -165,7 +189,7 @@ class DashboardController extends Controller
             $permissions = self::SUPER_ADMIN_PERMISSIONS;
         }
         if ($validated['role'] === 'Staff') {
-            $permissions = array_values(array_diff($permissions, ['Manage Staff']));
+            $permissions = array_values(array_diff($permissions, ['Manage Staff', 'Manage Pricing']));
         }
         $permissions = $this->ensureInventoryViewPermission($permissions);
 
@@ -194,6 +218,37 @@ class DashboardController extends Controller
         }
 
         $staff->save();
+
+        $after = [
+            'First name' => $staff->first_name,
+            'Last name' => $staff->last_name,
+            'Email' => $staff->email,
+            'Phone' => $staff->phone,
+            'Role' => $staff->role,
+            'Status' => $staff->status,
+            'Permissions' => $staff->permissions,
+        ];
+        $changes = [];
+        foreach ($before as $label => $oldValue) {
+            if ($before[$label] !== $after[$label]) {
+                $changes[$label] = ['before' => $oldValue, 'after' => $after[$label]];
+            }
+        }
+        if (!empty($validated['password'])) {
+            $changes['Password'] = ['before' => '(unchanged)', 'after' => '(changed)'];
+        }
+        if ($request->hasFile('profile_picture')) {
+            $changes['Profile picture'] = ['before' => '(existing or empty)', 'after' => '(updated)'];
+        }
+
+        ActivityLogger::record(
+            $request,
+            'UPDATE_STAFF',
+            'Updated staff account: ' . $staff->full_name
+                . ' (' . $staff->username . ')'
+                . ' | Staff ID: ' . $staff->staff_id
+                . ' | Changes: ' . ActivityLogger::formatChanges($changes)
+        );
 
         return $this->backToTab($request, 'staff')
             ->with('success', 'Staff member updated successfully.');
@@ -234,6 +289,15 @@ class DashboardController extends Controller
 
         $staff->status = 'inactive';
         $staff->save();
+
+        ActivityLogger::record(
+            $request,
+            'DEACTIVATE_STAFF',
+            'Deactivated staff account: ' . $staff->full_name
+                . ' (' . $staff->username . ')'
+                . ' | Staff ID: ' . $staff->staff_id
+                . ' | Status: active -> inactive'
+        );
 
         return response()->json(['message' => 'Staff member removed successfully.']);
     }
@@ -310,7 +374,9 @@ class DashboardController extends Controller
 
     $logActionFilters = [
         'rental' => ['OPEN_RENTAL', 'CLOSE_RENTAL', 'EXTEND_RENTAL'],
-        'maintenance' => ['UPDATE_BIKE_STATUS', 'REPORT_ISSUE'],
+        'maintenance' => ['UPDATE_BIKE_STATUS', 'REPORT_ISSUE', 'UPDATE_ISSUE_STATUS'],
+        'inventory' => ['ADD_BIKE', 'UPDATE_BIKE', 'DELETE_BIKE'],
+        'pricing' => ['UPDATE_PRICING'],
         'staff' => ['ADD_STAFF', 'UPDATE_STAFF', 'DEACTIVATE_STAFF'],
         'payment' => ['PAYMENT_SETTLED'],
         'reports' => ['GENERATE_REPORT'],
@@ -447,6 +513,10 @@ class DashboardController extends Controller
 
     $nextBikeCode = Bicycle::nextQrCode('Mountain Bike');
 
+    $pricingSettings = AdminAccess::allows('Manage Pricing')
+        ? RentalPricing::adminSettings()
+        : [];
+
     return view('admin.dashboard', compact(
         'staff',
         'stats',
@@ -454,7 +524,7 @@ class DashboardController extends Controller
         'recentActivity', 'bikeTypeDistribution',
         'weeklyRentals', 'revenueVsRentals', 'peakHours', 'bikes',
         'nextBikeCode', 'activityLogs', 'logActionFilters', 'logFilters',
-        'reports', 'maintenanceFilters'
+        'reports', 'maintenanceFilters', 'pricingSettings'
     ));
 }
 
@@ -476,11 +546,21 @@ class DashboardController extends Controller
 
     $validated = $validator->validated();
 
-    Bicycle::create([
+    $bike = Bicycle::create([
         ...$validated,
         'qr_code' => Bicycle::nextQrCode($validated['bike_type']),
         'status' => $validated['condition'] === 'good' ? 'available' : 'repair',
     ]);
+
+    ActivityLogger::record(
+        $request,
+        'ADD_BIKE',
+        'Added bike: ' . $bike->model . ' ' . $bike->make
+            . ' (' . $bike->qr_code . ')'
+            . ' | Bike type: ' . $bike->bike_type
+            . ' | Condition: ' . $bike->condition
+            . ' | Status: ' . $bike->status
+    );
 
     return $this->backToTab($request, 'bikes')
         ->with('success', 'Bike added successfully.');
@@ -529,6 +609,14 @@ class DashboardController extends Controller
 
         $validated = $validator->validated();
         $status = $validated['status'] ?? ($bike->status === 'rented' ? 'rented' : 'available');
+        $before = [
+            'Model' => $bike->model,
+            'Make' => $bike->make,
+            'Bike type' => $bike->bike_type,
+            'Bike code' => $bike->qr_code,
+            'Status' => $bike->status,
+            'Condition' => $bike->condition,
+        ];
 
         if ($validated['condition'] !== 'good') {
             $status = 'repair';
@@ -546,6 +634,31 @@ class DashboardController extends Controller
             'status' => $status,
             'condition' => $validated['condition'],
         ]);
+
+        $after = [
+            'Model' => $bike->model,
+            'Make' => $bike->make,
+            'Bike type' => $bike->bike_type,
+            'Bike code' => $bike->qr_code,
+            'Status' => $bike->status,
+            'Condition' => $bike->condition,
+        ];
+        $changes = [];
+        foreach ($before as $label => $oldValue) {
+            if ($oldValue !== $after[$label]) {
+                $changes[$label] = ['before' => $oldValue, 'after' => $after[$label]];
+            }
+        }
+
+        ActivityLogger::record(
+            $request,
+            'UPDATE_BIKE',
+            'Updated bike: ' . $bike->model . ' ' . $bike->make
+                . ' (' . $bike->qr_code . ')'
+                . ' | Bike ID: ' . $bike->qr_code
+                . ' | Database ID: ' . $bike->bike_id
+                . ' | Changes: ' . ActivityLogger::formatChanges($changes)
+        );
 
         $this->clearBikeConfirmation($request, $bike, 'edit');
 
@@ -567,6 +680,18 @@ class DashboardController extends Controller
 
         $bike->delete();
         $this->clearBikeConfirmation($request, $bike, 'delete');
+
+        ActivityLogger::record(
+            $request,
+            'DELETE_BIKE',
+            'Deleted bike: ' . $bike->model . ' ' . $bike->make
+                . ' (' . $bike->qr_code . ')'
+                . ' | Bike ID: ' . $bike->qr_code
+                . ' | Database ID: ' . $bike->bike_id
+                . ' | Bike type: ' . $bike->bike_type
+                . ' | Condition: ' . $bike->condition
+                . ' | Status: ' . $bike->status
+        );
 
         return $this->backToTab($request, 'bikes')
             ->with('success', 'Bike removed from inventory.');
@@ -644,29 +769,35 @@ class DashboardController extends Controller
         return array_diff(self::SUPER_ADMIN_PERMISSIONS, $permissions) === [];
     }
 
-    // Rental counts for the last 7 days, oldest first.
+    // Rental counts for the current Monday-to-Sunday week.
     protected function weeklyRentalCounts(): array
     {
-        // start 6 days ago, sugod sa 12am (start of day)
-        $start = now()->subDays(6)->startOfDay();
+        $start = now()->startOfWeek(Carbon::MONDAY);
+        $end = $start->copy()->addDays(6)->endOfDay();
 
-        // ihap ang rentals per date
         $counts = Rental::selectRaw('DATE(start_time) as day, COUNT(*) as total')
-            ->where('start_time', '>=', $start)
+            ->whereBetween('start_time', [$start, $end])
             ->groupBy('day')
-            ->pluck('total', 'day'); // 'YYYY-MM-DD' ang format dawg
+            ->pluck('total', 'day');
 
         $labels = [];
-        $data = [];   
+        $dates = [];
+        $data = [];
 
-        // loops from day 1 to 6
-        for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i);
-            $labels[] = $date->format('D'); 
+        for ($i = 0; $i < 7; $i++) {
+            $date = $start->copy()->addDays($i);
+            $labels[] = $date->format('D j');
+            $dates[] = $date->format('F j, Y');
             $data[] = (int) ($counts[$date->format('Y-m-d')] ?? 0);
         }
 
-        return ['labels' => $labels, 'data' => $data];
+        return [
+            'labels' => $labels,
+            'dates' => $dates,
+            'period' => 'Week ' . $start->isoWeek . ' · ' . $start->format('F j, Y')
+                . ' – ' . $end->format('F j, Y'),
+            'data' => $data,
+        ];
     }
 
    // completed rentals, revenue, and rental count for the last 5 months

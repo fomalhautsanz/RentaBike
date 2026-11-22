@@ -46,6 +46,7 @@
             </div>
           </div>
           <label class="permission-option" data-admin-only-permission style="display:none"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Manage Staff"> <span>Manage Staff</span></label>
+          <label class="permission-option" data-admin-only-permission style="display:none"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Manage Pricing"> <span>Manage Pricing</span></label>
           <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Handle Maintenance"> <span>Handle Maintenance</span></label>
         </div>
       </div>
@@ -197,6 +198,7 @@
           </div>
         </div>
         <label class="permission-option" data-admin-only-permission style="display:none"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Manage Staff"> <span>Manage Staff</span></label>
+        <label class="permission-option" data-admin-only-permission style="display:none"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Manage Pricing"> <span>Manage Pricing</span></label>
         <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Handle Maintenance"> <span>Handle Maintenance</span></label>
       </div>
     </div>

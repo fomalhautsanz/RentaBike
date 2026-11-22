@@ -12,6 +12,9 @@
     @adminCan('Handle Maintenance')
         @include('admin.pages._maintenance')
     @endadminCan
+    @adminCan('Manage Pricing')
+        @include('admin.pages._pricing')
+    @endadminCan
     @include('admin.pages._logs')
     @include('admin.pages._reports')
 @endsection

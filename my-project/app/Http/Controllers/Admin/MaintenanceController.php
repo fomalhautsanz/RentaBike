@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\IssueReport;
+use App\Support\ActivityLogger;
 use App\Support\MaintenanceLogs;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,8 +34,9 @@ class MaintenanceController extends Controller
         $validated = $request->validate([
             'status' => ['required', Rule::in(array_keys(MaintenanceLogs::STATUSES))],
         ]);
+        $previousStatus = $issueReport->status;
 
-        $bikeReleased = DB::transaction(function () use ($issueReport, $validated) {
+        $bikeReleased = DB::transaction(function () use ($request, $issueReport, $validated, $previousStatus) {
             $issueReport->status = $validated['status'];
             $issueReport->resolved_at = $validated['status'] === 'resolved'
                 ? ($issueReport->resolved_at ?? now())
@@ -42,6 +44,20 @@ class MaintenanceController extends Controller
             $issueReport->save();
 
             $bike = $issueReport->bike;
+
+            if ($previousStatus !== $validated['status']) {
+                ActivityLogger::record(
+                    $request,
+                    'UPDATE_ISSUE_STATUS',
+                    'Report ' . MaintenanceLogs::reportCode((int) $issueReport->issue_id)
+                        . ' | Issue: ' . (MaintenanceLogs::TYPES[$issueReport->issue_type] ?? ucfirst($issueReport->issue_type))
+                        . ' | Bike ID: ' . ($bike?->qr_code ?? 'N/A')
+                        . ' | Status: '
+                        . (MaintenanceLogs::STATUSES[$previousStatus] ?? ucfirst((string) $previousStatus))
+                        . ' -> ' . MaintenanceLogs::STATUSES[$validated['status']]
+                );
+            }
+
             if ($validated['status'] !== 'resolved' || !$bike) {
                 return false;
             }

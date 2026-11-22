@@ -53,6 +53,8 @@ class EnsureStaffLoggedIn
                 ->withErrors(['email' => 'Please log in to continue.']);
         }
 
+        $request->attributes->set('authenticatedStaff', $staff);
+
         $permissionNames = [
             'view inventory' => 'View Inventory',
             'add inventory' => 'Add Inventory',

@@ -158,6 +158,11 @@ test('admin can save a maintenance report status', function () {
     ]);
 
     $this->actingAs($admin)
+        ->patchJson(route('admin.maintenance.status', 1), ['status' => 'in_progress'])
+        ->assertOk()
+        ->assertJsonPath('report.status', 'In Progress');
+
+    $this->actingAs($admin)
         ->patchJson(route('admin.maintenance.status', 1), ['status' => 'resolved'])
         ->assertOk()
         ->assertJsonPath('report.status', 'Resolved');
@@ -170,6 +175,16 @@ test('admin can save a maintenance report status', function () {
         ->patchJson(route('admin.maintenance.status', 1), ['status' => 'pending'])
         ->assertOk();
     expect(DB::table('issue_report')->where('issue_id', 1)->value('resolved_at'))->toBeNull();
+
+    $statusLogs = DB::table('activity_log')
+        ->where('action', 'UPDATE_ISSUE_STATUS')
+        ->orderBy('log_id')
+        ->pluck('details');
+    expect($statusLogs)->toHaveCount(3)
+        ->and($statusLogs[0])->toContain('Pending -> In Progress')
+        ->and($statusLogs[1])->toContain('In Progress -> Resolved')
+        ->and($statusLogs[2])->toContain('Resolved -> Pending')
+        ->and($statusLogs[0])->toContain('Bike ID: MB-001');
 
     $this->actingAs($admin)
         ->patchJson(route('admin.maintenance.status', 1), ['status' => 'fixed'])
