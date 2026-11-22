@@ -253,13 +253,50 @@ test('rented bike scan includes a protected borrower ID preview URL', function (
     $response = scanAsStaff($this, 'ES-003')
         ->assertOk()
         ->assertJsonPath('rental.borrower_name', 'Maria Santos')
+        ->assertJsonPath('rental.borrower_id_mime_type', 'application/pdf')
         ->assertJsonPath('rental.borrower_id_url', route('staff.rentals.borrower-id', $rental));
 
     $this->withSession(['staff_id' => $this->staff->staff_id])
         ->get($response->json('rental.borrower_id_url'))
         ->assertOk()
         ->assertHeader('content-disposition', 'inline; filename=borrower-id.pdf')
+        ->assertHeader('content-type', 'application/pdf')
         ->assertSee('%PDF-1.4 test ID', false);
+});
+
+test('rented bike scan identifies and serves image borrower IDs', function () {
+    Storage::fake('local');
+    Storage::disk('local')->put(
+        'borrower-ids/borrower-id.png',
+        base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l2cAAAAASUVORK5CYII=')
+    );
+
+    $bike = makeScanBike('ES-004', 'rented', 'good', 'E-Scooter');
+    $borrower = Borrower::create([
+        'full_name' => 'Maria Santos',
+        'contact_no' => '09171234567',
+        'id_photo_id' => 'borrower-ids/borrower-id.png',
+    ]);
+    $rental = Rental::create([
+        'borrower_id' => $borrower->borrower_id,
+        'bike_id' => $bike->bike_id,
+        'staff_id' => $this->staff->staff_id,
+        'start_time' => now()->subMinutes(5)->format('Y-m-d H:i:s'),
+        'rental_duration_hrs' => 0.50,
+        'base_fee' => 100,
+        'total_fee' => 100,
+        'status' => 'active',
+    ]);
+
+    $scan = scanAsStaff($this, 'ES-004')
+        ->assertOk()
+        ->assertJsonPath('rental.borrower_id_mime_type', 'image/png')
+        ->assertJsonPath('rental.borrower_id_url', route('staff.rentals.borrower-id', $rental));
+
+    $this->withSession(['staff_id' => $this->staff->staff_id])
+        ->get($scan->json('rental.borrower_id_url'))
+        ->assertOk()
+        ->assertHeader('content-type', 'image/png');
 });
 
 test('rented bike without a rental record returns rental null', function () {

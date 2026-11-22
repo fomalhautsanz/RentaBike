@@ -321,6 +321,7 @@ body{background:#f9fafb;color:#111827;font-family:'DM Sans',sans-serif;-webkit-f
 .modal-bike-header .bike-icon{width:48px;height:48px;border-radius:var(--radius-md)}
 .modal-bike-title{font-size:18px;font-weight:700;color:var(--gray-900);margin-bottom:2px}
 .modal-detail-row{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--gray-100);}
+.modal-detail-row[hidden],.badge[hidden]{display:none}
 .modal-detail-row:last-of-type{border-bottom:none}
 .modal-detail-row .label{font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px}
 .modal-detail-row .value{font-size:14px;font-weight:600;color:var(--gray-900);text-align:right}

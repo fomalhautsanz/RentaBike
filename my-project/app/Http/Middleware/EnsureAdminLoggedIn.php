@@ -29,7 +29,7 @@ class EnsureAdminLoggedIn
             return $next($request);
         }
 
-        // 2) Staff accounts with role "Admin". Re-checked on every request so
+        // 2) Staff accounts with role "Admin" or "Super Admin". Re-checked on every request so
         //    demoting, deactivating or deleting the staff member revokes access.
         $staffGuard = Auth::guard('staff_admin');
         if ($staffGuard->check()) {

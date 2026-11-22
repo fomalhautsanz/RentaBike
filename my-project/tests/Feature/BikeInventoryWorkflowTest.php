@@ -321,6 +321,49 @@ test('bike edit and delete actions reject missing or incorrect password confirma
     $this->assertDatabaseHas('bicycle', ['qr_code' => 'MB-303']);
 });
 
+test('admin bike inventory only renders permitted actions and their column', function () {
+    $staff = Staff::create([
+        'admin_id' => 1,
+        'username' => 'inventory-admin',
+        'password_hash' => Hash::make('staff-password'),
+        'full_name' => 'Inventory Admin',
+        'first_name' => 'Inventory',
+        'last_name' => 'Admin',
+        'email' => 'inventory-admin@example.test',
+        'role' => 'Admin',
+        'status' => 'active',
+        'permissions' => [],
+    ]);
+
+    $bike = (object) [
+        'bike_code' => 'MB-001',
+        'name' => 'Trail 200',
+        'type' => 'Mountain Bike',
+        'qr_code' => 'MB-001',
+        'status' => 'Available',
+        'condition' => 'Good',
+        'last_maintenance' => null,
+        'overdue' => false,
+        'estimated_overtime_fee' => 0,
+    ];
+
+    foreach ([
+        [[], false, false],
+        [['Edit Inventory'], true, false],
+        [['Delete Inventory'], false, true],
+        [['Edit Inventory', 'Delete Inventory'], true, true],
+    ] as [$permissions, $canEdit, $canDelete]) {
+        $staff->permissions = $permissions;
+        $html = $this->actingAs($staff, 'staff_admin')
+            ->view('admin.pages._bikes', ['bikes' => collect([$bike])])
+            ->render();
+
+        expect(str_contains($html, '<th>Actions</th>'))->toBe($canEdit || $canDelete)
+            ->and(str_contains($html, 'onclick="openEditBike('))->toBe($canEdit)
+            ->and(str_contains($html, 'onclick="openDeleteBike('))->toBe($canDelete);
+    }
+});
+
 test('staff inventory renders real edit and delete actions for bike records', function () {
     $admin = Admin::create([
         'username' => 'admin2',

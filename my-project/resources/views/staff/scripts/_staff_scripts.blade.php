@@ -406,6 +406,7 @@ function openRentalForm(data) {
 }
 
 let borrowerIdPreviewUrl = null;
+const maxBorrowerIdSize = 2 * 1024 * 1024;
 
 function resetBorrowerIdPreview() {
   if (borrowerIdPreviewUrl) URL.revokeObjectURL(borrowerIdPreviewUrl);
@@ -421,6 +422,12 @@ function previewBorrowerId(input) {
   resetBorrowerIdPreview();
   const file = input.files && input.files[0];
   if (!file) return;
+
+  if (file.size > maxBorrowerIdSize) {
+    input.value = '';
+    showToast('The borrower ID must be 2 MB or smaller.');
+    return;
+  }
 
   const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
   if (!allowedTypes.includes(file.type)) {
@@ -625,7 +632,7 @@ function renderSession() {
     ssRow('Interval', rental.duration_label),
     ssRow('Expected return', rental.expected_end_label),
     ssRow('Time remaining', '', '', 'ss-remaining'),
-    ssRow('Status', 'OVERDUE', 'ss-over', 'ss-overdue-status'),
+    ssRow('Status', 'Active Rental', '', 'ss-overdue-status'),
     ssRow('Paid so far', formatPeso(rental.amount_paid)),
     ssRow('Overtime fee (est.)', formatPeso(rental.estimated_overtime_fee), 'ss-over', 'ss-overtime-fee'),
   );
@@ -647,7 +654,10 @@ function updateSessionClock() {
   sessionData.rental.estimated_overtime_fee = fee;
   const overdueStatus = document.getElementById('ss-overdue-status');
   const overtimeFee = document.getElementById('ss-overtime-fee');
-  if (overdueStatus) overdueStatus.parentElement.hidden = !overdue;
+  if (overdueStatus) {
+    overdueStatus.textContent = overdue ? 'Overdue' : 'Active Rental';
+    overdueStatus.classList.toggle('ss-over', overdue);
+  }
   if (overtimeFee) {
     overtimeFee.textContent = formatPeso(fee);
     overtimeFee.parentElement.hidden = !overdue;
@@ -1154,7 +1164,8 @@ function openModal(type, data = {}) {
         </button>
         <div id="idContainer" style="display:none">
           <div class="id-preview-box">
-            <iframe id="rented-modal-id-preview" title="Borrower ID preview" style="display:block;width:100%;height:320px;border:0"></iframe>
+            <img id="rented-modal-id-image" alt="Borrower ID preview" style="display:none;width:100%;height:auto;max-height:320px;object-fit:contain">
+            <iframe id="rented-modal-id-preview" title="Borrower ID preview" style="display:none;width:100%;height:320px;border:0"></iframe>
           </div>
         </div>
         <button class="primary-btn outline" onclick="closeModal()">Close</button>
@@ -1251,7 +1262,18 @@ function loadRentedBikeDetails(bikeCode) {
       const idUrl = rental?.borrower_id_url;
       if (idUrl) {
         idContainer.dataset.idUrl = idUrl;
-        document.getElementById('rented-modal-id-preview').src = idUrl;
+        const idImage = document.getElementById('rented-modal-id-image');
+        const idPreview = document.getElementById('rented-modal-id-preview');
+        if (rental.borrower_id_mime_type?.startsWith('image/')) {
+          idImage.src = idUrl;
+          idImage.style.display = 'block';
+          idPreview.removeAttribute('src');
+        } else {
+          idPreview.src = idUrl;
+          idImage.removeAttribute('src');
+          idImage.style.display = 'none';
+          idPreview.style.display = 'block';
+        }
         idButton.disabled = false;
       } else {
         delete idContainer.dataset.idUrl;

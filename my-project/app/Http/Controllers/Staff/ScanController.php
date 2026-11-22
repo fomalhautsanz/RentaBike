@@ -64,6 +64,10 @@ class ScanController extends Controller
                 ->where('status', 'active')
                 ->latest('rental_id')
                 ->first();
+            $borrowerIdPath = $rental?->borrower?->id_photo_id;
+            $hasBorrowerId = $borrowerIdPath
+                && preg_match('#\Aborrower-ids/[A-Za-z0-9._-]+\z#D', $borrowerIdPath)
+                && Storage::disk('local')->exists($borrowerIdPath);
 
             return response()->json([
                 'bike' => $details,
@@ -72,11 +76,12 @@ class ScanController extends Controller
                 // null kung wala'y rental record (daang data nga gi-mark ra nga rented)
                 'rental' => $rental ? [
                     ...RentalPricing::summary($rental, $bike->bike_type, $now),
-                    'borrower_id_url' => $rental->borrower?->id_photo_id
-                        && preg_match('#\Aborrower-ids/[A-Za-z0-9._-]+\z#D', $rental->borrower->id_photo_id)
-                        && Storage::disk('local')->exists($rental->borrower->id_photo_id)
-                            ? route('staff.rentals.borrower-id', $rental->rental_id)
-                            : null,
+                    'borrower_id_url' => $hasBorrowerId
+                        ? route('staff.rentals.borrower-id', $rental->rental_id)
+                        : null,
+                    'borrower_id_mime_type' => $hasBorrowerId
+                        ? Storage::disk('local')->mimeType($borrowerIdPath)
+                        : null,
                 ] : null,
             ]);
         }

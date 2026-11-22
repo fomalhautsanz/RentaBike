@@ -18,16 +18,33 @@
       <div class="form-group">
         <label class="form-label">Role</label>
         <select name="role" id="add-staff-role" class="form-select" onchange="toggleManageStaffPermission(this, 'add-staff-modal')">
-          <option>Staff</option><option>Admin</option>
+          <option value="Staff">Staff</option><option value="Admin">Admin</option>
+          @if(\App\Support\AdminAccess::canManageSuperAdmins())
+            <option value="Super Admin" hidden>Super Admin</option>
+          @endif
         </select>
+        @if(\App\Support\AdminAccess::canManageSuperAdmins())
+          <button type="button" class="btn btn-super-admin-promotion" onclick="makeAddStaffSuperAdmin()">Make Super Admin</button>
+        @endif
       </div>
       <div class="form-group">
         <label class="form-label">Privileges</label>
         <div class="permission-grid">
-          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="View Inventory"> <span>View Inventory</span></label>
-          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Add Inventory"> <span>Add Inventory</span></label>
-          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Edit Inventory"> <span>Edit Inventory</span></label>
-          <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Delete Inventory"> <span>Delete Inventory</span></label>
+          <div class="inventory-permission-group">
+            <label class="permission-option inventory-view-option">
+              <input type="checkbox" class="permission-checkbox" name="permissions[]" value="View Inventory" onchange="toggleInventoryPermissionOptions(this, 'add-staff-modal')">
+              <span>View Inventory</span>
+              <span class="inventory-view-hint">Open the inventory page and choose allowed actions</span>
+            </label>
+            <div class="inventory-subpermissions" data-inventory-options hidden>
+              <p>Bike actions</p>
+              <div class="inventory-actions-grid">
+                <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Add Inventory" onchange="syncInventoryPermissionOptions('add-staff-modal')"> <span>Add</span></label>
+                <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Edit Inventory" onchange="syncInventoryPermissionOptions('add-staff-modal')"> <span>Edit</span></label>
+                <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Delete Inventory" onchange="syncInventoryPermissionOptions('add-staff-modal')"> <span>Delete</span></label>
+              </div>
+            </div>
+          </div>
           <label class="permission-option" data-admin-only-permission style="display:none"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Manage Staff"> <span>Manage Staff</span></label>
           <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Handle Maintenance"> <span>Handle Maintenance</span></label>
         </div>
@@ -74,8 +91,28 @@
     <p>Please review the account details before creating it.</p>
     <div id="staff-confirmation-summary" class="confirmation-summary"></div>
     <div class="form-actions">
-      <button type="button" class="btn btn-outline" onclick="closeModal('confirm-staff-modal')">Back</button>
+      <button type="button" class="btn btn-outline" onclick="closeModal('confirm-staff-modal'); openModal('add-staff-modal')">Back</button>
       <button type="button" class="btn btn-primary" onclick="confirmStaffCreation()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+{{-- SUPER ADMIN ACCESS CONFIRMATION --}}
+<div class="modal-backdrop" id="super-admin-confirm-modal">
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="super-admin-confirm-title" aria-describedby="super-admin-confirm-message">
+    <div class="modal-header">
+      <span class="modal-title" id="super-admin-confirm-title">Confirm Super Admin Access</span>
+      <button type="button" class="modal-close" onclick="cancelSuperAdminChange()" aria-label="Cancel">&times;</button>
+    </div>
+    <div class="delete-warning">
+      <div class="delete-icon super-admin-warning-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.5 20h19L12 3z"/><path d="M12 9v4M12 17h.01"/></svg>
+      </div>
+      <div class="delete-desc" id="super-admin-confirm-message"></div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-outline" onclick="cancelSuperAdminChange()">Cancel</button>
+      <button type="button" class="btn btn-super-admin-warning" id="super-admin-confirm-button" onclick="confirmSuperAdminChange()">Grant Full Access</button>
     </div>
   </div>
 </div>
@@ -126,8 +163,14 @@
     <div class="form-group">
       <label class="form-label">Role</label>
       <select name="role" id="edit-staff-role" class="form-select" onchange="toggleManageStaffPermission(this, 'edit-staff-modal')">
-        <option>Staff</option><option>Admin</option>
+        <option value="Staff">Staff</option><option value="Admin">Admin</option>
+        @if(\App\Support\AdminAccess::canManageSuperAdmins())
+          <option value="Super Admin" hidden>Super Admin</option>
+        @endif
       </select>
+      @if(\App\Support\AdminAccess::canManageSuperAdmins())
+        <button type="button" class="btn btn-super-admin-promotion" id="edit-super-admin-button" onclick="makeEditStaffSuperAdmin()">Promote to Super Admin</button>
+      @endif
     </div>
     <div class="form-group">
       <label class="form-label">Status</label>
@@ -138,10 +181,21 @@
     <div class="form-group">
       <label class="form-label">Privileges</label>
       <div class="permission-grid">
-        <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="View Inventory"> <span>View Inventory</span></label>
-        <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Add Inventory"> <span>Add Inventory</span></label>
-        <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Edit Inventory"> <span>Edit Inventory</span></label>
-        <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Delete Inventory"> <span>Delete Inventory</span></label>
+        <div class="inventory-permission-group">
+          <label class="permission-option inventory-view-option">
+            <input type="checkbox" class="permission-checkbox" name="permissions[]" value="View Inventory" onchange="toggleInventoryPermissionOptions(this, 'edit-staff-modal')">
+            <span>View Inventory</span>
+            <span class="inventory-view-hint">Open the inventory page and choose allowed actions</span>
+          </label>
+          <div class="inventory-subpermissions" data-inventory-options hidden>
+            <p>Bike actions</p>
+            <div class="inventory-actions-grid">
+              <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Add Inventory" onchange="syncInventoryPermissionOptions('edit-staff-modal')"> <span>Add</span></label>
+              <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Edit Inventory" onchange="syncInventoryPermissionOptions('edit-staff-modal')"> <span>Edit</span></label>
+              <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Delete Inventory" onchange="syncInventoryPermissionOptions('edit-staff-modal')"> <span>Delete</span></label>
+            </div>
+          </div>
+        </div>
         <label class="permission-option" data-admin-only-permission style="display:none"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Manage Staff"> <span>Manage Staff</span></label>
         <label class="permission-option"><input type="checkbox" class="permission-checkbox" name="permissions[]" value="Handle Maintenance"> <span>Handle Maintenance</span></label>
       </div>

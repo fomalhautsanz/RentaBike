@@ -17,7 +17,7 @@
       </div>
       <select class="filter-select" onchange="filterStaffRole(this.value)">
         <option value="">All Roles</option>
-        <option>Staff</option><option>Admin</option>
+        <option>Staff</option><option>Admin</option><option>Super Admin</option>
       </select>
       <select class="filter-select" onchange="filterStaffStatus(this.value)">
         <option value="">All status</option>
@@ -37,8 +37,14 @@
       </thead>
       <tbody id="staff-tbody">
         @foreach($staff ?? [] as $member)
-          @php($permissions = array_values(array_diff($member->permissions ?? ['View Inventory'], ['Process Rentals', 'View Reports'])))
-          <tr data-id="{{ $member->id }}" data-name="{{ $member->name }}" data-first-name="{{ $member->first_name ?? '' }}" data-last-name="{{ $member->last_name ?? '' }}" data-email="{{ $member->email }}" data-phone="{{ $member->phone ?? '' }}" data-role="{{ $member->role }}" data-status="{{ $member->status }}" data-permissions="{{ implode(',', $permissions) }}">
+          @php
+            $permissions = array_values(array_diff($member->permissions ?? ['View Inventory'], ['Process Rentals', 'View Reports']));
+            $isMainAdmin = $member->is_main_admin ?? false;
+            $isSuperAdmin = $isMainAdmin || ($member->is_super_admin ?? false);
+            $displayRole = $isSuperAdmin ? 'Super Admin' : $member->role;
+            $idPrefix = $isMainAdmin ? 'SA' : (($member->is_super_admin ?? false) ? 'SADM' : ($member->role === 'Admin' ? 'ADM' : 'STF'));
+          @endphp
+          <tr data-id="{{ $member->id }}" data-name="{{ $member->name }}" data-first-name="{{ $member->first_name ?? '' }}" data-last-name="{{ $member->last_name ?? '' }}" data-email="{{ $member->email }}" data-phone="{{ $member->phone ?? '' }}" data-role="{{ $displayRole }}" data-status="{{ $member->status }}" data-permissions="{{ implode(',', $permissions) }}">
             <td>
               <div style="display:flex;align-items:center;gap:12px">
                 @if(!empty($member->profile_picture))
@@ -48,7 +54,7 @@
                 @endif
                 <div>
                   <div style="font-weight:500;color:#111827">{{ $member->name }}</div>
-                  <div style="font-size:12px;color:#9ca3af">ID: #{{ str_pad($member->id, 4, '0', STR_PAD_LEFT) }}</div>
+                  <div style="font-size:12px;color:#9ca3af">ID: {{ $idPrefix }}-{{ str_pad($member->id, 4, '0', STR_PAD_LEFT) }}</div>
                 </div>
               </div>
             </td>
@@ -65,17 +71,26 @@
               </div>
             </td>
             <td>
-              <span class="badge {{ $member->role === 'Manager' ? 'badge-purple' : ($member->role === 'Technician' ? 'badge-blue' : 'badge-gray') }}">
-                {{ $member->role }}
+              <span class="badge {{ $isSuperAdmin || $member->role === 'Manager' ? 'badge-purple' : ($member->role === 'Technician' ? 'badge-blue' : 'badge-gray') }}">
+                {{ $displayRole }}
               </span>
             </td>
             <td>
               <div class="permission-list">
-                @foreach(array_slice($permissions, 0, 3) as $permission)
-                  <span class="permission-pill">{{ $permission }}</span>
-                @endforeach
-                @if(count($permissions) > 3)
-                  <span class="permission-pill more">+{{ count($permissions) - 3 }}</span>
+                @if($isSuperAdmin)
+                  <span class="permission-pill permission-pill-full">Full Access</span>
+                @else
+                  @foreach(array_slice($permissions, 0, 3) as $permission)
+                    <span class="permission-pill">{{ $permission }}</span>
+                  @endforeach
+                  @if(count($permissions) > 3)
+                    <span
+                      class="permission-pill more"
+                      tabindex="0"
+                      title="{{ implode(', ', $permissions) }}"
+                      aria-label="All assigned actions: {{ implode(', ', $permissions) }}"
+                    >+{{ count($permissions) - 3 }}</span>
+                  @endif
                 @endif
               </div>
             </td>
@@ -85,7 +100,7 @@
               </span>
             </td>
             <td>
-              @if($member->is_staff ?? false)
+              @if(($member->is_staff ?? false) && (!$isSuperAdmin || \App\Support\AdminAccess::canManageSuperAdmins()))
                 <button type="button" class="action-btn" onclick="openEditStaff({{ $member->id }})" aria-label="Edit {{ $member->name }}">
                   <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>

@@ -3,6 +3,7 @@
 use App\Models\Admin;
 use App\Models\Staff;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
@@ -173,4 +174,119 @@ test('admin role can retain the Manage Staff permission', function () {
 
     $createdAdmin = Staff::where('email', 'new-admin@example.test')->firstOrFail();
     expect($createdAdmin->permissions)->toBe(['Manage Staff']);
+});
+
+test('inventory action permissions automatically include view access when saved', function () {
+    $this->post(route('admin.staff.store'), [
+        'first_name' => 'Bike',
+        'last_name' => 'Manager',
+        'email' => 'bike-manager@example.test',
+        'role' => 'Staff',
+        'password' => 'staff-password',
+        'password_confirmation' => 'staff-password',
+        'permissions' => ['Delete Inventory'],
+    ])->assertSessionHas('success');
+
+    $staff = Staff::where('email', 'bike-manager@example.test')->firstOrFail();
+    expect($staff->permissions)->toBe(['Delete Inventory', 'View Inventory']);
+});
+
+test('main admin can grant super admin with all permissions', function () {
+    $permissions = [
+        'View Inventory',
+        'Add Inventory',
+        'Edit Inventory',
+        'Delete Inventory',
+        'Manage Staff',
+        'Handle Maintenance',
+    ];
+
+    $this->post(route('admin.staff.store'), [
+        'first_name' => 'New',
+        'last_name' => 'Super Admin',
+        'email' => 'new-super-admin@example.test',
+        'role' => 'Super Admin',
+        'password' => 'super-admin-password',
+        'password_confirmation' => 'super-admin-password',
+        'permissions' => $permissions,
+    ])->assertSessionHas('success');
+
+    $superAdmin = Staff::where('email', 'new-super-admin@example.test')->firstOrFail();
+    expect($superAdmin->role)->toBe('Super Admin')
+        ->and($superAdmin->permissions)->toBe($permissions)
+        ->and($superAdmin->hasPermission('Unlisted Future Permission'))->toBeTrue();
+});
+
+test('staff admin cannot grant super admin access', function () {
+    $staffAdmin = Staff::create([
+        'admin_id' => 1,
+        'username' => 'staff-admin',
+        'password_hash' => Hash::make('staff-admin-password'),
+        'full_name' => 'Staff Admin',
+        'first_name' => 'Staff',
+        'last_name' => 'Admin',
+        'email' => 'staff-admin@example.test',
+        'role' => 'Admin',
+        'status' => 'active',
+        'permissions' => ['Manage Staff'],
+    ]);
+
+    Auth::guard('web')->logout();
+    $this->actingAs($staffAdmin, 'staff_admin')
+        ->post(route('admin.staff.store'), [
+            'first_name' => 'New',
+            'last_name' => 'Super Admin',
+            'email' => 'unauthorized-super-admin@example.test',
+            'role' => 'Super Admin',
+            'password' => 'super-admin-password',
+            'password_confirmation' => 'super-admin-password',
+            'permissions' => [
+                'View Inventory',
+                'Add Inventory',
+                'Edit Inventory',
+                'Delete Inventory',
+                'Manage Staff',
+                'Handle Maintenance',
+            ],
+        ])
+        ->assertForbidden();
+});
+
+test('main admin can demote a super admin while retaining selected permissions', function () {
+    $superAdmin = Staff::create([
+        'admin_id' => 1,
+        'username' => 'existing-super-admin',
+        'password_hash' => Hash::make('super-admin-password'),
+        'full_name' => 'Existing Super Admin',
+        'first_name' => 'Existing',
+        'last_name' => 'Super Admin',
+        'email' => 'existing-super-admin@example.test',
+        'role' => 'Super Admin',
+        'status' => 'active',
+        'permissions' => [
+            'View Inventory',
+            'Add Inventory',
+            'Edit Inventory',
+            'Delete Inventory',
+            'Manage Staff',
+            'Handle Maintenance',
+        ],
+    ]);
+
+    $this->post(route('admin.staff.verify', $superAdmin), [
+        'action' => 'edit',
+        'password' => 'correct-password',
+    ])->assertOk();
+
+    $this->patch(route('admin.staff.update', $superAdmin), [
+        'first_name' => 'Existing',
+        'last_name' => 'Super Admin',
+        'email' => 'existing-super-admin@example.test',
+        'role' => 'Admin',
+        'status' => 'Active',
+        'permissions' => ['View Inventory', 'Delete Inventory'],
+    ])->assertSessionHas('success');
+
+    expect($superAdmin->fresh()->role)->toBe('Admin')
+        ->and($superAdmin->fresh()->permissions)->toBe(['View Inventory', 'Delete Inventory']);
 });

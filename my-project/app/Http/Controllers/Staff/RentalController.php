@@ -33,11 +33,13 @@ class RentalController extends Controller
             'code'          => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9_-]+$/'],
             'borrower_name' => ['required', 'string', 'max:150'],
             'contact_no'    => ['required', 'string', 'regex:/^[0-9+()\-\s]{7,30}$/'],
-            'borrower_id'   => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'borrower_id'   => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:2048'],
             'minutes'       => ['required', 'integer'],
             'borrow_time'   => ['required', 'date_format:H:i'],
         ], [
             'contact_no.regex' => 'Please enter a valid contact number.',
+            'borrower_id.uploaded' => 'The borrower ID must be 2 MB or smaller. Please choose a smaller file.',
+            'borrower_id.max' => 'The borrower ID must be 2 MB or smaller.',
         ]);
 
         if ($validator->fails()) {

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
  *
  * - Accounts gikan sa `admin` table: full access.
  * - Staff nga "Admin" ang role: ang mga privileges ra nga naka-check sa ilang account.
+ * - Staff nga "Super Admin" ang role: full access, parehas sa admin-table accounts.
  */
 class AdminAccess
 {
@@ -23,6 +24,19 @@ class AdminAccess
 
         return $staff instanceof Staff
             && $staff->hasAdminPortalAccess()
-            && $staff->hasPermission($permission);
+            && ($staff->isSuperAdmin() || $staff->hasPermission($permission));
+    }
+
+    public static function canManageSuperAdmins(): bool
+    {
+        if (Auth::guard('web')->check()) {
+            return true;
+        }
+
+        $staff = Auth::guard('staff_admin')->user();
+
+        return $staff instanceof Staff
+            && $staff->hasAdminPortalAccess()
+            && $staff->isSuperAdmin();
     }
 }
