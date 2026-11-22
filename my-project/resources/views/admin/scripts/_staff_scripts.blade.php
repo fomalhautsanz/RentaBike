@@ -6,7 +6,8 @@ const fullAccessPermissions = [
   'Edit Inventory',
   'Delete Inventory',
   'Manage Staff',
-  'Handle Maintenance'
+  'Handle Maintenance',
+  'Manage Pricing'
 ];
 
 function filterStaff(q) {
@@ -26,12 +27,11 @@ function applyStaffFilters() {
   });
 }
 function toggleManageStaffPermission(roleSelect, modalId) {
-  const option = document.querySelector(`#${modalId} [data-admin-only-permission]`);
-  if (!option) return;
-
   const isAdmin = ['Admin', 'Super Admin'].includes(roleSelect.value);
-  option.style.display = isAdmin ? '' : 'none';
-  if (!isAdmin) option.querySelector('input').checked = false;
+  document.querySelectorAll(`#${modalId} [data-admin-only-permission]`).forEach(option => {
+    option.style.display = isAdmin ? '' : 'none';
+    if (!isAdmin) option.querySelector('input').checked = false;
+  });
 }
 
 let pendingSuperAdminChange = null;

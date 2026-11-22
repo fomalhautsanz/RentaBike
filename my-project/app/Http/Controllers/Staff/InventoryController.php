@@ -150,7 +150,8 @@ class InventoryController extends Controller
             'UPDATE_BIKE',
             'Updated bike: ' . $bike->model . ' ' . $bike->make
                 . ' (' . $bike->qr_code . ')'
-                . ' | Bike ID: ' . $bike->bike_id
+                . ' | Bike ID: ' . $bike->qr_code
+                . ' | Database ID: ' . $bike->bike_id
                 . ' | Changes: ' . ActivityLogger::formatChanges($changes)
         );
 
@@ -199,7 +200,8 @@ class InventoryController extends Controller
             'DELETE_BIKE',
             'Deleted bike: ' . $bike->model . ' ' . $bike->make
                 . ' (' . $bike->qr_code . ')'
-                . ' | Bike ID: ' . $bike->bike_id
+                . ' | Bike ID: ' . $bike->qr_code
+                . ' | Database ID: ' . $bike->bike_id
                 . ' | Bike type: ' . $bike->bike_type
                 . ' | Condition: ' . $bike->condition
                 . ' | Status: ' . $bike->status

@@ -130,7 +130,7 @@ test('a confirmed removal deactivates the selected staff account', function () {
     expect($this->staff->fresh()->status)->toBe('inactive');
 });
 
-test('staff role cannot receive the Manage Staff permission when created or updated', function () {
+test('staff role cannot receive admin-only permissions when created or updated', function () {
     $this->post(route('admin.staff.store'), [
         'first_name' => 'New',
         'last_name' => 'Staff',
@@ -138,7 +138,7 @@ test('staff role cannot receive the Manage Staff permission when created or upda
         'role' => 'Staff',
         'password' => 'staff-password',
         'password_confirmation' => 'staff-password',
-        'permissions' => ['Manage Staff', 'View Inventory'],
+        'permissions' => ['Manage Staff', 'Manage Pricing', 'View Inventory'],
     ])->assertSessionHas('success');
 
     $createdStaff = Staff::where('email', 'new-staff@example.test')->firstOrFail();
@@ -155,7 +155,7 @@ test('staff role cannot receive the Manage Staff permission when created or upda
         'email' => 'staff@example.test',
         'role' => 'Staff',
         'status' => 'Active',
-        'permissions' => ['Manage Staff', 'View Inventory'],
+        'permissions' => ['Manage Staff', 'Manage Pricing', 'View Inventory'],
     ])->assertSessionHas('success');
 
     expect($this->staff->fresh()->permissions)->toBe(['View Inventory']);
@@ -199,6 +199,7 @@ test('main admin can grant super admin with all permissions', function () {
         'Delete Inventory',
         'Manage Staff',
         'Handle Maintenance',
+        'Manage Pricing',
     ];
 
     $this->post(route('admin.staff.store'), [
@@ -247,6 +248,7 @@ test('staff admin cannot grant super admin access', function () {
                 'Delete Inventory',
                 'Manage Staff',
                 'Handle Maintenance',
+                'Manage Pricing',
             ],
         ])
         ->assertForbidden();

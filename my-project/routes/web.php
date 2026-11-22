@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\StaffPasswordResetController;
 use App\Http\Controllers\Auth\StaffLoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MaintenanceController;
+use App\Http\Controllers\Admin\PricingController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
 use App\Http\Controllers\Staff\InventoryController;
@@ -119,6 +120,10 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
 
     Route::get('/reports/data', [ReportController::class, 'data'])
         ->name('admin.reports.data');
+
+    Route::post('/pricing', [PricingController::class, 'update'])
+        ->middleware('admin.can:Manage Pricing')
+        ->name('admin.pricing.update');
 
     // Maintenance: i-save ang status gikan sa Update Report modal
     Route::middleware('admin.can:Handle Maintenance')->group(function () {

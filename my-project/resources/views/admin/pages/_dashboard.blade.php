@@ -1,8 +1,16 @@
 {{-- mao ni akong gi fix na ui kay naguba pag merge argh --}}
 
+@php
+  $requestedTab = request('tab', session('active_tab'));
+  $dashboardHiddenTabs = ['staff', 'bikes', 'maintenance', 'reports', 'rentals'];
+  if (\App\Support\AdminAccess::allows('Manage Pricing')) {
+      $dashboardHiddenTabs[] = 'pricing';
+  }
+@endphp
+
 {{-- update: CONNECTED NA SA REAL DATA --}}
 {{-- dili i-show ang dashboard kung lain nga tab ang i-open, para dili mo-flash pag reload --}}
-<section id="page-dashboard" class="page {{ in_array(request('tab', session('active_tab')), ['staff', 'bikes', 'maintenance', 'reports', 'rentals'], true) ? '' : 'active' }}">
+<section id="page-dashboard" class="page {{ in_array($requestedTab, $dashboardHiddenTabs, true) ? '' : 'active' }}">
   <div class="page-header">
     <div>
       <div class="page-title">Admin Dashboard</div>
@@ -96,7 +104,8 @@
   {{-- CHARTS ROW 1 --}}
   <div class="charts-grid">
     <div class="card">
-      <div class="chart-title">Weekly Rentals</div>
+      <div class="chart-title" style="margin-bottom:4px">Weekly Rentals</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:12px">{{ $weeklyRentals['period'] ?? '' }}</div>
       <div class="chart-wrap"><canvas id="weeklyChart"></canvas></div>
     </div>
     <div class="card">

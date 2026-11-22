@@ -6,6 +6,7 @@ use App\Models\Rental;
 use App\Models\Staff;
 use App\Support\RentalPricing;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -16,6 +17,7 @@ beforeEach(function () {
     Schema::dropIfExists('borrower');
     Schema::dropIfExists('bicycle');
     Schema::dropIfExists('staff');
+    Schema::dropIfExists('rental_price_settings');
 
     Schema::create('staff', function (Blueprint $table) {
         $table->increments('staff_id');
@@ -33,6 +35,27 @@ beforeEach(function () {
         $table->string('role');
         $table->string('status');
     });
+
+    Schema::create('rental_price_settings', function (Blueprint $table) {
+        $table->id();
+        $table->string('bike_type', 50);
+        $table->unsignedSmallInteger('duration_minutes');
+        $table->decimal('price', 10, 2);
+        $table->timestamps();
+        $table->unique(['bike_type', 'duration_minutes']);
+    });
+    DB::table('rental_price_settings')->insert([
+        ['bike_type' => 'City Bike', 'duration_minutes' => 60, 'price' => 30],
+        ['bike_type' => "Lady's/Men's Bike", 'duration_minutes' => 60, 'price' => 30],
+        ['bike_type' => 'Mountain Bike', 'duration_minutes' => 60, 'price' => 50],
+        ['bike_type' => 'Sidecar Bike', 'duration_minutes' => 60, 'price' => 100],
+        ['bike_type' => 'Road Bike', 'duration_minutes' => 60, 'price' => 60],
+        ['bike_type' => "Children's Bike", 'duration_minutes' => 60, 'price' => 20],
+        ['bike_type' => 'Standard', 'duration_minutes' => 60, 'price' => 30],
+        ['bike_type' => 'E-Scooter', 'duration_minutes' => 15, 'price' => 50],
+        ['bike_type' => 'E-Scooter', 'duration_minutes' => 30, 'price' => 100],
+        ['bike_type' => 'E-Scooter', 'duration_minutes' => 60, 'price' => 200],
+    ]);
 
     Schema::create('bicycle', function (Blueprint $table) {
         $table->increments('bike_id');
@@ -325,6 +348,23 @@ test('rental pricing per bike type', function () {
     // extension: 30 min sa city bike = half sa hourly rate
     expect(RentalPricing::priceFor('City Bike', 30, true))->toEqual(15);
     expect(RentalPricing::priceFor('E-Scooter', 15, true))->toEqual(50);
+});
+
+test('rental prices and matching overdue hourly rates use saved settings', function () {
+    DB::table('rental_price_settings')
+        ->where('bike_type', 'City Bike')
+        ->where('duration_minutes', 60)
+        ->update(['price' => 42.50]);
+    DB::table('rental_price_settings')
+        ->where('bike_type', 'E-Scooter')
+        ->where('duration_minutes', 60)
+        ->update(['price' => 225]);
+
+    expect(RentalPricing::priceFor('City Bike', 60))->toEqual(42.5)
+        ->and(RentalPricing::priceFor('City Bike', 30, true))->toEqual(21.25)
+        ->and(RentalPricing::hourlyRate('City Bike'))->toEqual(42.5)
+        ->and(RentalPricing::hourlyRate('E-Scooter'))->toEqual(225.0)
+        ->and(RentalPricing::priceFor('E-Scooter', 60))->toEqual(225.0);
 });
 
 test('overtime penalty applies the selected package rate per started hour', function () {

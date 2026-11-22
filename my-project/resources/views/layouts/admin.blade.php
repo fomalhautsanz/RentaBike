@@ -1047,6 +1047,14 @@
           </button>
         </li>
         @endadminCan
+        @adminCan('Manage Pricing')
+        <li>
+          <button class="nav-btn" id="nav-pricing" onclick="nav('pricing', this)">
+            <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Pricing
+          </button>
+        </li>
+        @endadminCan
         @adminCan('View Inventory')
         <li>
           <button class="nav-btn" id="nav-bikes" onclick="nav('bikes', this)">
