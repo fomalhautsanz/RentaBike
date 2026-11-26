@@ -711,6 +711,168 @@
     justify-content: center;
   }
 
+  .admin-rent-modal {
+    width: calc(100% - 32px);
+    max-width: 560px;
+    padding: 24px;
+  }
+
+  .admin-rent-modal .modal-header { margin-bottom: 18px; }
+
+  .admin-rent-subtitle {
+    margin: 4px 0 0;
+    color: #6b7280;
+    font-size: 12px;
+  }
+
+  .admin-rent-bike-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #f9fafb;
+  }
+
+  .admin-rent-bike-icon {
+    display: flex;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: #ecfdf5;
+    color: #15803d;
+  }
+
+  .admin-rent-bike-icon svg { width: 22px; height: 22px; }
+  .admin-rent-bike-info { min-width: 0; }
+
+  .admin-rent-bike-name {
+    overflow: hidden;
+    color: #111827;
+    font-size: 14px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-rent-bike-type { margin-top: 2px; color: #6b7280; font-size: 12px; }
+
+  .admin-rent-bike-code {
+    margin-left: auto;
+    padding: 5px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 7px;
+    background: #fff;
+    color: #374151;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .admin-rent-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 12px;
+  }
+
+  .admin-rent-form .form-group { margin-bottom: 13px; }
+
+  .admin-rent-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 2px 0 16px;
+    padding: 13px 15px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #f9fafb;
+  }
+
+  .admin-rent-summary-label {
+    display: block;
+    margin-bottom: 4px;
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .admin-rent-return strong { color: #111827; font-size: 14px; }
+
+  .admin-rent-total {
+    padding-left: 16px;
+    border-left: 1px solid #e5e7eb;
+    text-align: right;
+  }
+
+  .admin-rent-total strong { color: #15803d; font-size: 20px; }
+
+  .admin-rent-upload {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+
+  .admin-rent-upload:hover { border-color: #16a34a; background: #f9fffb; }
+  .admin-rent-upload:focus-within { outline: 3px solid rgba(22, 163, 74, .15); }
+
+  .admin-rent-upload-icon {
+    display: flex;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 9px;
+    background: #f3f4f6;
+    color: #4b5563;
+  }
+
+  .admin-rent-upload-icon svg { width: 18px; height: 18px; }
+  .admin-rent-upload-copy { min-width: 0; }
+  .admin-rent-upload-copy strong { display: block; overflow: hidden; color: #374151; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+  .admin-rent-upload-copy small { display: block; margin-top: 3px; color: #6b7280; font-size: 11px; }
+
+  .admin-rent-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .admin-rent-error {
+    margin: 0 0 12px;
+    padding: 9px 11px;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 12px;
+  }
+
+  .admin-rent-actions { margin-top: 14px; }
+  .admin-rent-actions .btn { min-height: 40px; }
+  .admin-rent-actions .btn:disabled { cursor: not-allowed; opacity: .6; }
+
+  @media (max-width: 560px) {
+    .admin-rent-modal { padding: 20px; }
+    .admin-rent-fields { grid-template-columns: 1fr; }
+  }
+
   .permission-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

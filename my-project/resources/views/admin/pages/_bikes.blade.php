@@ -75,16 +75,18 @@
           <td style="color:#6b7280;font-size:13px">{{ $bike->last_maintenance ? $bike->last_maintenance->format('Y-m-d') : 'N/A' }}</td>
           @if($showInventoryActions)
             <td>
-              @if($canEditInventory)
-              <button class="action-btn" onclick="openEditBike(@js($bike->bike_code), @js($bike->name), @js($bike->type), @js($bike->status), @js($bike->condition))">
-                <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-              @endif
-              @if($canDeleteInventory)
-              <button class="action-btn" onclick="openDeleteBike(@js($bike->bike_code), @js($bike->name))">
-                <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-              </button>
-              @endif
+              <div style="display:flex;align-items:center;gap:4px">
+                @if($canEditInventory)
+                  <button type="button" class="action-btn" title="Edit bike" aria-label="Edit {{ $bike->bike_code }}" onclick="openEditBike(@js($bike->bike_code), @js($bike->name), @js($bike->type), @js($bike->status), @js($bike->condition))">
+                    <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                @endif
+                @if($canDeleteInventory)
+                  <button type="button" class="action-btn" title="Delete bike" aria-label="Delete {{ $bike->bike_code }}" onclick="openDeleteBike(@js($bike->bike_code), @js($bike->name))">
+                    <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                  </button>
+                @endif
+              </div>
             </td>
           @endif
         </tr>

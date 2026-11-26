@@ -4,10 +4,12 @@ use App\Models\Admin;
 use App\Models\Bicycle;
 use App\Models\Staff;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
 beforeEach(function () {
+    Schema::dropIfExists('issue_report');
     Schema::dropIfExists('bicycle');
     Schema::dropIfExists('staff');
     Schema::dropIfExists('admin');
@@ -48,6 +50,13 @@ beforeEach(function () {
         $table->string('condition', 30)->default('good');
         $table->dateTime('created_at')->useCurrent();
     });
+
+    Schema::create('issue_report', function (Blueprint $table) {
+        $table->increments('issue_id');
+        $table->unsignedInteger('bike_id');
+        $table->string('issue_type');
+        $table->string('status');
+    });
 });
 
 test('admin can update and delete bikes from the inventory', function () {
@@ -81,6 +90,7 @@ test('admin can update and delete bikes from the inventory', function () {
             'model' => 'Trail 300',
             'make' => 'Specialized',
             'bike_type' => 'Mountain Bike',
+            'status' => 'repair',
             'condition' => 'good',
             'current_tab' => 'bikes',
         ])
@@ -91,6 +101,8 @@ test('admin can update and delete bikes from the inventory', function () {
         'qr_code' => 'MB-101',
         'model' => 'Trail 300',
         'make' => 'Specialized',
+        'status' => 'repair',
+        'condition' => 'repair',
     ]);
 
     $this->actingAs($admin, 'web')
@@ -105,6 +117,78 @@ test('admin can update and delete bikes from the inventory', function () {
         ->assertRedirect(route('admin.dashboard'));
 
     $this->assertDatabaseMissing('bicycle', ['qr_code' => 'MB-101']);
+});
+
+test('admin and staff inventory edits share maintenance conditions', function () {
+    $admin = Admin::create([
+        'username' => 'shared-condition-admin',
+        'full_name' => 'Test Admin',
+        'email' => 'shared-condition-admin@example.test',
+        'password_hash' => Hash::make('secret-password'),
+    ]);
+    $staff = Staff::create([
+        'admin_id' => $admin->admin_id,
+        'username' => 'shared-condition-staff',
+        'password_hash' => Hash::make('staff-password'),
+        'full_name' => 'Staff Member',
+        'first_name' => 'Staff',
+        'last_name' => 'Member',
+        'email' => 'shared-condition-staff@example.test',
+        'role' => 'Staff',
+        'status' => 'active',
+        'permissions' => ['Edit Inventory'],
+    ]);
+    $bike = Bicycle::create([
+        'qr_code' => 'MB-505',
+        'model' => 'Trail 200',
+        'make' => 'Trek',
+        'bike_type' => 'Mountain Bike',
+        'status' => 'available',
+        'condition' => 'good',
+    ]);
+
+    $this->actingAs($admin, 'web')
+        ->post(route('admin.bikes.verify', $bike), [
+            'action' => 'edit',
+            'password' => 'secret-password',
+        ])
+        ->assertOk();
+
+    $this->actingAs($admin, 'web')
+        ->patch(route('admin.bikes.update', $bike), [
+            'model' => 'Trail 200',
+            'make' => 'Trek',
+            'bike_type' => 'Mountain Bike',
+            'status' => 'repair',
+            'condition' => 'other',
+            'current_tab' => 'bikes',
+        ])
+        ->assertRedirect(route('admin.dashboard'));
+
+    $this->assertDatabaseHas('bicycle', [
+        'bike_id' => $bike->bike_id,
+        'status' => 'repair',
+        'condition' => 'other',
+    ]);
+
+    $staffSession = $this->withSession(['staff_id' => $staff->staff_id]);
+    $staffSession->postJson(route('staff.inventory.verify', $bike->qr_code), [
+        'action' => 'edit',
+        'password' => 'staff-password',
+    ])->assertOk();
+
+    $staffSession->patchJson(route('staff.inventory.update', $bike->qr_code), [
+        'model' => 'Trail 200',
+        'make' => 'Trek',
+        'bike_type' => 'Mountain Bike',
+        'condition' => 'Other',
+    ])->assertOk();
+
+    $this->assertDatabaseHas('bicycle', [
+        'bike_id' => $bike->bike_id,
+        'status' => 'repair',
+        'condition' => 'other',
+    ]);
 });
 
 test('bike codes use a separate sequence for each bike type', function () {
@@ -234,6 +318,14 @@ test('staff type changes assign the next code in the new category', function () 
     ]);
 
     $this->withSession(['staff_id' => $staff->staff_id])
+        ->postJson(route('staff.inventory.verify', $bike->qr_code), [
+            'action' => 'edit',
+            'password' => 'staff-password',
+        ])
+        ->assertOk()
+        ->assertJsonPath('message', 'Password confirmed.');
+
+    $this->withSession(['staff_id' => $staff->staff_id])
         ->patchJson(route('staff.inventory.update', $bike->qr_code), [
             'model' => 'Trail 200',
             'make' => 'Trek',
@@ -248,6 +340,79 @@ test('staff type changes assign the next code in the new category', function () 
         'qr_code' => 'RB-002',
         'bike_type' => 'Road Bike',
     ]);
+});
+
+test('staff bike edits and deletes require fresh password confirmation', function () {
+    $admin = Admin::create([
+        'username' => 'staff-bike-owner',
+        'full_name' => 'Test Admin',
+        'email' => 'staff-bike-owner@example.test',
+        'password_hash' => Hash::make('admin-password'),
+    ]);
+    $staff = Staff::create([
+        'admin_id' => $admin->admin_id,
+        'username' => 'bike-editor',
+        'password_hash' => Hash::make('staff-password'),
+        'full_name' => 'Bike Editor',
+        'first_name' => 'Bike',
+        'last_name' => 'Editor',
+        'email' => 'bike-editor@example.test',
+        'role' => 'Staff',
+        'status' => 'active',
+        'permissions' => ['Edit Inventory', 'Delete Inventory'],
+    ]);
+    $bike = Bicycle::create([
+        'qr_code' => 'MB-201',
+        'model' => 'Trail 200',
+        'make' => 'Trek',
+        'bike_type' => 'Mountain Bike',
+        'status' => 'available',
+        'condition' => 'good',
+    ]);
+    $session = $this->withSession(['staff_id' => $staff->staff_id]);
+
+    $session->patchJson(route('staff.inventory.update', $bike->qr_code), [
+        'model' => 'Trail 300',
+        'make' => 'Trek',
+        'bike_type' => 'Mountain Bike',
+        'condition' => 'Good',
+    ])->assertUnprocessable();
+    $session->deleteJson(route('staff.inventory.destroy', $bike->qr_code))
+        ->assertUnprocessable();
+
+    $session->postJson(route('staff.inventory.verify', $bike->qr_code), [
+        'action' => 'edit',
+        'password' => 'incorrect',
+    ])->assertUnprocessable();
+
+    $session->postJson(route('staff.inventory.verify', $bike->qr_code), [
+        'action' => 'edit',
+        'password' => 'staff-password',
+    ])->assertOk();
+    $session->deleteJson(route('staff.inventory.destroy', $bike->qr_code))
+        ->assertUnprocessable();
+    $session->patchJson(route('staff.inventory.update', $bike->qr_code), [
+        'model' => 'Trail 300',
+        'make' => 'Trek',
+        'bike_type' => 'Mountain Bike',
+        'condition' => 'Good',
+    ])->assertOk();
+    $session->patchJson(route('staff.inventory.update', $bike->qr_code), [
+        'model' => 'Trail 400',
+        'make' => 'Trek',
+        'bike_type' => 'Mountain Bike',
+        'condition' => 'Good',
+    ])->assertUnprocessable();
+
+    $session->postJson(route('staff.inventory.verify', $bike->qr_code), [
+        'action' => 'delete',
+        'password' => 'staff-password',
+    ])->assertOk();
+    $session->deleteJson(route('staff.inventory.destroy', $bike->qr_code))
+        ->assertOk()
+        ->assertJsonPath('deleted', true);
+
+    $this->assertDatabaseMissing('bicycle', ['bike_id' => $bike->bike_id]);
 });
 
 test('the renumbering migration gives every existing bike a category code', function () {
@@ -359,6 +524,8 @@ test('admin bike inventory only renders permitted actions and their column', fun
             ->render();
 
         expect(str_contains($html, '<th>Actions</th>'))->toBe($canEdit || $canDelete)
+            ->and(str_contains($html, 'bike-actions-select'))->toBeFalse()
+            ->and(str_contains($html, 'Rent bike'))->toBeFalse()
             ->and(str_contains($html, 'onclick="openEditBike('))->toBe($canEdit)
             ->and(str_contains($html, 'onclick="openDeleteBike('))->toBe($canDelete);
     }
@@ -403,4 +570,45 @@ test('staff inventory renders real edit and delete actions for bike records', fu
     expect($html)->toContain('staff.inventory.update')
         ->toContain('staff.inventory.destroy')
         ->toContain('_method');
+});
+
+test('staff inventory shows Other for an open other maintenance report', function () {
+    $admin = Admin::create([
+        'username' => 'admin-other-condition',
+        'full_name' => 'Test Admin',
+        'email' => 'admin-other-condition@example.test',
+        'password_hash' => Hash::make('secret-password'),
+    ]);
+
+    $staff = Staff::create([
+        'admin_id' => $admin->admin_id,
+        'username' => 'staff-other-condition',
+        'password_hash' => Hash::make('staff-password'),
+        'full_name' => 'Staff Member',
+        'first_name' => 'Staff',
+        'last_name' => 'Member',
+        'email' => 'staff-other-condition@example.test',
+        'role' => 'Staff',
+        'status' => 'active',
+        'permissions' => ['View Inventory'],
+    ]);
+
+    $bike = Bicycle::create([
+        'qr_code' => 'LM-002',
+        'model' => 'Ako',
+        'make' => 'Trek',
+        'bike_type' => "Lady's/Men's Bike",
+        'status' => 'repair',
+        'condition' => 'good',
+    ]);
+    DB::table('issue_report')->insert([
+        'bike_id' => $bike->bike_id,
+        'issue_type' => 'other',
+        'status' => 'pending',
+    ]);
+
+    $this->withSession(['staff_id' => $staff->staff_id])
+        ->get(route('staff.home'))
+        ->assertOk()
+        ->assertSee('Other');
 });

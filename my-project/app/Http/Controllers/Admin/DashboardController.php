@@ -485,9 +485,12 @@ class DashboardController extends Controller
         ->where('status', 'active')
         ->get()
         ->keyBy('bike_id');
-    $bikes =Bicycle::orderBy('bike_id')->get()->map(function (Bicycle $bike) use ($activeRentalsByBike, $now) {
+    $lastMaintenanceByBike = MaintenanceLogs::lastMaintenanceByBike();
+    $openConditionByBike = MaintenanceLogs::openConditionByBike();
+    $bikes = Bicycle::orderBy('bike_id')->get()->map(function (Bicycle $bike) use ($activeRentalsByBike, $lastMaintenanceByBike, $openConditionByBike, $now) {
         $rental = $activeRentalsByBike->get($bike->bike_id);
         $summary = $rental ? RentalPricing::summary($rental, $bike->bike_type, $now) : null;
+        $condition = $openConditionByBike->get($bike->bike_id, $bike->condition);
 
         return (object) [
             'bike_code' => $bike->qr_code,
@@ -495,8 +498,10 @@ class DashboardController extends Controller
             'type' => $bike->bike_type,
             'qr_code' => $bike->qr_code,
             'status' => $bike->status === 'repair' ? 'Maintenance' : ucfirst($bike->status),
-            'condition' => $bike->condition === 'repair' ? 'Needs Repair' : ucfirst($bike->condition),
-            'last_maintenance' => null,
+            'condition' => $condition === 'repair' ? 'Needs Repair' : ucfirst($condition),
+            'last_maintenance' => $lastMaintenanceByBike->has($bike->bike_id)
+                ? Carbon::parse($lastMaintenanceByBike->get($bike->bike_id))
+                : null,
             'overdue' => $summary['overdue'] ?? false,
             'estimated_overtime_fee' => $summary['estimated_overtime_fee'] ?? 0.0,
         ];
@@ -598,7 +603,7 @@ class DashboardController extends Controller
                 $bike->bike_type,
             ]))],
             'status' => ['nullable', 'in:available,rented,repair'],
-            'condition' => ['required', 'in:good,repair,missing'],
+            'condition' => ['required', 'in:good,repair,missing,other'],
         ]);
 
         if ($validator->fails()) {
@@ -609,6 +614,23 @@ class DashboardController extends Controller
 
         $validated = $validator->validated();
         $status = $validated['status'] ?? ($bike->status === 'rented' ? 'rented' : 'available');
+        $hasActiveRental = false;
+        if ($status === 'rented' || $bike->status === 'rented') {
+            $hasActiveRental = Rental::where('bike_id', $bike->bike_id)
+                ->where('status', 'active')
+                ->exists();
+        }
+
+        if ($status === 'rented' && ! $hasActiveRental) {
+            return $this->backToTab($request, 'bikes')
+                ->withErrors(['status' => 'Create a rental before marking this bike as rented.']);
+        }
+
+        if ($hasActiveRental && ($status !== 'rented' || $validated['condition'] !== 'good')) {
+            return $this->backToTab($request, 'bikes')
+                ->withErrors(['status' => "End the active rental before changing this bike's status or condition."]);
+        }
+
         $before = [
             'Model' => $bike->model,
             'Make' => $bike->make,
@@ -618,7 +640,12 @@ class DashboardController extends Controller
             'Condition' => $bike->condition,
         ];
 
-        if ($validated['condition'] !== 'good') {
+        $condition = $validated['condition'];
+        if ($status === 'repair' && $condition === 'good') {
+            $condition = 'repair';
+        }
+
+        if ($condition !== 'good') {
             $status = 'repair';
         } elseif ($status === 'repair') {
             $status = $bike->status === 'rented' ? 'rented' : 'available';
@@ -632,7 +659,7 @@ class DashboardController extends Controller
                 ? $bike->qr_code
                 : Bicycle::nextQrCode($validated['bike_type'], $bike->bike_id),
             'status' => $status,
-            'condition' => $validated['condition'],
+            'condition' => $condition,
         ]);
 
         $after = [

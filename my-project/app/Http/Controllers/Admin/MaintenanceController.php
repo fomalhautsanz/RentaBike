@@ -58,24 +58,30 @@ class MaintenanceController extends Controller
                 );
             }
 
-            if ($validated['status'] !== 'resolved' || !$bike) {
+            if (!$bike) {
                 return false;
             }
 
-            // naa pay laing pending / in progress nga report sa parehas nga bike? ayaw sa i-release
+            MaintenanceLogs::syncBikeCondition($bike);
+
             $hasOpenReports = IssueReport::where('bike_id', $bike->bike_id)
-                ->where('issue_id', '!=', $issueReport->issue_id)
                 ->whereIn('status', ['pending', 'in_progress'])
                 ->exists();
-
-            if ($hasOpenReports) {
-                return false;
-            }
-
             $hasActiveRental = DB::table('rental')
                 ->where('bike_id', $bike->bike_id)
                 ->where('status', 'active')
                 ->exists();
+
+            if ($hasOpenReports) {
+                if ($bike->status !== 'rented' && !$hasActiveRental) {
+                    $bike->status = 'repair';
+                } elseif ($hasActiveRental) {
+                    $bike->status = 'rented';
+                }
+                $bike->save();
+
+                return false;
+            }
 
             if ($bike->status === 'rented' || $hasActiveRental) {
                 $bike->status = 'rented';
@@ -85,7 +91,6 @@ class MaintenanceController extends Controller
             }
 
             $bike->status = 'available';
-            $bike->condition = 'good';
             $bike->save();
 
             return true;

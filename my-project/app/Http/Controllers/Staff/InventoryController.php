@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use App\Models\Bicycle;
 use App\Models\Rental;
+use App\Models\Staff;
 use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class InventoryController extends Controller
@@ -97,6 +99,10 @@ class InventoryController extends Controller
             'You do not have the "Edit Inventory" privilege.'
         );
 
+        if (!$this->hasBikeConfirmation($request, $bike, 'edit')) {
+            return $this->bikeConfirmationRequired($request, 'Confirm your password before editing this bike.');
+        }
+
         $validated = $request->validate([
             'model' => ['required', 'string', 'max:100'],
             'make' => ['required', 'string', 'max:100'],
@@ -104,7 +110,10 @@ class InventoryController extends Controller
                 ...Bicycle::bikeTypes(),
                 $bike->bike_type,
             ]))],
-            'condition' => ['required', 'in:Good,Needs Repair,Missing'],
+            'condition' => ['required', Rule::in([
+                'Good', 'Damage', 'Needs Repair', 'Missing', 'Other',
+                'good', 'repair', 'missing', 'other',
+            ])],
         ]);
 
         $before = [
@@ -117,6 +126,9 @@ class InventoryController extends Controller
         ];
 
         $condition = strtolower($validated['condition']);
+        $condition = in_array($condition, ['good', 'missing', 'other'], true)
+            ? $condition
+            : 'repair';
         $bike->update([
             'model' => $validated['model'],
             'make' => $validated['make'],
@@ -124,7 +136,7 @@ class InventoryController extends Controller
             'qr_code' => $bike->bike_type === $validated['bike_type']
                 ? $bike->qr_code
                 : Bicycle::nextQrCode($validated['bike_type'], $bike->bike_id),
-            'condition' => $condition === 'good' ? 'good' : ($condition === 'missing' ? 'missing' : 'repair'),
+            'condition' => $condition,
             'status' => $condition === 'good'
                 ? ($bike->status === 'rented' ? 'rented' : 'available')
                 : 'repair',
@@ -154,6 +166,7 @@ class InventoryController extends Controller
                 . ' | Database ID: ' . $bike->bike_id
                 . ' | Changes: ' . ActivityLogger::formatChanges($changes)
         );
+        $this->clearBikeConfirmation($request, $bike, 'edit');
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -182,6 +195,10 @@ class InventoryController extends Controller
             'You do not have the "Delete Inventory" privilege.'
         );
 
+        if (!$this->hasBikeConfirmation($request, $bike, 'delete')) {
+            return $this->bikeConfirmationRequired($request, 'Confirm your password before deleting this bike.');
+        }
+
         if ($bike->status === 'rented') {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -194,6 +211,7 @@ class InventoryController extends Controller
         }
 
         $bike->delete();
+        $this->clearBikeConfirmation($request, $bike, 'delete');
 
         ActivityLogger::record(
             $request,
@@ -216,6 +234,70 @@ class InventoryController extends Controller
 
         return redirect()->route('staff.home', ['screen' => 'inventory'])
             ->with('success', 'Bike removed from inventory.');
+    }
+
+    public function verifyBikeAction(Request $request, Bicycle $bike): JsonResponse
+    {
+        $validated = $request->validate([
+            'action' => ['required', Rule::in(['edit', 'delete'])],
+            'password' => ['required', 'string'],
+        ]);
+        $privilege = $validated['action'] === 'edit' ? 'Edit Inventory' : 'Delete Inventory';
+
+        abort_unless(
+            in_array($privilege, $request->attributes->get('staffPermissions', []), true),
+            403,
+            "You do not have the \"{$privilege}\" privilege."
+        );
+
+        $staff = $request->attributes->get('authenticatedStaff');
+        abort_unless($staff instanceof Staff, 401);
+
+        if (!Hash::check($validated['password'], $staff->password_hash)) {
+            return response()->json(['message' => 'The password is incorrect.'], 422);
+        }
+
+        $request->session()->put(
+            $this->bikeConfirmationKey((int) $staff->staff_id, $bike, $validated['action']),
+            now()->addMinutes(5)->timestamp
+        );
+
+        return response()->json(['message' => 'Password confirmed.']);
+    }
+
+    private function bikeConfirmationKey(int $staffId, Bicycle $bike, string $action): string
+    {
+        return "staff_bike_action_confirmations.{$staffId}.{$bike->getKey()}.{$action}";
+    }
+
+    private function hasBikeConfirmation(Request $request, Bicycle $bike, string $action): bool
+    {
+        $staffId = (int) $request->session()->get('staff_id');
+        if ($staffId < 1) {
+            return false;
+        }
+
+        $expiresAt = $request->session()->get($this->bikeConfirmationKey($staffId, $bike, $action));
+
+        return is_numeric($expiresAt) && (int) $expiresAt >= now()->timestamp;
+    }
+
+    private function clearBikeConfirmation(Request $request, Bicycle $bike, string $action): void
+    {
+        $staffId = (int) $request->session()->get('staff_id');
+        if ($staffId > 0) {
+            $request->session()->forget($this->bikeConfirmationKey($staffId, $bike, $action));
+        }
+    }
+
+    private function bikeConfirmationRequired(Request $request, string $message): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message], 422);
+        }
+
+        return redirect()->route('staff.home', ['screen' => 'inventory'])
+            ->withErrors(['bike_confirmation' => $message]);
     }
 
     /**

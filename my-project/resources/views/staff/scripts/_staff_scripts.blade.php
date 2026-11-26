@@ -846,9 +846,46 @@ const staffInventoryCan = @json([
   'delete' => (bool) ($canDeleteInventory ?? false),
 ]);
 
-function openBikeAction(action, data = {}) {
+let pendingStaffBikeAction = null;
+
+function openBikeAction(action, data = {}, passwordVerified = false) {
   const content = document.getElementById('modalContent');
+  if (!passwordVerified) {
+    pendingStaffBikeAction = { action, data };
+    const verifyUrl = @json(route('staff.inventory.verify', ['bike' => '__BIKE_ID__']))
+      .replace('__BIKE_ID__', encodeURIComponent(data.id ?? ''));
+    content.innerHTML = `
+      <div class="modal-bike-title">Verify Your Password</div>
+      <p class="modal-confirmation-message">Enter your staff password to ${action === 'delete' ? 'delete' : 'edit'} this bike.</p>
+      <form method="POST" action="${verifyUrl}" data-live-form="verify" data-bike-action="${action}">
+        @csrf
+        <div class="form-group">
+          <label class="form-label" for="staff-bike-action-password">Staff Password</label>
+          <input type="password" id="staff-bike-action-password" name="password" class="form-input" autocomplete="current-password" required>
+        </div>
+        <p data-password-error role="alert" style="color:#dc2626;font-size:13px" hidden></p>
+        <div class="modal-actions">
+          <button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="primary-btn">Verify</button>
+        </div>
+      </form>`;
+    document.getElementById('modalBg').classList.add('open');
+    content.querySelector('[name="password"]').focus();
+    return;
+  }
+
   const title = action === 'edit' ? `Edit ${escapeHtml(data.id ?? 'Bike')}` : 'Delete Bike';
+  const rawCondition = String(data.condition || '').toLowerCase();
+  const conditionValue = ['repair', 'damage', 'needs repair'].includes(rawCondition)
+    ? 'repair'
+    : (['good', 'missing', 'other'].includes(rawCondition) ? rawCondition : 'good');
+  const isMaintenanceBike = ['repair', 'maintenance'].includes(String(data.status || '').toLowerCase());
+  const conditionChoices = isMaintenanceBike
+    ? [['repair', 'Damage'], ['missing', 'Missing'], ['other', 'Other']]
+    : [['good', 'Good']];
+  const conditionOptions = conditionChoices
+    .map(([value, label]) => `<option value="${value}" ${conditionValue === value ? 'selected' : ''}>${label}</option>`)
+    .join('');
   const body = action === 'delete'
     ? `<p class="modal-confirmation-message">Are you sure you want to remove ${escapeHtml(data.id ?? 'this bike')} from inventory?</p>
        <form method="POST" action="{{ url('/staff/inventory') }}/${encodeURIComponent(data.id ?? '')}" data-live-form="delete">
@@ -863,7 +900,7 @@ function openBikeAction(action, data = {}) {
          <div class="form-group"><label class="form-label" for="edit-model">Model</label><input id="edit-model" name="model" class="form-input" value="${escapeHtml(data.model)}" required></div>
          <div class="form-group"><label class="form-label" for="edit-make">Make</label><input id="edit-make" name="make" class="form-input" value="${escapeHtml(data.make)}" required></div>
          <div class="form-group"><label class="form-label" for="edit-bike-type">Bike Type</label><select id="edit-bike-type" name="bike_type" class="form-select" onchange="updateStaffBikeCodePreview(this)" required>${['Mountain Bike', 'City Bike', "Lady's/Men's Bike", 'E-Scooter', 'Road Bike', 'Sidecar Bike', "Children's Bike"].map(type => `<option value="${type}" ${data.type === type ? 'selected' : ''}>${type}</option>`).join('')}</select></div>
-         <div class="form-group"><label class="form-label" for="edit-condition">Condition</label><select id="edit-condition" name="condition" class="form-select" required><option value="Good" ${data.condition === 'Good' ? 'selected' : ''}>Good</option><option value="Needs Repair" ${data.condition === 'Needs Repair' ? 'selected' : ''}>Needs Repair</option><option value="Missing" ${data.condition === 'Missing' ? 'selected' : ''}>Missing</option></select></div>
+         <div class="form-group"><label class="form-label" for="edit-condition">Condition</label><select id="edit-condition" name="condition" class="form-select" required>${conditionOptions}</select></div>
          <div class="modal-actions"><button type="submit" class="primary-btn">Save Changes</button><button type="button" class="primary-btn outline" onclick="closeModal()">Cancel</button></div>
        </form>`;
   content.innerHTML = `<div class="modal-bike-title">${title}</div>${body}`;
@@ -919,10 +956,9 @@ function confirmDeleteBike(id, qrCode) {
 }
 
 // Ang sulod sa usa ka inventory row; tanan nga text gikan sa user gi-escape
-function inventoryRowHtml(bike, bikeCode, statusValue, statusLabel, statusClass, conditionLabel) {
-  const editCondition = conditionLabel === 'Repair' ? 'Needs Repair' : (conditionLabel === 'Missing' ? 'Missing' : 'Good');
+function inventoryRowHtml(bike, bikeCode, statusValue, statusLabel, statusClass, conditionValue) {
   const editButton = staffInventoryCan.edit
-    ? `<button type="button" onclick="openBikeAction('edit', { id: ${jsArg(bikeCode)}, qrCode: ${jsArg(bikeCode)}, model: ${jsArg(bike.model)}, make: ${jsArg(bike.make)}, type: ${jsArg(bike.bike_type)}, condition: ${jsArg(editCondition)} })" class="action-btn" style="width:30px;height:30px" title="Edit ${escapeHtml(bikeCode)}">
+    ? `<button type="button" onclick="openBikeAction('edit', { id: ${jsArg(bikeCode)}, qrCode: ${jsArg(bikeCode)}, model: ${jsArg(bike.model)}, make: ${jsArg(bike.make)}, type: ${jsArg(bike.bike_type)}, status: ${jsArg(statusValue)}, condition: ${jsArg(conditionValue)} })" class="action-btn" style="width:30px;height:30px" title="Edit ${escapeHtml(bikeCode)}">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>`
     : '';
@@ -945,7 +981,9 @@ function updateInventoryRowFromBike(bike, previousBikeCode = null) {
   const bikeCode = String(bike.qr_code || bike.id || '');
   const category = bike.bike_type || 'Unknown';
   const statusValue = bike.status || 'available';
-  const conditionLabel = bike.condition === 'repair' ? 'Repair' : (bike.condition === 'missing' ? 'Missing' : 'Available');
+  const conditionValue = ['good', 'repair', 'missing', 'other'].includes(String(bike.condition || '').toLowerCase())
+    ? String(bike.condition).toLowerCase()
+    : 'good';
   const statusLabel = statusValue === 'rented' ? 'Rented' : (statusValue === 'repair' ? 'Repair' : 'Available');
   const statusClass = statusValue === 'rented' ? 'badge-blue' : (statusValue === 'repair' ? 'badge-orange' : 'badge-green');
   const findCategoryBlock = name => [...document.querySelectorAll('.inv-category-block')].find(block => block.dataset.category === name) || null;
@@ -977,7 +1015,7 @@ function updateInventoryRowFromBike(bike, previousBikeCode = null) {
     existingRow.dataset.model = `${(bike.model || '').toLowerCase()} ${(bike.make || '').toLowerCase()}`.trim();
     existingRow.dataset.category = category;
     existingRow.dataset.status = statusValue;
-    existingRow.innerHTML = inventoryRowHtml(bike, bikeCode, statusValue, statusLabel, statusClass, conditionLabel);
+    existingRow.innerHTML = inventoryRowHtml(bike, bikeCode, statusValue, statusLabel, statusClass, conditionValue);
 
     if (oldCategory && oldCategory !== category) {
       const oldBlock = findCategoryBlock(oldCategory);
@@ -1035,7 +1073,7 @@ function updateInventoryRowFromBike(bike, previousBikeCode = null) {
   el.dataset.status = statusValue;
   el.style.gap = '8px';
   el.style.alignItems = 'center';
-  el.innerHTML = inventoryRowHtml(bike, bikeCode, statusValue, statusLabel, statusClass, conditionLabel);
+  el.innerHTML = inventoryRowHtml(bike, bikeCode, statusValue, statusLabel, statusClass, conditionValue);
   list.appendChild(el);
   syncCategoryBlock(category);
 }
@@ -1049,10 +1087,10 @@ function handleLiveInventorySubmit(event) {
 
   event.preventDefault();
   const action = form.dataset.liveForm;
-  const url = form.action;
+  const url = form.getAttribute('action') || window.location.href;
   const methodOverride = form.querySelector('input[name="_method"]')?.value || form.method;
-  const formData = new FormData(form);
   const body = new FormData(form);
+  if (action === 'verify') body.set('action', form.dataset.bikeAction);
   const headers = {
     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
     'Accept': 'application/json',
@@ -1072,17 +1110,29 @@ function handleLiveInventorySubmit(event) {
       return payload;
     })
     .then((payload) => {
+      if (action === 'verify') {
+        const confirmedAction = pendingStaffBikeAction;
+        pendingStaffBikeAction = null;
+        form.querySelector('[name="password"]').value = '';
+        if (confirmedAction) {
+          openBikeAction(confirmedAction.action, confirmedAction.data, true);
+        } else {
+          closeModal();
+        }
+        return;
+      }
+
       if (action === 'create' && payload.bike) {
         updateInventoryRowFromBike(payload.bike);
         const qrInput = form.querySelector('#qr-code');
         if (qrInput && payload.next_qr_code) qrInput.defaultValue = payload.next_qr_code;
       }
       if (action === 'edit' && payload.bike) {
-        const previousBikeCode = decodeURIComponent(form.action.split('/').pop());
+        const previousBikeCode = decodeURIComponent(url.split('/').pop());
         updateInventoryRowFromBike(payload.bike, previousBikeCode);
       }
       if (action === 'delete') {
-        const deletedId = form.action.split('/').pop();
+        const deletedId = url.split('/').pop();
         document.querySelectorAll('.inv-bike-row').forEach(row => {
           if ((row.dataset.qr || '').toLowerCase() === decodeURIComponent(deletedId).toLowerCase()) {
             row.remove();
@@ -1099,7 +1149,15 @@ function handleLiveInventorySubmit(event) {
       }
     })
     .catch((error) => {
-      showToast(error.message || 'Could not complete the action.');
+      if (action === 'verify') {
+        const passwordError = form.querySelector('[data-password-error]');
+        if (passwordError) {
+          passwordError.textContent = error.message || 'Password verification failed.';
+          passwordError.hidden = false;
+        }
+      } else {
+        showToast(error.message || 'Could not complete the action.');
+      }
     });
 }
 
@@ -1220,6 +1278,7 @@ function openModal(type, data = {}) {
   if (type === 'rented' && data.id) loadRentedBikeDetails(data.id);
 }
 function closeModal() {
+  pendingStaffBikeAction = null;
   rentedModalRequestId++;
   if (rentedModalTick) {
     clearInterval(rentedModalTick);

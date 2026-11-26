@@ -2,6 +2,7 @@
 
 use App\Support\MaintenanceLogs;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -117,6 +118,39 @@ test('maintenance logs filter by status, type, date and search', function () {
         ->and($codes(['maint_search' => '100%']))->toBe([]);
 });
 
+test('last maintenance uses the latest resolved report per bike', function () {
+    $latestResolvedAt = now()->subDay();
+
+    DB::table('issue_report')->where('issue_id', 1)->update([
+        'resolved_at' => now(),
+    ]);
+    DB::table('issue_report')->where('issue_id', 3)->update([
+        'resolved_at' => now()->subDays(2),
+    ]);
+    DB::table('issue_report')->insert([
+        'bike_id' => 1,
+        'staff_id' => 7,
+        'issue_type' => 'damage',
+        'description' => 'Second resolved repair',
+        'status' => 'resolved',
+        'reported_at' => now()->subDay(),
+        'resolved_at' => $latestResolvedAt,
+    ]);
+
+    $lastMaintenance = MaintenanceLogs::lastMaintenanceByBike();
+
+    expect(Carbon::parse($lastMaintenance->get(1))->toDateString())
+        ->toBe($latestResolvedAt->toDateString())
+        ->and($lastMaintenance->has(2))->toBeFalse();
+});
+
+test('open maintenance reports provide the inventory condition by type', function () {
+    $conditions = MaintenanceLogs::openConditionByBike();
+
+    expect($conditions->get(1))->toBe('repair')
+        ->and($conditions->get(2))->toBe('missing');
+});
+
 test('staff with Handle Maintenance can export maintenance logs', function () {
     $this->withSession(['staff_id' => 7])
         ->getJson(route('staff.maintenance-logs.export'))
@@ -144,7 +178,46 @@ test('submitting an issue report marks its bike for maintenance', function () {
         ->assertCreated()
         ->assertJsonPath('report.bike_code', 'CB-001');
 
-    expect(DB::table('bicycle')->where('bike_id', 2)->value('status'))->toBe('repair');
+    expect(DB::table('bicycle')->where('bike_id', 2)->value('status'))->toBe('repair')
+        ->and(DB::table('bicycle')->where('bike_id', 2)->value('condition'))->toBe('repair');
+});
+
+test('maintenance report types update bike condition including other', function () {
+    $report = fn (string $type) => $this->withSession(['staff_id' => 7])
+        ->postJson(route('staff.issue-reports.store'), [
+            'issue_type' => $type,
+            'bike_code' => 'CB-001',
+            'description' => 'Test issue',
+        ])
+        ->assertCreated();
+
+    DB::table('issue_report')->where('bike_id', 2)->update(['status' => 'resolved']);
+    $report('damage');
+    expect(DB::table('bicycle')->where('bike_id', 2)->value('condition'))->toBe('repair');
+
+    DB::table('issue_report')->where('bike_id', 2)->update(['status' => 'resolved']);
+    $report('other');
+    expect(DB::table('bicycle')->where('bike_id', 2)->value('condition'))->toBe('other');
+
+    DB::table('issue_report')->where('bike_id', 2)->update(['status' => 'resolved']);
+    $report('missing');
+    expect(DB::table('bicycle')->where('bike_id', 2)->value('condition'))->toBe('missing');
+});
+
+test('open other reports provide Other as the inventory condition', function () {
+    DB::table('issue_report')->where('issue_id', 1)->update(['status' => 'resolved']);
+    DB::table('issue_report')->insert([
+        'bike_id' => 1,
+        'staff_id' => 7,
+        'issue_type' => 'other',
+        'description' => 'Other maintenance issue',
+        'status' => 'pending',
+        'reported_at' => now(),
+    ]);
+
+    $conditions = MaintenanceLogs::openConditionByBike();
+
+    expect($conditions->get(1))->toBe('other');
 });
 
 test('maintenance logs export requires a staff session', function () {
@@ -174,7 +247,9 @@ test('admin can save a maintenance report status', function () {
     $this->actingAs($admin)
         ->patchJson(route('admin.maintenance.status', 1), ['status' => 'pending'])
         ->assertOk();
-    expect(DB::table('issue_report')->where('issue_id', 1)->value('resolved_at'))->toBeNull();
+    expect(DB::table('issue_report')->where('issue_id', 1)->value('resolved_at'))->toBeNull()
+        ->and(DB::table('bicycle')->where('bike_id', 1)->value('condition'))->toBe('repair')
+        ->and(DB::table('bicycle')->where('bike_id', 1)->value('status'))->toBe('repair');
 
     $statusLogs = DB::table('activity_log')
         ->where('action', 'UPDATE_ISSUE_STATUS')

@@ -22,6 +22,7 @@ class Rental extends Model
         'borrower_id',
         'bike_id',
         'staff_id',
+        'admin_id',
         'start_time',
         'end_time',
         'rental_duration_hrs',
@@ -49,6 +50,11 @@ class Rental extends Model
     public function staff()
     {
         return $this->belongsTo(Staff::class, 'staff_id');
+    }
+
+    public function admin()
+    {
+        return $this->belongsTo(Admin::class, 'admin_id');
     }
 
     public function payment()

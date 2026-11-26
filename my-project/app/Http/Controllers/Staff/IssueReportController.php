@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use App\Models\Bicycle;
 use App\Models\IssueReport;
+use App\Support\MaintenanceLogs;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -76,6 +77,7 @@ class IssueReportController extends Controller
                 ]);
 
                 $bike->status = 'repair';
+                MaintenanceLogs::syncBikeCondition($bike);
                 $bike->save();
 
                 DB::table('activity_log')->insert([

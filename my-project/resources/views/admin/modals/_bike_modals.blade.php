@@ -33,6 +33,78 @@
   </div>
 </div>
 
+{{-- DIRECT ADMIN RENTAL MODAL --}}
+<div class="modal-backdrop" id="admin-rent-modal" onclick="closeAdminRentOutside(event)">
+  <div class="modal admin-rent-modal" role="dialog" aria-modal="true" aria-labelledby="admin-rent-title">
+    <div class="modal-header">
+      <div>
+        <span class="modal-title" id="admin-rent-title">Rent Bike</span>
+        <p class="admin-rent-subtitle">Create a rental directly from inventory.</p>
+      </div>
+      <button type="button" class="modal-close" onclick="cancelAdminRent()" aria-label="Close">&times;</button>
+    </div>
+    <div class="admin-rent-bike-card">
+      <div class="admin-rent-bike-icon" aria-hidden="true">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="m15 6 3.5 11.5M5.5 17.5 10 9h4l4.5 8.5M8 13h8M12 9l-2-3H7"/></svg>
+      </div>
+      <div class="admin-rent-bike-info">
+        <div class="admin-rent-bike-name" id="admin-rent-bike-name">—</div>
+        <div class="admin-rent-bike-type" id="admin-rent-bike-type"></div>
+      </div>
+      <span class="admin-rent-bike-code" id="admin-rent-bike-id">—</span>
+    </div>
+    <form id="admin-rent-form" class="admin-rent-form" method="POST" enctype="multipart/form-data">
+      @csrf
+      <div class="admin-rent-fields">
+        <div class="form-group">
+          <label class="form-label" for="admin-rent-borrower-name">Borrower name</label>
+          <input class="form-input" id="admin-rent-borrower-name" name="borrower_name" type="text" maxlength="150" placeholder="Enter full name" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="admin-rent-contact">Contact number</label>
+          <input class="form-input" id="admin-rent-contact" name="contact_no" type="tel" maxlength="30" placeholder="09XXXXXXXXX" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="admin-rent-duration">Rental duration</label>
+          <select class="form-select" id="admin-rent-duration" name="minutes" required onchange="updateAdminRentSummary()"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="admin-rent-time">Borrow time</label>
+          <input class="form-input" id="admin-rent-time" name="borrow_time" type="time" required oninput="updateAdminRentSummary()">
+        </div>
+      </div>
+      <div class="admin-rent-summary">
+        <div class="admin-rent-return">
+          <span class="admin-rent-summary-label">Expected return</span>
+          <strong id="admin-rent-expected-return">—</strong>
+        </div>
+        <div class="admin-rent-total">
+          <span class="admin-rent-summary-label">Total to pay</span>
+          <strong id="admin-rent-total">₱0</strong>
+        </div>
+      </div>
+      <div class="form-group admin-rent-upload-group">
+        <label class="form-label" for="admin-rent-id">Borrower ID</label>
+        <label class="admin-rent-upload" for="admin-rent-id">
+          <span class="admin-rent-upload-icon" aria-hidden="true">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5"/></svg>
+          </span>
+          <span class="admin-rent-upload-copy">
+            <strong id="admin-rent-id-name">Choose a JPG, PNG, WEBP, or PDF</strong>
+            <small>Maximum file size: 2 MB</small>
+          </span>
+          <input class="admin-rent-file-input" id="admin-rent-id" name="borrower_id" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
+        </label>
+      </div>
+      <p id="admin-rent-error" class="admin-rent-error" role="alert" aria-live="polite" hidden></p>
+      <div class="form-actions admin-rent-actions">
+        <button type="button" class="btn btn-outline" onclick="cancelAdminRent()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="admin-rent-submit" disabled>Confirm Rental</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 {{-- EDIT BIKE MODAL --}}
 <div class="modal-backdrop" id="edit-bike-modal" onclick="closeModalOutside(event,'edit-bike-modal')">
   <div class="modal">
@@ -42,7 +114,7 @@
         <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <form id="edit-bike-form" method="POST" action="" data-bike-code-preview-url="{{ route('admin.bikes.next-code') }}">
+    <form id="edit-bike-form" method="POST" action="" data-bike-code-preview-url="{{ route('admin.bikes.next-code') }}" data-rental-options-url="{{ route('admin.bikes.rental-options', ['bike' => '__BIKE__']) }}" data-rent-url="{{ route('admin.bikes.rent', ['bike' => '__BIKE__']) }}">
       @csrf
       @method('PATCH')
       <input type="hidden" name="current_tab" value="bikes">
@@ -64,7 +136,7 @@
       <div class="form-group">
         <label class="form-label">Condition</label>
         <select id="edit-bike-condition" name="condition" class="form-select">
-          <option value="good">Good</option><option value="repair">Needs Repair</option><option value="missing">Missing</option>
+          <option value="good">Good</option>
         </select>
       </div>
       <div class="form-actions">

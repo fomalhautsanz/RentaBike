@@ -218,6 +218,20 @@ class RentalPricing
         }
     }
 
+    public static function resolveBorrowTime(string $hhmm, Carbon $now): ?Carbon
+    {
+        $best = null;
+        foreach ([-1, 0, 1] as $offset) {
+            $candidate = Carbon::parse($now->toDateString() . ' ' . $hhmm . ':00')->addDays($offset);
+            if ($best === null
+                || abs($candidate->getTimestamp() - $now->getTimestamp()) < abs($best->getTimestamp() - $now->getTimestamp())) {
+                $best = $candidate;
+            }
+        }
+
+        return abs($best->getTimestamp() - $now->getTimestamp()) <= 30 * 60 ? $best : null;
+    }
+
     /** Detalye sa active rental para sa staff screen. */
     public static function summary(Rental $rental, ?string $bikeType, Carbon $now): array
     {

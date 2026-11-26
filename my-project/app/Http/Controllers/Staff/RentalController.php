@@ -7,7 +7,6 @@ use App\Models\Bicycle;
 use App\Models\Payment;
 use App\Models\Rental;
 use App\Support\RentalPricing;
-use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -70,7 +69,7 @@ class RentalController extends Controller
         }
 
         $now   = RentalPricing::dbNow();
-        $start = $this->resolveBorrowTime($data['borrow_time'], $now);
+        $start = RentalPricing::resolveBorrowTime($data['borrow_time'], $now);
         if (! $start) {
             return response()->json(['message' => 'Borrow time must be within 30 minutes of the current time.'], 422);
         }
@@ -248,24 +247,6 @@ class RentalController extends Controller
                 'balance_due'    => max(0.0, round($total - $paid, 2)),
             ],
         ]);
-    }
-
-    /**
-     * Ang gi-input nga borrow time (HH:MM) mahimong 30 minutos gikan sa karon ra.
-     * Gi-check ang gahapon/karon/ugma para dili ma-problema kung midnight.
-     */
-    private function resolveBorrowTime(string $hhmm, Carbon $now): ?Carbon
-    {
-        $best = null;
-        foreach ([-1, 0, 1] as $offset) {
-            $candidate = Carbon::parse($now->toDateString() . ' ' . $hhmm . ':00')->addDays($offset);
-            if ($best === null
-                || abs($candidate->getTimestamp() - $now->getTimestamp()) < abs($best->getTimestamp() - $now->getTimestamp())) {
-                $best = $candidate;
-            }
-        }
-
-        return abs($best->getTimestamp() - $now->getTimestamp()) <= 30 * 60 ? $best : null;
     }
 
     // Ang SIGNAL SQLSTATE '45000' sa stored procedure: ang message naa sa errorInfo[2]

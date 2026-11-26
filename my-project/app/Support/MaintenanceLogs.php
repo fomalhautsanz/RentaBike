@@ -2,9 +2,11 @@
 
 namespace App\Support;
 
+use App\Models\Bicycle;
 use App\Models\IssueReport;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 /**
@@ -42,6 +44,54 @@ class MaintenanceLogs
             ->with(['bike', 'staff'])
             ->orderByDesc('reported_at')
             ->orderByDesc('issue_id');
+    }
+
+    /**
+     * Latest completion timestamp per bike, keyed by bike ID.
+     */
+    public static function lastMaintenanceByBike(): Collection
+    {
+        return IssueReport::query()
+            ->where('status', 'resolved')
+            ->whereNotNull('resolved_at')
+            ->selectRaw('bike_id, MAX(resolved_at) as last_maintenance')
+            ->groupBy('bike_id')
+            ->pluck('last_maintenance', 'bike_id');
+    }
+
+    public static function openConditionByBike(): Collection
+    {
+        return IssueReport::query()
+            ->whereIn('status', ['pending', 'in_progress'])
+            ->get(['bike_id', 'issue_type'])
+            ->groupBy('bike_id')
+            ->map(fn (Collection $reports) => self::conditionForIssueTypes($reports->pluck('issue_type')))
+            ->filter(fn ($condition) => $condition !== null);
+    }
+
+    public static function syncBikeCondition(Bicycle $bike): void
+    {
+        $openIssueTypes = IssueReport::query()
+            ->where('bike_id', $bike->bike_id)
+            ->whereIn('status', ['pending', 'in_progress'])
+            ->pluck('issue_type');
+
+        $bike->condition = $openIssueTypes->isEmpty()
+            ? 'good'
+            : (self::conditionForIssueTypes($openIssueTypes) ?? $bike->condition);
+    }
+
+    private static function conditionForIssueTypes(Collection $issueTypes): ?string
+    {
+        if ($issueTypes->contains('missing')) {
+            return 'missing';
+        }
+
+        if ($issueTypes->contains('damage')) {
+            return 'repair';
+        }
+
+        return $issueTypes->contains('other') ? 'other' : null;
     }
 
     /**

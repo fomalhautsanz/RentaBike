@@ -8,6 +8,7 @@ use App\Models\Admin;
 use App\Models\Bicycle;
 use App\Models\Rental;
 use App\Models\Staff;
+use App\Support\MaintenanceLogs;
 use App\Support\RentalPricing;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Session;
@@ -16,8 +17,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // Ang tulo ka buckets dili mag-overlap ug mo-total sa tanan bikes:
-        // ang na-report nga bike (status "repair", condition "good") maihap na sa Repair.
+        // Ang tulo ka buckets dili mag-overlap ug mo-total sa tanan bikes.
         $total     = Bicycle::count();
         $available = Bicycle::where('condition', 'good')->where('status', 'available')->count();
         $rented    = Bicycle::where('condition', 'good')->where('status', 'rented')->count();
@@ -32,7 +32,12 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('bike_id');
         $now = RentalPricing::dbNow();
-        $addOverdueDetails = static function (Bicycle $bike) use ($activeRentals, $now): Bicycle {
+        $openConditionByBike = MaintenanceLogs::openConditionByBike();
+        $addOverdueDetails = static function (Bicycle $bike) use ($activeRentals, $now, $openConditionByBike): Bicycle {
+            if ($openConditionByBike->has($bike->bike_id)) {
+                $bike->setAttribute('condition', $openConditionByBike->get($bike->bike_id));
+            }
+
             $rental = $activeRentals->get($bike->bike_id);
             $summary = $rental ? RentalPricing::summary($rental, $bike->bike_type, $now) : null;
             $bike->setAttribute('overdue', $summary['overdue'] ?? false);
@@ -84,6 +89,7 @@ class DashboardController extends Controller
 
     public function exportBikeInventoryData(): JsonResponse
     {
+        $openConditionByBike = MaintenanceLogs::openConditionByBike();
         $bikes = Bicycle::orderBy('bike_id')->get([
             'bike_id',
             'qr_code',
@@ -99,7 +105,7 @@ class DashboardController extends Controller
             'make' => $bike->make,
             'bike_type' => $bike->bike_type,
             'status' => ucfirst($bike->status),
-            'condition' => ucfirst($bike->condition),
+            'condition' => ucfirst($openConditionByBike->get($bike->bike_id, $bike->condition)),
         ]);
 
         return response()->json([

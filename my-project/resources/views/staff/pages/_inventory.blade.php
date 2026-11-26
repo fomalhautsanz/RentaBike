@@ -164,7 +164,8 @@
                     model: '{{ addslashes($bike->model) }}',
                     make: '{{ addslashes($bike->make) }}',
                     type: '{{ addslashes($bike->bike_type) }}',
-                    condition: '{{ $bike->condition === 'repair' ? 'Needs Repair' : ($bike->condition === 'missing' ? 'Missing' : 'Good') }}'
+                    status: @js($statusVal),
+                    condition: @js($bike->condition)
                   })"
                   class="action-btn" style="width:30px;height:30px" title="Edit {{ $bike->qr_code }}">
                   <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">

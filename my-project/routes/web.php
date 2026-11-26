@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\AdminPasswordResetController;
 use App\Http\Controllers\Auth\StaffPasswordResetController;
 use App\Http\Controllers\Auth\StaffLoginController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\RentalController as AdminRentalController;
 use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\PricingController;
 use App\Http\Controllers\Admin\ReportController;
@@ -100,6 +101,12 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
     // Edit o Delete privilege, gi-check sa controller base sa "action"
     Route::post('/bikes/{bike}/verify', [DashboardController::class, 'verifyBikeAction'])
         ->name('admin.bikes.verify');
+    Route::get('/bikes/{bike}/rental-options', [AdminRentalController::class, 'options'])
+        ->middleware('admin.can:Edit Inventory')
+        ->name('admin.bikes.rental-options');
+    Route::post('/bikes/{bike}/rent', [AdminRentalController::class, 'store'])
+        ->middleware('admin.can:Edit Inventory')
+        ->name('admin.bikes.rent');
     Route::delete('/bikes/{bike}', [DashboardController::class, 'destroyBike'])
         ->middleware('admin.can:Delete Inventory')
         ->name('admin.bikes.destroy');
@@ -163,6 +170,9 @@ Route::prefix('staff')
             ->name('staff.inventory.store');
         Route::get('/inventory/next-code', [InventoryController::class, 'nextBikeCode'])
             ->name('staff.inventory.next-code');
+
+        Route::post('/inventory/{bike}/verify', [InventoryController::class, 'verifyBikeAction'])
+            ->name('staff.inventory.verify');
 
         Route::patch('/inventory/{bike}', [InventoryController::class, 'update'])
             ->name('staff.inventory.update');
