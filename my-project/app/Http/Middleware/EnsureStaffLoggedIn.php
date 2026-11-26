@@ -38,6 +38,16 @@ class EnsureStaffLoggedIn
             ? Staff::find(Session::get('staff_id'))
             : null;
 
+        if ($staff && !$this->sessionAuthVersionMatches($request, $staff)) {
+            Session::forget(['staff_id', 'staff_name', 'staff_role', 'staff_auth_version']);
+            SessionTimeout::clear($request);
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('staff.login')
+                ->withErrors(['email' => 'Your password was changed. Please log in again.']);
+        }
+
         // "Remember me": kung expired na ang session, i-restore gikan sa cookie
         if (!$staff && ($remembered = StaffPortalRemember::resolve($request))
             && strtolower((string) $remembered->status) === 'active') {
@@ -45,6 +55,7 @@ class EnsureStaffLoggedIn
             Session::put('staff_id', $remembered->staff_id);
             Session::put('staff_name', trim(($remembered->first_name ?? '') . ' ' . ($remembered->last_name ?? '')) ?: $remembered->full_name);
             Session::put('staff_role', $remembered->role);
+            Session::put('staff_auth_version', (int) $remembered->auth_version);
             $staff = $remembered;
         }
 
@@ -85,5 +96,19 @@ class EnsureStaffLoggedIn
         $request->attributes->set('staffPermissions', $staffPermissions);
 
         return $next($request);
+    }
+
+    private function sessionAuthVersionMatches(Request $request, Staff $staff): bool
+    {
+        $sessionVersion = (int) $request->session()->get('staff_auth_version', 1);
+        $currentVersion = (int) ($staff->auth_version ?? 1);
+
+        if ($sessionVersion !== $currentVersion) {
+            return false;
+        }
+
+        $request->session()->put('staff_auth_version', $currentVersion);
+
+        return true;
     }
 }

@@ -128,9 +128,12 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
     Route::get('/reports/data', [ReportController::class, 'data'])
         ->name('admin.reports.data');
 
-    Route::post('/pricing', [PricingController::class, 'update'])
-        ->middleware('admin.can:Manage Pricing')
-        ->name('admin.pricing.update');
+    Route::middleware('admin.can:Manage Pricing')->group(function () {
+        Route::post('/pricing/verify', [PricingController::class, 'verifyUpdate'])
+            ->name('admin.pricing.verify');
+        Route::post('/pricing', [PricingController::class, 'update'])
+            ->name('admin.pricing.update');
+    });
 
     // Maintenance: i-save ang status gikan sa Update Report modal
     Route::middleware('admin.can:Handle Maintenance')->group(function () {

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 beforeEach(function () {
     Schema::dropIfExists('payment');
@@ -34,6 +35,7 @@ beforeEach(function () {
         $table->text('permissions')->nullable();
         $table->string('role');
         $table->string('status');
+        $table->unsignedInteger('auth_version')->default(1);
     });
 
     Schema::create('rental_price_settings', function (Blueprint $table) {
@@ -85,6 +87,7 @@ beforeEach(function () {
         $table->dateTime('end_time')->nullable();
         $table->decimal('rental_duration_hrs', 8, 2)->nullable();
         $table->decimal('base_fee', 10, 2)->default(0);
+        $table->decimal('overtime_rate_per_hour', 10, 2)->nullable();
         $table->decimal('overtime_fee', 10, 2)->default(0);
         $table->decimal('total_fee', 10, 2)->default(0);
         $table->string('status', 30)->default('active');
@@ -322,6 +325,62 @@ test('rented bike scan identifies and serves image borrower IDs', function () {
         ->assertHeader('content-type', 'image/png');
 });
 
+test('borrower ID documents are limited to the rental staff and admin-level staff', function () {
+    Storage::fake('local');
+    Storage::disk('local')->put('borrower-ids/borrower-id.pdf', '%PDF-1.4 test ID');
+
+    $bike = makeScanBike('ES-005', 'rented', 'good', 'E-Scooter');
+    $borrower = Borrower::create([
+        'full_name' => 'Maria Santos',
+        'id_photo_id' => 'borrower-ids/borrower-id.pdf',
+    ]);
+    $rental = Rental::create([
+        'borrower_id' => $borrower->borrower_id,
+        'bike_id' => $bike->bike_id,
+        'staff_id' => $this->staff->staff_id,
+        'start_time' => now()->subMinutes(5)->format('Y-m-d H:i:s'),
+        'rental_duration_hrs' => 0.50,
+        'base_fee' => 100,
+        'total_fee' => 100,
+        'status' => 'active',
+    ]);
+
+    $otherStaff = Staff::create([
+        'admin_id' => 1,
+        'username' => 'other-staff',
+        'password_hash' => Hash::make('staff-password'),
+        'full_name' => 'Other Staff',
+        'first_name' => 'Other',
+        'last_name' => 'Staff',
+        'email' => 'other-staff@example.test',
+        'role' => 'Staff',
+        'status' => 'active',
+        'permissions' => [],
+    ]);
+
+    $url = route('staff.rentals.borrower-id', $rental);
+    $this->withSession(['staff_id' => $otherStaff->staff_id])
+        ->get($url)
+        ->assertNotFound();
+
+    $adminStaff = Staff::create([
+        'admin_id' => 1,
+        'username' => 'admin-staff',
+        'password_hash' => Hash::make('staff-password'),
+        'full_name' => 'Admin Staff',
+        'first_name' => 'Admin',
+        'last_name' => 'Staff',
+        'email' => 'admin-staff@example.test',
+        'role' => 'Admin',
+        'status' => 'active',
+        'permissions' => [],
+    ]);
+
+    $this->withSession(['staff_id' => $adminStaff->staff_id])
+        ->get($url)
+        ->assertOk();
+});
+
 test('rented bike without a rental record returns rental null', function () {
     makeScanBike('RB-011', 'rented', 'good');
 
@@ -365,6 +424,27 @@ test('rental prices and matching overdue hourly rates use saved settings', funct
         ->and(RentalPricing::hourlyRate('City Bike'))->toEqual(42.5)
         ->and(RentalPricing::hourlyRate('E-Scooter'))->toEqual(225.0)
         ->and(RentalPricing::priceFor('E-Scooter', 60))->toEqual(225.0);
+});
+
+test('a rental keeps its booked overtime rate after prices change', function () {
+    $rental = Rental::make([
+        'rental_id' => 1,
+        'start_time' => Carbon::now()->subMinutes(20),
+        'rental_duration_hrs' => 0.25,
+        'base_fee' => 50,
+        'overtime_rate_per_hour' => 225,
+    ]);
+    $rental->setRelation('borrower', null);
+    $rental->setRelation('payment', null);
+    $now = Carbon::now();
+
+    DB::table('rental_price_settings')
+        ->where('bike_type', 'E-Scooter')
+        ->where('duration_minutes', 60)
+        ->update(['price' => 300]);
+
+    expect(RentalPricing::summary($rental, 'E-Scooter', $now)['overtime_rate_per_hour'])
+        ->toEqual(225.0);
 });
 
 test('overtime penalty applies the selected package rate per started hour', function () {

@@ -97,37 +97,53 @@ class DashboardController extends Controller
         $profilePicture = $request->hasFile('profile_picture')
             ? $request->file('profile_picture')->store('staff-profiles', 'public')
             : null;
+        if ($request->hasFile('profile_picture') && !is_string($profilePicture)) {
+            return $this->backToTab($request, 'staff')
+                ->with('error', 'Could not save the staff profile picture.');
+        }
 
         $fullName = trim($validated['first_name'] . ' ' . $validated['last_name']);
 
-        $staff = Staff::create([
-            // staff.admin_id must reference the admin table. A staff member with
-            // Admin-portal staff files new staff under the admin who owns them.
-            'admin_id' => auth()->user() instanceof Staff ? auth()->user()->admin_id : auth()->id(),
-            'username' => $username,
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
-            'full_name' => $fullName,
-            'email' => Str::lower($validated['email']),
-            'phone' => $validated['phone'] ?? null,
-            'password_hash' => Hash::make($validated['password']),
-            'role' => $validated['role'],
-            'status' => 'active',
-            'profile_picture' => $profilePicture,
-            'permissions' => $permissions,
-        ]);
+        try {
+            $staff = DB::transaction(function () use ($request, $profilePicture, $fullName, $username, $validated, $permissions): Staff {
+                $staff = Staff::create([
+                    // staff.admin_id must reference the admin table. A staff member with
+                    // Admin-portal staff files new staff under the admin who owns them.
+                    'admin_id' => auth()->user() instanceof Staff ? auth()->user()->admin_id : auth()->id(),
+                    'username' => $username,
+                    'first_name' => $validated['first_name'],
+                    'last_name' => $validated['last_name'],
+                    'full_name' => $fullName,
+                    'email' => Str::lower($validated['email']),
+                    'phone' => $validated['phone'] ?? null,
+                    'password_hash' => Hash::make($validated['password']),
+                    'role' => $validated['role'],
+                    'status' => 'active',
+                    'profile_picture' => $profilePicture,
+                    'permissions' => $permissions,
+                ]);
 
-        ActivityLogger::record(
-            $request,
-            'ADD_STAFF',
-            'Added staff account: ' . $fullName
-                . ' (' . $staff->username . ')'
-                . ' | Email: ' . $staff->email
-                . ' | Phone: ' . ActivityLogger::displayValue($staff->phone)
-                . ' | Role: ' . $staff->role
-                . ' | Status: ' . $staff->status
-                . ' | Permissions: ' . ActivityLogger::displayValue($staff->permissions)
-        );
+                ActivityLogger::record(
+                    $request,
+                    'ADD_STAFF',
+                    'Added staff account: ' . $fullName
+                        . ' (' . $staff->username . ')'
+                        . ' | Email: ' . $staff->email
+                        . ' | Phone: ' . ActivityLogger::displayValue($staff->phone)
+                        . ' | Role: ' . $staff->role
+                        . ' | Status: ' . $staff->status
+                        . ' | Permissions: ' . ActivityLogger::displayValue($staff->permissions)
+                );
+
+                return $staff;
+            });
+        } catch (\Throwable $e) {
+            if ($profilePicture !== null) {
+                Storage::disk('public')->delete($profilePicture);
+            }
+
+            throw $e;
+        }
 
         return $this->backToTab($request, 'staff')
             ->with('success', 'Staff member added successfully.');
@@ -209,15 +225,17 @@ class DashboardController extends Controller
             $staff->portal_remember_token = null;
         }
 
-        if ($request->hasFile('profile_picture')) {
-            if ($staff->profile_picture) {
-                Storage::disk('public')->delete($staff->profile_picture);
-            }
-
-            $staff->profile_picture = $request->file('profile_picture')->store('staff-profiles', 'public');
+        $previousProfilePicture = $staff->profile_picture;
+        $newProfilePicture = $request->hasFile('profile_picture')
+            ? $request->file('profile_picture')->store('staff-profiles', 'public')
+            : null;
+        if ($request->hasFile('profile_picture') && !is_string($newProfilePicture)) {
+            return $this->backToTab($request, 'staff')
+                ->with('error', 'Could not save the staff profile picture.');
         }
-
-        $staff->save();
+        if ($newProfilePicture !== null) {
+            $staff->profile_picture = $newProfilePicture;
+        }
 
         $after = [
             'First name' => $staff->first_name,
@@ -238,17 +256,36 @@ class DashboardController extends Controller
             $changes['Password'] = ['before' => '(unchanged)', 'after' => '(changed)'];
         }
         if ($request->hasFile('profile_picture')) {
-            $changes['Profile picture'] = ['before' => '(existing or empty)', 'after' => '(updated)'];
+            $changes['Profile picture'] = [
+                'before' => $previousProfilePicture === null ? null : basename($previousProfilePicture),
+                'after' => $newProfilePicture === null ? null : basename($newProfilePicture),
+            ];
         }
 
-        ActivityLogger::record(
-            $request,
-            'UPDATE_STAFF',
-            'Updated staff account: ' . $staff->full_name
-                . ' (' . $staff->username . ')'
-                . ' | Staff ID: ' . $staff->staff_id
-                . ' | Changes: ' . ActivityLogger::formatChanges($changes)
-        );
+        try {
+            DB::transaction(function () use ($request, $staff, $changes): void {
+                $staff->save();
+
+                ActivityLogger::record(
+                    $request,
+                    'UPDATE_STAFF',
+                    'Updated staff account: ' . $staff->full_name
+                        . ' (' . $staff->username . ')'
+                        . ' | Staff ID: ' . $staff->staff_id
+                        . ' | Changes: ' . ActivityLogger::formatChanges($changes)
+                );
+            });
+        } catch (\Throwable $e) {
+            if ($newProfilePicture !== null) {
+                Storage::disk('public')->delete($newProfilePicture);
+            }
+
+            throw $e;
+        }
+
+        if ($newProfilePicture !== null && $previousProfilePicture !== null) {
+            Storage::disk('public')->delete($previousProfilePicture);
+        }
 
         return $this->backToTab($request, 'staff')
             ->with('success', 'Staff member updated successfully.');
@@ -287,17 +324,21 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Confirm your password before removing this account.'], 403);
         }
 
-        $staff->status = 'inactive';
-        $staff->save();
+        $previousStatus = $staff->status;
 
-        ActivityLogger::record(
-            $request,
-            'DEACTIVATE_STAFF',
-            'Deactivated staff account: ' . $staff->full_name
-                . ' (' . $staff->username . ')'
-                . ' | Staff ID: ' . $staff->staff_id
-                . ' | Status: active -> inactive'
-        );
+        DB::transaction(function () use ($request, $staff, $previousStatus): void {
+            $staff->status = 'inactive';
+            $staff->save();
+
+            ActivityLogger::record(
+                $request,
+                'DEACTIVATE_STAFF',
+                'Deactivated staff account: ' . $staff->full_name
+                    . ' (' . $staff->username . ')'
+                    . ' | Staff ID: ' . $staff->staff_id
+                    . ' | Status: ' . $previousStatus . ' -> inactive'
+            );
+        });
 
         return response()->json(['message' => 'Staff member removed successfully.']);
     }
@@ -367,6 +408,10 @@ class DashboardController extends Controller
         ->limit(5)
         ->get()
         ->map(function ($log) use ($now) {
+            if ($log->user_type === 'system') {
+                $log->actor_name = 'System';
+            }
+
             $log->time_ago = \Carbon\Carbon::parse($log->timestamp)
                 ->diffForHumans($now, \Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW);
             return $log;
@@ -551,21 +596,27 @@ class DashboardController extends Controller
 
     $validated = $validator->validated();
 
-    $bike = Bicycle::create([
-        ...$validated,
-        'qr_code' => Bicycle::nextQrCode($validated['bike_type']),
-        'status' => $validated['condition'] === 'good' ? 'available' : 'repair',
-    ]);
+    $bike = DB::transaction(function () use ($request, $validated): Bicycle {
+        $bike = Bicycle::create([
+            ...$validated,
+            'qr_code' => Bicycle::reserveNextQrCode($validated['bike_type']),
+            'status' => $validated['condition'] === 'good' ? 'available' : 'repair',
+        ]);
 
-    ActivityLogger::record(
-        $request,
-        'ADD_BIKE',
-        'Added bike: ' . $bike->model . ' ' . $bike->make
-            . ' (' . $bike->qr_code . ')'
-            . ' | Bike type: ' . $bike->bike_type
-            . ' | Condition: ' . $bike->condition
-            . ' | Status: ' . $bike->status
-    );
+        ActivityLogger::record(
+            $request,
+            'ADD_BIKE',
+            'Added bike: ' . $bike->model . ' ' . $bike->make
+                . ' (' . $bike->qr_code . ')'
+                . ' | Bike ID: ' . $bike->qr_code
+                . ' | Database ID: ' . $bike->bike_id
+                . ' | Bike type: ' . $bike->bike_type
+                . ' | Condition: ' . $bike->condition
+                . ' | Status: ' . $bike->status
+        );
+
+        return $bike;
+    });
 
     return $this->backToTab($request, 'bikes')
         ->with('success', 'Bike added successfully.');
@@ -579,12 +630,7 @@ class DashboardController extends Controller
         ]);
 
         return response()->json([
-            'bike_code' => Bicycle::nextQrCode(
-                $validated['bike_type'],
-                isset($validated['exclude_qr_code'])
-                    ? (int) Bicycle::where('qr_code', $validated['exclude_qr_code'])->value('bike_id')
-                    : null
-            ),
+            'bike_code' => Bicycle::nextQrCode($validated['bike_type']),
         ]);
     }
 
@@ -651,41 +697,43 @@ class DashboardController extends Controller
             $status = $bike->status === 'rented' ? 'rented' : 'available';
         }
 
-        $bike->update([
-            'model' => $validated['model'],
-            'make' => $validated['make'],
-            'bike_type' => $validated['bike_type'],
-            'qr_code' => $bike->bike_type === $validated['bike_type']
-                ? $bike->qr_code
-                : Bicycle::nextQrCode($validated['bike_type'], $bike->bike_id),
-            'status' => $status,
-            'condition' => $condition,
-        ]);
+        DB::transaction(function () use ($request, $bike, $validated, $status, $condition, $before): void {
+            $bike->update([
+                'model' => $validated['model'],
+                'make' => $validated['make'],
+                'bike_type' => $validated['bike_type'],
+                'qr_code' => $bike->bike_type === $validated['bike_type']
+                    ? $bike->qr_code
+                    : Bicycle::reserveNextQrCode($validated['bike_type']),
+                'status' => $status,
+                'condition' => $condition,
+            ]);
 
-        $after = [
-            'Model' => $bike->model,
-            'Make' => $bike->make,
-            'Bike type' => $bike->bike_type,
-            'Bike code' => $bike->qr_code,
-            'Status' => $bike->status,
-            'Condition' => $bike->condition,
-        ];
-        $changes = [];
-        foreach ($before as $label => $oldValue) {
-            if ($oldValue !== $after[$label]) {
-                $changes[$label] = ['before' => $oldValue, 'after' => $after[$label]];
+            $after = [
+                'Model' => $bike->model,
+                'Make' => $bike->make,
+                'Bike type' => $bike->bike_type,
+                'Bike code' => $bike->qr_code,
+                'Status' => $bike->status,
+                'Condition' => $bike->condition,
+            ];
+            $changes = [];
+            foreach ($before as $label => $oldValue) {
+                if ($oldValue !== $after[$label]) {
+                    $changes[$label] = ['before' => $oldValue, 'after' => $after[$label]];
+                }
             }
-        }
 
-        ActivityLogger::record(
-            $request,
-            'UPDATE_BIKE',
-            'Updated bike: ' . $bike->model . ' ' . $bike->make
-                . ' (' . $bike->qr_code . ')'
-                . ' | Bike ID: ' . $bike->qr_code
-                . ' | Database ID: ' . $bike->bike_id
-                . ' | Changes: ' . ActivityLogger::formatChanges($changes)
-        );
+            ActivityLogger::record(
+                $request,
+                'UPDATE_BIKE',
+                'Updated bike: ' . $bike->model . ' ' . $bike->make
+                    . ' (' . $bike->qr_code . ')'
+                    . ' | Bike ID: ' . $bike->qr_code
+                    . ' | Database ID: ' . $bike->bike_id
+                    . ' | Changes: ' . ActivityLogger::formatChanges($changes)
+            );
+        });
 
         $this->clearBikeConfirmation($request, $bike, 'edit');
 
@@ -705,20 +753,22 @@ class DashboardController extends Controller
                 ->with('error', 'A rented bike cannot be removed from inventory.');
         }
 
-        $bike->delete();
-        $this->clearBikeConfirmation($request, $bike, 'delete');
+        DB::transaction(function () use ($request, $bike): void {
+            $bike->delete();
 
-        ActivityLogger::record(
-            $request,
-            'DELETE_BIKE',
-            'Deleted bike: ' . $bike->model . ' ' . $bike->make
-                . ' (' . $bike->qr_code . ')'
-                . ' | Bike ID: ' . $bike->qr_code
-                . ' | Database ID: ' . $bike->bike_id
-                . ' | Bike type: ' . $bike->bike_type
-                . ' | Condition: ' . $bike->condition
-                . ' | Status: ' . $bike->status
-        );
+            ActivityLogger::record(
+                $request,
+                'DELETE_BIKE',
+                'Deleted bike: ' . $bike->model . ' ' . $bike->make
+                    . ' (' . $bike->qr_code . ')'
+                    . ' | Bike ID: ' . $bike->qr_code
+                    . ' | Database ID: ' . $bike->bike_id
+                    . ' | Bike type: ' . $bike->bike_type
+                    . ' | Condition: ' . $bike->condition
+                    . ' | Status: ' . $bike->status
+            );
+        });
+        $this->clearBikeConfirmation($request, $bike, 'delete');
 
         return $this->backToTab($request, 'bikes')
             ->with('success', 'Bike removed from inventory.');
@@ -797,13 +847,15 @@ class DashboardController extends Controller
     }
 
     // Rental counts for the current Monday-to-Sunday week.
-    protected function weeklyRentalCounts(): array
+    protected function weeklyRentalCounts(?Carbon $now = null): array
     {
-        $start = now()->startOfWeek(Carbon::MONDAY);
+        $now ??= RentalPricing::dbNow();
+        $start = $now->copy()->startOfWeek(Carbon::MONDAY);
         $end = $start->copy()->addDays(6)->endOfDay();
+        $queryEnd = $now->lt($end) ? $now : $end;
 
         $counts = Rental::selectRaw('DATE(start_time) as day, COUNT(*) as total')
-            ->whereBetween('start_time', [$start, $end])
+            ->whereBetween('start_time', [$start, $queryEnd])
             ->groupBy('day')
             ->pluck('total', 'day');
 
@@ -830,13 +882,14 @@ class DashboardController extends Controller
    // completed rentals, revenue, and rental count for the last 5 months
     protected function monthlyRevenueVsRentals(): array
     {
+        $now = RentalPricing::dbNow();
         $labels = [];
         $revenue = [];
         $rentalCounts = [];
 
         // loops 4 months ago up to now 
         for ($i = 4; $i >= 0; $i--) {
-            $month = now()->subMonths($i);
+            $month = $now->copy()->subMonths($i);
 
             // kuhaon ang sum sa total free and count sa rentals in a yr or month 
             $rows = Rental::where('status', 'completed')

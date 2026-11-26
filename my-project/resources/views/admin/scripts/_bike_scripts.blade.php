@@ -235,6 +235,26 @@ document.getElementById('admin-rent-form').addEventListener('submit', async func
 });
 
 let pendingBikeAction = null;
+let pricingConfirmationReady = false;
+
+const pricingForm = document.getElementById('pricing-form');
+if (pricingForm) {
+  pricingForm.addEventListener('submit', function (event) {
+    if (pricingConfirmationReady) {
+      pricingConfirmationReady = false;
+      return;
+    }
+
+    event.preventDefault();
+    pendingBikeAction = { action: 'pricing' };
+    document.getElementById('bike-password-prompt').textContent =
+      'Enter your admin password to update rental pricing.';
+    document.getElementById('bike-password-error').hidden = true;
+    document.getElementById('bike-password-form').reset();
+    openModal('bike-password-modal');
+    document.getElementById('bike-action-password').focus();
+  });
+}
 
 function requestBikeAction(bikeId, action, details) {
   pendingBikeAction = { bikeId, action, details };
@@ -270,9 +290,12 @@ document.getElementById('bike-password-form').addEventListener('submit', async f
   const form = event.currentTarget;
   const error = document.getElementById('bike-password-error');
   const submit = form.querySelector('[type="submit"]');
-  const verifyUrl = form.dataset.verifyUrl.replace('__BIKE_ID__', encodeURIComponent(pendingBikeAction.bikeId));
+  const actionToVerify = pendingBikeAction;
+  const verifyUrl = actionToVerify.action === 'pricing'
+    ? form.dataset.pricingVerifyUrl
+    : form.dataset.verifyUrl.replace('__BIKE_ID__', encodeURIComponent(actionToVerify.bikeId));
   const body = new URLSearchParams(new FormData(form));
-  body.set('action', pendingBikeAction.action);
+  body.set('action', actionToVerify.action);
   submit.disabled = true;
   error.hidden = true;
 
@@ -285,9 +308,15 @@ document.getElementById('bike-password-form').addEventListener('submit', async f
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || 'Password verification failed.');
 
-    const action = pendingBikeAction;
     pendingBikeAction = null;
     closeModal('bike-password-modal');
+    if (actionToVerify.action === 'pricing') {
+      pricingConfirmationReady = true;
+      document.getElementById('pricing-form').requestSubmit();
+      return;
+    }
+
+    const action = actionToVerify;
     if (action.action === 'edit') {
       openEditBikeForm(action.bikeId, action.details.name, action.details.type, action.details.status, action.details.condition);
     } else {

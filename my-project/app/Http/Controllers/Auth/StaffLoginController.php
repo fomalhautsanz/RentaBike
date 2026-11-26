@@ -73,6 +73,7 @@ class StaffLoginController extends Controller
             Session::put('staff_id', $staff->staff_id);
             Session::put('staff_name', trim(($staff->first_name ?? '') . ' ' . ($staff->last_name ?? '')) ?: $staff->full_name);
             Session::put('staff_role', $staff->role);
+            Session::put('staff_auth_version', (int) ($staff->auth_version ?? 1));
 
             if ($request->boolean('remember')) {
                 StaffPortalRemember::issue($staff);
@@ -100,6 +101,7 @@ class StaffLoginController extends Controller
             'staff_id',
             'staff_name',
             'staff_role',
+            'staff_auth_version',
         ]);
 
         $request->session()->invalidate();

@@ -23,6 +23,9 @@ beforeEach(function () {
         $table->string('email_hash')->nullable();
         $table->string('role');
         $table->string('status');
+        $table->string('remember_token')->nullable();
+        $table->string('portal_remember_token')->nullable();
+        $table->unsignedInteger('auth_version')->default(1);
     });
 
     Schema::create('staff_password_reset_otps', function (Blueprint $table) {
@@ -50,6 +53,11 @@ beforeEach(function () {
 });
 
 test('staff can reset their password with an emailed otp', function () {
+    $this->withSession([
+        'staff_id' => $this->staff->staff_id,
+        'staff_auth_version' => 1,
+    ]);
+
     $this->withoutVite()
         ->post(route('staff.password.email'), ['email' => 'staff@example.test'])
         ->assertRedirect(route('staff.password.reset'))
@@ -67,8 +75,11 @@ test('staff can reset their password with an emailed otp', function () {
         ->assertSessionHas('status');
 
     expect(Hash::check('a-new-password', $this->staff->fresh()->password_hash))->toBeTrue();
+    expect($this->staff->fresh()->auth_version)->toBe(2);
     expect(DB::table('staff_password_reset_otps')->where('staff_id', $this->staff->staff_id)->value('consumed_at'))
         ->not->toBeNull();
+
+    $this->get(route('staff.home'))->assertRedirect(route('staff.login'));
 });
 
 test('staff password reset rejects the code after five incorrect attempts', function () {

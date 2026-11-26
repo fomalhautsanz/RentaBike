@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Admin;
+use App\Models\ActivityLog;
 use App\Models\Bicycle;
 use App\Models\Staff;
 use Illuminate\Database\Schema\Blueprint;
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\Schema;
 
 beforeEach(function () {
     Schema::dropIfExists('issue_report');
+    Schema::dropIfExists('activity_log');
+    Schema::dropIfExists('bicycle_qr_sequences');
     Schema::dropIfExists('bicycle');
     Schema::dropIfExists('staff');
     Schema::dropIfExists('admin');
@@ -56,6 +59,20 @@ beforeEach(function () {
         $table->unsignedInteger('bike_id');
         $table->string('issue_type');
         $table->string('status');
+    });
+
+    Schema::create('bicycle_qr_sequences', function (Blueprint $table) {
+        $table->string('prefix', 2)->primary();
+        $table->unsignedInteger('last_sequence')->default(0);
+    });
+
+    Schema::create('activity_log', function (Blueprint $table) {
+        $table->increments('log_id');
+        $table->integer('user_id');
+        $table->string('user_type');
+        $table->string('action');
+        $table->dateTime('timestamp')->useCurrent();
+        $table->text('details')->nullable();
     });
 });
 
@@ -210,6 +227,29 @@ test('bike codes use a separate sequence for each bike type', function () {
         ->and(Bicycle::nextQrCode('City Bike'))->toBe('CB-001');
 });
 
+test('deleted bicycle QR codes are not reused', function () {
+    Bicycle::create([
+        'qr_code' => 'MB-001',
+        'model' => 'Trail 200',
+        'make' => 'Trek',
+        'bike_type' => 'Mountain Bike',
+    ]);
+    $deletedBike = Bicycle::create([
+        'qr_code' => 'MB-002',
+        'model' => 'Trail 300',
+        'make' => 'Trek',
+        'bike_type' => 'Mountain Bike',
+    ]);
+    DB::table('bicycle_qr_sequences')->insert([
+        'prefix' => 'MB',
+        'last_sequence' => 2,
+    ]);
+
+    $deletedBike->delete();
+
+    expect(Bicycle::reserveNextQrCode('Mountain Bike'))->toBe('MB-003');
+});
+
 test('admin bike creation assigns a category-based code', function () {
     $admin = Admin::create([
         'username' => 'bike-admin',
@@ -239,6 +279,12 @@ test('admin bike creation assigns a category-based code', function () {
         'qr_code' => 'RB-002',
         'bike_type' => 'Road Bike',
     ]);
+
+    $log = ActivityLog::where('action', 'ADD_BIKE')->firstOrFail();
+    expect($log->user_type)->toBe('admin')
+        ->and($log->user_id)->toBe($admin->admin_id)
+        ->and($log->details)->toContain('Bike ID: RB-002')
+        ->toContain('Database ID: 2');
 });
 
 test('admin bike type changes assign a new category code', function () {
@@ -340,6 +386,12 @@ test('staff type changes assign the next code in the new category', function () 
         'qr_code' => 'RB-002',
         'bike_type' => 'Road Bike',
     ]);
+
+    $log = ActivityLog::where('action', 'UPDATE_BIKE')->firstOrFail();
+    expect($log->user_type)->toBe('staff')
+        ->and($log->user_id)->toBe($staff->staff_id)
+        ->and($log->details)->toContain('Bike ID: RB-002')
+        ->toContain('Database ID: ' . $bike->bike_id);
 });
 
 test('staff bike edits and deletes require fresh password confirmation', function () {
@@ -611,4 +663,43 @@ test('staff inventory shows Other for an open other maintenance report', functio
         ->get(route('staff.home'))
         ->assertOk()
         ->assertSee('Other');
+});
+
+test('QR allocation seeds from historical activity logs', function () {
+    DB::table('activity_log')->insert([
+        'user_id' => 1,
+        'user_type' => 'admin',
+        'action' => 'DELETE_BIKE',
+        'details' => 'Deleted bicycle | Bike ID: MB-009 | Database ID: 12',
+    ]);
+    Schema::dropIfExists('bicycle_qr_sequences');
+
+    $migration = require base_path('database/migrations/2026_11_27_000002_create_bicycle_qr_sequences_table.php');
+    $migration->up();
+
+    expect(Bicycle::nextQrCode('Mountain Bike'))->toBe('MB-010');
+});
+
+test('bike creation and activity logging roll back together', function () {
+    $admin = Admin::create([
+        'username' => 'atomic-bike-admin',
+        'full_name' => 'Bike Admin',
+        'email' => 'atomic-bike-admin@example.test',
+        'password_hash' => Hash::make('secret-password'),
+    ]);
+
+    ActivityLog::creating(function (): void {
+        throw new RuntimeException('Simulated activity-log insert failure.');
+    });
+    $this->withoutExceptionHandling();
+
+    expect(fn () => $this->actingAs($admin, 'web')->post(route('admin.bikes.store'), [
+        'model' => 'Trail 200',
+        'make' => 'Trek',
+        'bike_type' => 'Mountain Bike',
+        'condition' => 'good',
+        'current_tab' => 'bikes',
+    ]))->toThrow(RuntimeException::class, 'Simulated activity-log insert failure.');
+
+    expect(Bicycle::query()->exists())->toBeFalse();
 });

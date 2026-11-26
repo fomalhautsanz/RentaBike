@@ -61,6 +61,7 @@ beforeEach(function () {
         $table->dateTime('end_time')->nullable();
         $table->decimal('rental_duration_hrs', 8, 2);
         $table->decimal('base_fee', 10, 2)->default(0);
+        $table->decimal('overtime_rate_per_hour', 10, 2)->nullable();
         $table->decimal('overtime_fee', 10, 2)->default(0);
         $table->decimal('total_fee', 10, 2)->default(0);
         $table->string('status', 30)->default('active');
@@ -124,6 +125,7 @@ test('admin can rent an available bike directly and is recorded as the operator'
         'bike_id' => $bike->bike_id,
         'staff_id' => null,
         'admin_id' => $admin->admin_id,
+        'overtime_rate_per_hour' => 50,
         'status' => 'active',
     ]);
     $rentalId = DB::table('rental')->value('rental_id');

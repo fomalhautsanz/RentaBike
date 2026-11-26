@@ -27,6 +27,7 @@ class Rental extends Model
         'end_time',
         'rental_duration_hrs',
         'base_fee',
+        'overtime_rate_per_hour',
         'overtime_fee',
         'total_fee',
         'status',
@@ -35,6 +36,7 @@ class Rental extends Model
     protected $casts = [
         'start_time' => 'datetime',
         'end_time'   => 'datetime',
+        'overtime_rate_per_hour' => 'decimal:2',
     ];
 
     public function borrower()

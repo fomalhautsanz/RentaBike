@@ -246,9 +246,11 @@ class RentalPricing
 
         $baseFee = (float) $rental->base_fee;
         $paid    = (float) ($rental->payment?->amount_paid ?? 0);
-        $hourlyRate = $minutes > 0
-            ? round($baseFee / ($minutes / 60), 2)
-            : (float) self::hourlyRate($bikeType);
+        $hourlyRate = $rental->overtime_rate_per_hour !== null
+            ? (float) $rental->overtime_rate_per_hour
+            : ($minutes > 0
+                ? round($baseFee / ($minutes / 60), 2)
+                : (float) self::hourlyRate($bikeType));
         $penalty = self::overtimePenalty($overtimeMinutes, $hourlyRate);
 
         $endLabel = $end->format('g:i A');

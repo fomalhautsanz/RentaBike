@@ -1,13 +1,17 @@
 <?php
 
 use App\Models\Admin;
+use App\Models\ActivityLog;
 use App\Models\Staff;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
+    Schema::dropIfExists('activity_log');
     Schema::dropIfExists('staff');
     Schema::dropIfExists('admin');
 
@@ -35,6 +39,15 @@ beforeEach(function () {
         $table->text('permissions')->nullable();
         $table->string('role');
         $table->string('status');
+    });
+
+    Schema::create('activity_log', function (Blueprint $table) {
+        $table->increments('log_id');
+        $table->integer('user_id');
+        $table->string('user_type');
+        $table->string('action');
+        $table->dateTime('timestamp')->useCurrent();
+        $table->text('details')->nullable();
     });
 
     $admin = Admin::create([
@@ -128,6 +141,45 @@ test('a confirmed removal deactivates the selected staff account', function () {
         ->assertJsonPath('message', 'Staff member removed successfully.');
 
     expect($this->staff->fresh()->status)->toBe('inactive');
+});
+
+test('deactivation logs the actual previous staff status', function () {
+    $this->staff->update(['status' => 'on_leave']);
+    $this->post(route('admin.staff.verify', $this->staff), [
+        'action' => 'delete',
+        'password' => 'correct-password',
+    ])->assertOk();
+
+    $this->deleteJson(route('admin.staff.destroy', $this->staff))->assertOk();
+
+    $log = ActivityLog::where('action', 'DEACTIVATE_STAFF')->firstOrFail();
+    expect($log->details)->toContain('Status: on_leave -> inactive');
+});
+
+test('staff profile-picture logs contain the previous and replacement filenames', function () {
+    Storage::fake('public');
+    Storage::disk('public')->put('staff-profiles/old-photo.png', 'old image');
+    $this->staff->update(['profile_picture' => 'staff-profiles/old-photo.png']);
+
+    $this->post(route('admin.staff.verify', $this->staff), [
+        'action' => 'edit',
+        'password' => 'correct-password',
+    ])->assertOk();
+
+    $this->patch(route('admin.staff.update', $this->staff), [
+        'first_name' => 'Original',
+        'last_name' => 'Name',
+        'email' => 'staff@example.test',
+        'phone' => null,
+        'role' => 'Staff',
+        'status' => 'Active',
+        'profile_picture' => UploadedFile::fake()->create('replacement.png', 10, 'image/png'),
+    ])->assertSessionHas('success');
+
+    $log = ActivityLog::where('action', 'UPDATE_STAFF')->firstOrFail();
+    $newFilename = basename($this->staff->fresh()->profile_picture);
+    expect($log->details)->toContain('Profile picture: old-photo.png -> ' . $newFilename)
+        ->and(Storage::disk('public')->exists('staff-profiles/old-photo.png'))->toBeFalse();
 });
 
 test('staff role cannot receive admin-only permissions when created or updated', function () {

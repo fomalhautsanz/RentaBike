@@ -25,8 +25,20 @@ class EnsureAdminLoggedIn
         SessionTimeout::touch($request);
 
         // 1) Accounts from the admin table.
-        if (Auth::guard('web')->check()) {
-            return $next($request);
+        $adminGuard = Auth::guard('web');
+        if ($adminGuard->check()) {
+            $admin = $adminGuard->user();
+
+            if ($this->sessionAuthVersionMatches($request, 'admin_auth_version', (int) ($admin->auth_version ?? 1))) {
+                return $next($request);
+            }
+
+            $adminGuard->logout();
+            Auth::guard('staff_admin')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return $this->deny($request, 'Your password was changed. Please log in again.');
         }
 
         // 2) Staff accounts with role "Admin" or "Super Admin". Re-checked on every request so
@@ -37,6 +49,14 @@ class EnsureAdminLoggedIn
             $staff = $staffGuard->user()->fresh();
 
             if ($staff && $staff->hasAdminPortalAccess()) {
+                if (!$this->sessionAuthVersionMatches($request, 'staff_admin_auth_version', (int) ($staff->auth_version ?? 1))) {
+                    $staffGuard->logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+
+                    return $this->deny($request, 'Your password was changed. Please log in again.');
+                }
+
                 $staffGuard->setUser($staff);
                 // Make auth()->user() / auth()->id() resolve to this staff admin.
                 Auth::shouldUse('staff_admin');
@@ -52,6 +72,19 @@ class EnsureAdminLoggedIn
         }
 
         return $this->deny($request, 'Please log in to continue.');
+    }
+
+    private function sessionAuthVersionMatches(Request $request, string $key, int $currentVersion): bool
+    {
+        $sessionVersion = (int) $request->session()->get($key, 1);
+
+        if ($sessionVersion !== $currentVersion) {
+            return false;
+        }
+
+        $request->session()->put($key, $currentVersion);
+
+        return true;
     }
 
     private function deny(Request $request, string $message): Response

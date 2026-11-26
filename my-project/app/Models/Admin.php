@@ -10,6 +10,10 @@ class Admin extends Authenticatable
     protected $primaryKey = 'admin_id';
     public $timestamps = false;
 
+    protected $casts = [
+        'auth_version' => 'integer',
+    ];
+
     protected $fillable = [
         'username',
         'full_name',

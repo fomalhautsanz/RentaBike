@@ -68,6 +68,7 @@ class LoginController extends Controller
             );
 
             $request->session()->regenerate();
+            $request->session()->put('admin_auth_version', (int) ($admin->auth_version ?? 1));
             SessionTimeout::touch($request);
 
             return redirect()->route('admin.dashboard');
@@ -85,6 +86,7 @@ class LoginController extends Controller
             Auth::guard('staff_admin')->login($staffAdmin, $request->boolean('remember'));
 
             $request->session()->regenerate();
+            $request->session()->put('staff_admin_auth_version', (int) ($staffAdmin->auth_version ?? 1));
             SessionTimeout::touch($request);
 
             return redirect()->route('admin.dashboard');

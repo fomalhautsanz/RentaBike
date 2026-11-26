@@ -10,6 +10,7 @@ use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
@@ -28,12 +29,7 @@ class InventoryController extends Controller
         ]);
 
         return response()->json([
-            'bike_code' => Bicycle::nextQrCode(
-                $validated['bike_type'],
-                isset($validated['exclude_qr_code'])
-                    ? (int) Bicycle::where('qr_code', $validated['exclude_qr_code'])->value('bike_id')
-                    : null
-            ),
+            'bike_code' => Bicycle::nextQrCode($validated['bike_type']),
         ]);
     }
 
@@ -51,24 +47,30 @@ class InventoryController extends Controller
             'condition' => ['required', 'in:Good,Needs Repair,Missing'],
         ]);
 
-        $bike = Bicycle::create([
-            'qr_code' => Bicycle::nextQrCode($validated['bike_type']),
-            'model' => $validated['model'],
-            'make' => $validated['make'],
-            'bike_type' => $validated['bike_type'],
-            'condition' => strtolower($validated['condition']) === 'good' ? 'good' : (strtolower($validated['condition']) === 'missing' ? 'missing' : 'repair'),
-            'status' => strtolower($validated['condition']) === 'good' ? 'available' : 'repair',
-        ]);
+        $bike = DB::transaction(function () use ($request, $validated): Bicycle {
+            $bike = Bicycle::create([
+                'qr_code' => Bicycle::reserveNextQrCode($validated['bike_type']),
+                'model' => $validated['model'],
+                'make' => $validated['make'],
+                'bike_type' => $validated['bike_type'],
+                'condition' => strtolower($validated['condition']) === 'good' ? 'good' : (strtolower($validated['condition']) === 'missing' ? 'missing' : 'repair'),
+                'status' => strtolower($validated['condition']) === 'good' ? 'available' : 'repair',
+            ]);
 
-        ActivityLogger::record(
-            $request,
-            'ADD_BIKE',
-            'Added bike: ' . $bike->model . ' ' . $bike->make
-                . ' (' . $bike->qr_code . ')'
-                . ' | Bike type: ' . $bike->bike_type
-                . ' | Condition: ' . $bike->condition
-                . ' | Status: ' . $bike->status
-        );
+            ActivityLogger::record(
+                $request,
+                'ADD_BIKE',
+                'Added bike: ' . $bike->model . ' ' . $bike->make
+                    . ' (' . $bike->qr_code . ')'
+                    . ' | Bike ID: ' . $bike->qr_code
+                    . ' | Database ID: ' . $bike->bike_id
+                    . ' | Bike type: ' . $bike->bike_type
+                    . ' | Condition: ' . $bike->condition
+                    . ' | Status: ' . $bike->status
+            );
+
+            return $bike;
+        });
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -129,43 +131,45 @@ class InventoryController extends Controller
         $condition = in_array($condition, ['good', 'missing', 'other'], true)
             ? $condition
             : 'repair';
-        $bike->update([
-            'model' => $validated['model'],
-            'make' => $validated['make'],
-            'bike_type' => $validated['bike_type'],
-            'qr_code' => $bike->bike_type === $validated['bike_type']
-                ? $bike->qr_code
-                : Bicycle::nextQrCode($validated['bike_type'], $bike->bike_id),
-            'condition' => $condition,
-            'status' => $condition === 'good'
-                ? ($bike->status === 'rented' ? 'rented' : 'available')
-                : 'repair',
-        ]);
+        DB::transaction(function () use ($request, $bike, $validated, $condition, $before): void {
+            $bike->update([
+                'model' => $validated['model'],
+                'make' => $validated['make'],
+                'bike_type' => $validated['bike_type'],
+                'qr_code' => $bike->bike_type === $validated['bike_type']
+                    ? $bike->qr_code
+                    : Bicycle::reserveNextQrCode($validated['bike_type']),
+                'condition' => $condition,
+                'status' => $condition === 'good'
+                    ? ($bike->status === 'rented' ? 'rented' : 'available')
+                    : 'repair',
+            ]);
 
-        $after = [
-            'Model' => $bike->model,
-            'Make' => $bike->make,
-            'Bike type' => $bike->bike_type,
-            'Bike code' => $bike->qr_code,
-            'Status' => $bike->status,
-            'Condition' => $bike->condition,
-        ];
-        $changes = [];
-        foreach ($before as $label => $oldValue) {
-            if ($oldValue !== $after[$label]) {
-                $changes[$label] = ['before' => $oldValue, 'after' => $after[$label]];
+            $after = [
+                'Model' => $bike->model,
+                'Make' => $bike->make,
+                'Bike type' => $bike->bike_type,
+                'Bike code' => $bike->qr_code,
+                'Status' => $bike->status,
+                'Condition' => $bike->condition,
+            ];
+            $changes = [];
+            foreach ($before as $label => $oldValue) {
+                if ($oldValue !== $after[$label]) {
+                    $changes[$label] = ['before' => $oldValue, 'after' => $after[$label]];
+                }
             }
-        }
 
-        ActivityLogger::record(
-            $request,
-            'UPDATE_BIKE',
-            'Updated bike: ' . $bike->model . ' ' . $bike->make
-                . ' (' . $bike->qr_code . ')'
-                . ' | Bike ID: ' . $bike->qr_code
-                . ' | Database ID: ' . $bike->bike_id
-                . ' | Changes: ' . ActivityLogger::formatChanges($changes)
-        );
+            ActivityLogger::record(
+                $request,
+                'UPDATE_BIKE',
+                'Updated bike: ' . $bike->model . ' ' . $bike->make
+                    . ' (' . $bike->qr_code . ')'
+                    . ' | Bike ID: ' . $bike->qr_code
+                    . ' | Database ID: ' . $bike->bike_id
+                    . ' | Changes: ' . ActivityLogger::formatChanges($changes)
+            );
+        });
         $this->clearBikeConfirmation($request, $bike, 'edit');
 
         if ($request->expectsJson()) {
@@ -210,20 +214,22 @@ class InventoryController extends Controller
                 ->with('success', 'A rented bike cannot be removed from inventory.');
         }
 
-        $bike->delete();
-        $this->clearBikeConfirmation($request, $bike, 'delete');
+        DB::transaction(function () use ($request, $bike): void {
+            $bike->delete();
 
-        ActivityLogger::record(
-            $request,
-            'DELETE_BIKE',
-            'Deleted bike: ' . $bike->model . ' ' . $bike->make
-                . ' (' . $bike->qr_code . ')'
-                . ' | Bike ID: ' . $bike->qr_code
-                . ' | Database ID: ' . $bike->bike_id
-                . ' | Bike type: ' . $bike->bike_type
-                . ' | Condition: ' . $bike->condition
-                . ' | Status: ' . $bike->status
-        );
+            ActivityLogger::record(
+                $request,
+                'DELETE_BIKE',
+                'Deleted bike: ' . $bike->model . ' ' . $bike->make
+                    . ' (' . $bike->qr_code . ')'
+                    . ' | Bike ID: ' . $bike->qr_code
+                    . ' | Database ID: ' . $bike->bike_id
+                    . ' | Bike type: ' . $bike->bike_type
+                    . ' | Condition: ' . $bike->condition
+                    . ' | Status: ' . $bike->status
+            );
+        });
+        $this->clearBikeConfirmation($request, $bike, 'delete');
 
         if ($request->expectsJson()) {
             return response()->json([

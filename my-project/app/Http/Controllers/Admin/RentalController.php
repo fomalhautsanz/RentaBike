@@ -97,6 +97,7 @@ class RentalController extends Controller
                 if ($price === null) {
                     return ['error' => 'Invalid rental option for this bike.', 'status' => 422];
                 }
+                $overtimeRate = RentalPricing::hourlyRate($lockedBike->bike_type);
 
                 $now = RentalPricing::dbNow();
                 $start = RentalPricing::resolveBorrowTime($data['borrow_time'], $now);
@@ -117,6 +118,7 @@ class RentalController extends Controller
                     'start_time' => $start->format('Y-m-d H:i:s'),
                     'rental_duration_hrs' => $minutes / 60,
                     'base_fee' => $price,
+                    'overtime_rate_per_hour' => $overtimeRate,
                     'overtime_fee' => 0,
                     'total_fee' => $price,
                     'status' => 'active',

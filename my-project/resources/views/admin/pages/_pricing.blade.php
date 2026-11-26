@@ -12,7 +12,7 @@
     </div>
   @endif
 
-  <form method="POST" action="{{ route('admin.pricing.update') }}">
+  <form id="pricing-form" method="POST" action="{{ route('admin.pricing.update') }}">
     @csrf
     <div class="table-wrap" style="padding:24px;margin-bottom:20px">
       <h2 style="font-size:17px;margin-bottom:6px">Hourly rental rates</h2>
@@ -24,7 +24,7 @@
             <span style="display:flex;align-items:center;gap:8px">
               <span style="color:#6b7280">₱</span>
               <input class="form-input" type="number" name="hourly_rates[{{ $key }}]"
-                     min="0" max="100000" step="0.01" required
+                     min="0.01" max="100000" step="0.01" required
                      value="{{ old("hourly_rates.{$key}", $pricingSettings['hourly_rates'][$key]) }}">
             </span>
           </label>
@@ -42,7 +42,7 @@
             <span style="display:flex;align-items:center;gap:8px">
               <span style="color:#6b7280">₱</span>
               <input class="form-input" type="number" name="scooter_packages[{{ $minutes }}]"
-                     min="0" max="100000" step="0.01" required
+                     min="0.01" max="100000" step="0.01" required
                      value="{{ old("scooter_packages.{$minutes}", $pricingSettings['scooter_packages'][$minutes]) }}">
             </span>
           </label>

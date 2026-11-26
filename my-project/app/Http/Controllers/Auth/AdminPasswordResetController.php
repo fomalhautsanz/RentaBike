@@ -147,6 +147,9 @@ class AdminPasswordResetController extends Controller
                 $user->portal_remember_token = null;
             }
             $user->save();
+            DB::table($user->getTable())
+                ->where($user->getKeyName(), $user->getKey())
+                ->increment('auth_version');
 
             DB::table($table)
                 ->where($keyColumn, $user->getKey())

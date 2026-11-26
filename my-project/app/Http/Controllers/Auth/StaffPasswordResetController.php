@@ -124,6 +124,9 @@ class StaffPasswordResetController extends Controller
             $staff->remember_token = null;
             $staff->portal_remember_token = null;
             $staff->save();
+            DB::table('staff')
+                ->where('staff_id', $staff->staff_id)
+                ->increment('auth_version');
 
             DB::table('staff_password_reset_otps')
                 ->where('staff_id', $staff->staff_id)

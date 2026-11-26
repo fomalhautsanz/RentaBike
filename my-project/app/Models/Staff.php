@@ -33,6 +33,7 @@ class Staff extends Authenticatable
 
     protected $casts = [
         'permissions' => 'array',
+        'auth_version' => 'integer',
     ];
 
     /**

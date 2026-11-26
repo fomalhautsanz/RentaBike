@@ -31,6 +31,8 @@ beforeEach(function () {
         $table->string('email');
         $table->string('email_hash')->nullable();
         $table->dateTime('created_at')->useCurrent();
+        $table->string('remember_token')->nullable();
+        $table->unsignedInteger('auth_version')->default(1);
     });
 
     Schema::create('admin_password_reset_otps', function (Blueprint $table) {
@@ -59,6 +61,11 @@ test('admin password pages render', function () {
 });
 
 test('admin can reset their password with an emailed otp', function () {
+    $this->post(route('login'), [
+        'email' => 'admin@example.test',
+        'password' => 'old-password',
+    ])->assertRedirect(route('admin.dashboard'));
+
     $this->withoutVite()
         ->post(route('admin.password.email'), ['email' => 'Admin@Example.test'])
         ->assertRedirect(route('admin.password.reset'))
@@ -76,6 +83,8 @@ test('admin can reset their password with an emailed otp', function () {
         ->assertSessionHas('status');
 
     expect(Hash::check('a-new-password', $this->admin->fresh()->password_hash))->toBeTrue();
+    expect($this->admin->fresh()->auth_version)->toBe(2);
+    $this->get(route('admin.dashboard'))->assertRedirect(route('login'));
 
     // A used code cannot be replayed.
     $this->post(route('admin.password.update'), [

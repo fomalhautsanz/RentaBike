@@ -5,6 +5,7 @@ use App\Models\Staff;
 use App\Support\RentalPricing;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
 beforeEach(function () {
@@ -59,13 +60,13 @@ beforeEach(function () {
         'username' => 'owner',
         'full_name' => 'Owner Admin',
         'email' => 'owner@example.test',
-        'password_hash' => 'hashed-password',
+        'password_hash' => Hash::make('pricing-password'),
     ]);
 
     $this->operator = Staff::create([
         'admin_id' => $admin->admin_id,
         'username' => 'operator',
-        'password_hash' => 'hashed-password',
+        'password_hash' => Hash::make('pricing-password'),
         'full_name' => 'Pricing Operator',
         'first_name' => 'Pricing',
         'last_name' => 'Operator',
@@ -113,11 +114,52 @@ test('pricing changes require Manage Pricing and immediately update rental rates
 
     $this->actingAs($this->operator, 'staff_admin')
         ->post(route('admin.pricing.update'), $payload)
+        ->assertSessionHasErrors('pricing_confirmation');
+
+    $this->actingAs($this->operator, 'staff_admin')
+        ->postJson(route('admin.pricing.verify'), ['password' => 'incorrect-password'])
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'The password is incorrect.');
+
+    $this->actingAs($this->operator, 'staff_admin')
+        ->post(route('admin.pricing.update'), $payload)
+        ->assertSessionHasErrors('pricing_confirmation');
+
+    $this->actingAs($this->operator, 'staff_admin')
+        ->postJson(route('admin.pricing.verify'), ['password' => 'pricing-password'])
+        ->assertOk()
+        ->assertJsonPath('message', 'Password confirmed.');
+
+    $this->actingAs($this->operator, 'staff_admin')
+        ->post(route('admin.pricing.update'), $payload)
         ->assertRedirect(route('admin.dashboard'))
         ->assertSessionHas('success');
+
+    $this->actingAs($this->operator, 'staff_admin')
+        ->post(route('admin.pricing.update'), $payload)
+        ->assertSessionHasErrors('pricing_confirmation');
 
     expect(RentalPricing::priceFor('City Bike', 60))->toEqual(42.5)
         ->and(RentalPricing::hourlyRate('City Bike'))->toEqual(42.5)
         ->and(RentalPricing::priceFor('E-Scooter', 60))->toEqual(225.0)
         ->and(DB::table('activity_log')->where('action', 'UPDATE_PRICING')->exists())->toBeTrue();
+});
+
+test('pricing rejects zero amounts', function () {
+    $this->operator->permissions = ['Manage Pricing'];
+    $this->operator->save();
+    $payload = [
+        'hourly_rates' => array_fill_keys(array_keys(RentalPricing::MANAGED_HOURLY_TYPES), '30'),
+        'scooter_packages' => ['15' => '50', '30' => '100', '60' => '200'],
+    ];
+    $payload['hourly_rates']['city_bike'] = '0';
+
+    $this->actingAs($this->operator, 'staff_admin')
+        ->post(route('admin.pricing.update'), $payload)
+        ->assertSessionHasErrors('hourly_rates.city_bike');
+
+    expect(DB::table('rental_price_settings')
+        ->where('bike_type', 'City Bike')
+        ->where('duration_minutes', 60)
+        ->value('price'))->toEqual(30.0);
 });

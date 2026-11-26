@@ -67,6 +67,7 @@ class RentalController extends Controller
         if ($price === null) {
             return response()->json(['message' => 'Invalid rental option for this bike.'], 422);
         }
+        $overtimeRate = RentalPricing::hourlyRate($bike->bike_type);
 
         $now   = RentalPricing::dbNow();
         $start = RentalPricing::resolveBorrowTime($data['borrow_time'], $now);
@@ -102,9 +103,10 @@ class RentalController extends Controller
         // sumala sa bike type, ug i-set ang start_time sa gi-input nga borrow time.
         try {
             DB::table('rental')->where('rental_id', $rentalId)->update([
-                'start_time' => $start->format('Y-m-d H:i:s'),
-                'base_fee'   => $price,
-                'total_fee'  => $price,
+                'start_time'             => $start->format('Y-m-d H:i:s'),
+                'base_fee'                => $price,
+                'overtime_rate_per_hour' => $overtimeRate,
+                'total_fee'               => $price,
             ]);
         } catch (\Throwable $e) {
             report($e);
@@ -127,8 +129,15 @@ class RentalController extends Controller
         ], 201);
     }
 
-    public function showBorrowerId(Rental $rental)
+    public function showBorrowerId(Request $request, Rental $rental)
     {
+        $staff = $request->attributes->get('authenticatedStaff');
+        abort_unless(
+            $staff instanceof \App\Models\Staff
+                && ($staff->hasAdminPortalAccess() || (int) $staff->getKey() === (int) $rental->staff_id),
+            404
+        );
+
         $path = $rental->borrower?->id_photo_id;
         abort_unless($path && preg_match('#\Aborrower-ids/[A-Za-z0-9._-]+\z#D', $path), 404);
         abort_unless(Storage::disk('local')->exists($path), 404);

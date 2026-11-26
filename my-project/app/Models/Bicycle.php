@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Mag-gamit ta og model kay kinahanglan gyud siya para makakuha ta
@@ -73,26 +74,60 @@ class Bicycle extends Model
         return $prefix;
     }
 
-    public static function nextQrCode(string $bikeType, ?int $excludeBikeId = null): string
+    public static function nextQrCode(string $bikeType): string
     {
         $prefix = self::prefixForType($bikeType);
-        $bikes = static::whereRaw('LOWER(TRIM(bike_type)) = ?', [strtolower(trim($bikeType))]);
+        $candidate = max(
+            (int) DB::table('bicycle_qr_sequences')->where('prefix', $prefix)->value('last_sequence'),
+            self::highestExistingSequence($prefix)
+        ) + 1;
 
-        if ($excludeBikeId !== null) {
-            $bikes->where('bike_id', '!=', $excludeBikeId);
-        }
-
-        $candidate = $bikes->count() + 1;
         do {
             $code = sprintf('%s-%03d', $prefix, $candidate++);
-            $existing = static::where('qr_code', $code);
-
-            if ($excludeBikeId !== null) {
-                $existing->where('bike_id', '!=', $excludeBikeId);
-            }
-        } while ($existing->exists());
+        } while (static::where('qr_code', $code)->exists());
 
         return $code;
+    }
+
+    public static function reserveNextQrCode(string $bikeType): string
+    {
+        $prefix = self::prefixForType($bikeType);
+
+        return DB::transaction(function () use ($prefix): string {
+            DB::table('bicycle_qr_sequences')->insertOrIgnore([
+                'prefix' => $prefix,
+                'last_sequence' => 0,
+            ]);
+
+            $sequence = DB::table('bicycle_qr_sequences')
+                ->where('prefix', $prefix)
+                ->lockForUpdate()
+                ->first();
+
+            $nextSequence = max(
+                (int) $sequence->last_sequence,
+                self::highestExistingSequence($prefix)
+            ) + 1;
+
+            DB::table('bicycle_qr_sequences')
+                ->where('prefix', $prefix)
+                ->update(['last_sequence' => $nextSequence]);
+
+            return sprintf('%s-%03d', $prefix, $nextSequence);
+        });
+    }
+
+    private static function highestExistingSequence(string $prefix): int
+    {
+        return static::where('qr_code', 'like', $prefix . '-%')
+            ->pluck('qr_code')
+            ->reduce(function (int $highest, string $code) use ($prefix): int {
+                if (preg_match('/\A' . preg_quote($prefix, '/') . '-(\d+)\z/', $code, $matches)) {
+                    return max($highest, (int) $matches[1]);
+                }
+
+                return $highest;
+            }, 0);
     }
 
     protected $fillable = [

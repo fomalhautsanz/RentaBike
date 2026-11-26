@@ -5,13 +5,33 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Support\ActivityLogger;
 use App\Support\RentalPricing;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
 class PricingController extends Controller
 {
+    public function verifyUpdate(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        if (!Hash::check($validated['password'], $request->user()->password_hash)) {
+            return response()->json(['message' => 'The password is incorrect.'], 422);
+        }
+
+        $request->session()->put(
+            $this->confirmationKey($request),
+            now()->addMinutes(5)->timestamp
+        );
+
+        return response()->json(['message' => 'Password confirmed.']);
+    }
+
     public function update(Request $request): RedirectResponse
     {
         $rules = [
@@ -19,12 +39,12 @@ class PricingController extends Controller
             'scooter_packages' => ['required', 'array:15,30,60'],
             ...collect(RentalPricing::MANAGED_HOURLY_TYPES)
                 ->mapWithKeys(fn (string $type, string $key): array => [
-                    "hourly_rates.{$key}" => ['required', 'numeric', 'min:0', 'max:100000', 'regex:/^\\d+(\\.\\d{1,2})?$/'],
+                    "hourly_rates.{$key}" => ['required', 'numeric', 'min:0.01', 'max:100000', 'regex:/^\\d+(\\.\\d{1,2})?$/'],
                 ])
                 ->all(),
             ...collect(RentalPricing::SCOOTER_PACKAGE_MINUTES)
                 ->mapWithKeys(fn (int $minutes): array => [
-                    "scooter_packages.{$minutes}" => ['required', 'numeric', 'min:0', 'max:100000', 'regex:/^\\d+(\\.\\d{1,2})?$/'],
+                    "scooter_packages.{$minutes}" => ['required', 'numeric', 'min:0.01', 'max:100000', 'regex:/^\\d+(\\.\\d{1,2})?$/'],
                 ])
                 ->all(),
         ];
@@ -36,6 +56,12 @@ class PricingController extends Controller
         }
 
         $validated = $validator->validated();
+
+        if (!$this->consumeUpdateConfirmation($request)) {
+            return redirect()->route('admin.dashboard', ['tab' => 'pricing'])
+                ->withErrors(['pricing_confirmation' => 'Confirm your password before updating rental pricing.'])
+                ->withInput();
+        }
 
         $before = RentalPricing::adminSettings();
         $changes = [];
@@ -86,5 +112,19 @@ class PricingController extends Controller
         return redirect()->route('admin.dashboard')
             ->with('active_tab', 'pricing')
             ->with('success', 'Rental pricing updated successfully.');
+    }
+
+    private function confirmationKey(Request $request): string
+    {
+        $user = $request->user();
+
+        return 'pricing_update_confirmations.' . $user::class . '.' . $user->getAuthIdentifier();
+    }
+
+    private function consumeUpdateConfirmation(Request $request): bool
+    {
+        $expiresAt = $request->session()->pull($this->confirmationKey($request));
+
+        return is_numeric($expiresAt) && (int) $expiresAt >= now()->timestamp;
     }
 }

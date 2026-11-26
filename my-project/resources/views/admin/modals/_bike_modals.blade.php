@@ -155,7 +155,9 @@
       <button type="button" class="modal-close" onclick="closeModal('bike-password-modal')" aria-label="Close">&times;</button>
     </div>
     <p id="bike-password-prompt">Enter your admin password to continue.</p>
-    <form id="bike-password-form" data-verify-url="{{ route('admin.bikes.verify', ['bike' => '__BIKE_ID__']) }}">
+    <form id="bike-password-form"
+          data-verify-url="{{ route('admin.bikes.verify', ['bike' => '__BIKE_ID__']) }}"
+          data-pricing-verify-url="{{ route('admin.pricing.verify') }}">
       @csrf
       <div class="form-group">
         <label class="form-label" for="bike-action-password">Admin Password</label>
