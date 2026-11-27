@@ -41,6 +41,8 @@
             $permissions = array_values(array_diff($member->permissions ?? ['View Inventory'], ['Process Rentals', 'View Reports']));
             $isMainAdmin = $member->is_main_admin ?? false;
             $isSuperAdmin = $isMainAdmin || ($member->is_super_admin ?? false);
+            $isCurrentStaffAccount = auth()->user() instanceof \App\Models\Staff
+                && (int) auth()->id() === (int) $member->id;
             $displayRole = $isSuperAdmin ? 'Super Admin' : $member->role;
             $idPrefix = $isMainAdmin ? 'SA' : (($member->is_super_admin ?? false) ? 'SADM' : ($member->role === 'Admin' ? 'ADM' : 'STF'));
           @endphp
@@ -100,7 +102,7 @@
               </span>
             </td>
             <td>
-              @if(($member->is_staff ?? false) && (!$isSuperAdmin || \App\Support\AdminAccess::canManageSuperAdmins()))
+              @if(($member->is_staff ?? false) && !$isCurrentStaffAccount && (!$isSuperAdmin || \App\Support\AdminAccess::canManageSuperAdmins()))
                 <button type="button" class="action-btn" onclick="openEditStaff({{ $member->id }})" aria-label="Edit {{ $member->name }}">
                   <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>

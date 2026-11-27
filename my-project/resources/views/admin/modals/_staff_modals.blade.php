@@ -25,6 +25,10 @@
         </select>
         @if(\App\Support\AdminAccess::canManageSuperAdmins())
           <button type="button" class="btn btn-super-admin-promotion" onclick="makeAddStaffSuperAdmin()">Make Super Admin</button>
+        @else
+          <span class="super-admin-button-tooltip" title="You do not have permission to make staff a Super Admin.">
+            <button type="button" class="btn btn-super-admin-promotion" disabled aria-disabled="true">Make Super Admin</button>
+          </span>
         @endif
       </div>
       <div class="form-group">
@@ -171,6 +175,10 @@
       </select>
       @if(\App\Support\AdminAccess::canManageSuperAdmins())
         <button type="button" class="btn btn-super-admin-promotion" id="edit-super-admin-button" onclick="makeEditStaffSuperAdmin()">Promote to Super Admin</button>
+      @else
+        <span class="super-admin-button-tooltip" title="You do not have permission to make staff a Super Admin.">
+          <button type="button" class="btn btn-super-admin-promotion" disabled aria-disabled="true">Promote to Super Admin</button>
+        </span>
       @endif
     </div>
     <div class="form-group">

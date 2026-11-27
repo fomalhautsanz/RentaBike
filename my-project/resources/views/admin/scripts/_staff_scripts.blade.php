@@ -54,6 +54,19 @@ function showSuperAdminConfirmation(action, accountName, formModalId, onConfirm,
   openModal('super-admin-confirm-modal');
 }
 
+function showSuperAdminPermissionDenied(formModalId) {
+  pendingSuperAdminChange = {
+    formModalId,
+    onConfirm: () => openModal(formModalId)
+  };
+  closeModal(formModalId);
+  document.getElementById('super-admin-confirm-title').textContent = 'Permission Denied';
+  document.getElementById('super-admin-confirm-message').textContent =
+    'You do not have permission to grant Super Admin access. Uncheck one or more permissions or ask a Super Admin.';
+  document.getElementById('super-admin-confirm-button').textContent = 'Return to Form';
+  openModal('super-admin-confirm-modal');
+}
+
 function cancelSuperAdminChange() {
   if (!pendingSuperAdminChange) return;
 
@@ -184,12 +197,18 @@ editStaffForm.addEventListener('submit', function (event) {
     delete editStaffForm.dataset.superAdminConfirmed;
     return;
   }
-  if (!canManageSuperAdmins) return;
-
   const roleSelect = document.getElementById('edit-staff-role');
   const selectedRole = roleSelect.value;
   const originalRole = editStaffForm.dataset.originalRole;
   const hasFullAccess = hasFullAccessPermissions(editStaffForm);
+  if (!canManageSuperAdmins) {
+    if (hasFullAccess && selectedRole === 'Admin') {
+      event.preventDefault();
+      showSuperAdminPermissionDenied('edit-staff-modal');
+    }
+    return;
+  }
+
   const isDemotion = originalRole === 'Super Admin'
     && (selectedRole !== 'Super Admin' || !hasFullAccess);
   const isPromotion = !isDemotion
@@ -418,6 +437,12 @@ addStaffForm.addEventListener('submit', function (event) {
   const roleSelect = document.getElementById('add-staff-role');
   const hasFullAccess = hasFullAccessPermissions(addStaffForm);
   const accountName = getAddStaffName() || 'this account';
+
+  if (!canManageSuperAdmins && hasFullAccess && roleSelect.value === 'Admin') {
+    event.preventDefault();
+    showSuperAdminPermissionDenied('add-staff-modal');
+    return;
+  }
 
   if (roleSelect.value === 'Super Admin' && !hasFullAccess) {
     showSuperAdminConfirmation('demote', accountName, 'add-staff-modal', function () {

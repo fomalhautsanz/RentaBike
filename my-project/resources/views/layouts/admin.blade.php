@@ -229,6 +229,19 @@
 
   .btn-super-admin-promotion:hover { background: #15803d; }
 
+  .super-admin-button-tooltip {
+    display: block;
+    cursor: not-allowed;
+  }
+
+  .btn-super-admin-promotion:disabled {
+    background: #9ca3af;
+    border-color: #9ca3af;
+    color: #fff;
+    cursor: not-allowed;
+    opacity: .8;
+  }
+
   .btn-super-admin-warning {
     background: #facc15;
     color: #713f12;

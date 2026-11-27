@@ -82,6 +82,15 @@ class DashboardController extends Controller
             }
             $permissions = self::SUPER_ADMIN_PERMISSIONS;
         }
+        if (
+            $validated['role'] === 'Admin'
+            && !AdminAccess::canManageSuperAdmins()
+            && $this->hasAllSuperAdminPermissions($permissions)
+        ) {
+            return $this->backToTab($request, 'staff')
+                ->withErrors(['permissions' => 'You do not have permission to grant full Super Admin access.'])
+                ->withInput();
+        }
         if ($validated['role'] === 'Staff') {
             $permissions = array_values(array_diff($permissions, ['Manage Staff', 'Manage Pricing']));
         }
@@ -151,6 +160,8 @@ class DashboardController extends Controller
 
     public function updateStaff(Request $request, Staff $staff)
     {
+        $this->ensureNotSelfStaffAccount($request, $staff);
+
         $before = [
             'First name' => $staff->first_name,
             'Last name' => $staff->last_name,
@@ -189,6 +200,15 @@ class DashboardController extends Controller
 
         if (($isSuperAdminTarget || $isSuperAdminRequest) && !AdminAccess::canManageSuperAdmins()) {
             abort(403);
+        }
+        if (
+            $validated['role'] === 'Admin'
+            && !AdminAccess::canManageSuperAdmins()
+            && $this->hasAllSuperAdminPermissions($permissions)
+        ) {
+            return $this->backToTab($request, 'staff')
+                ->withErrors(['permissions' => 'You do not have permission to grant full Super Admin access.'])
+                ->withInput();
         }
         if ($isSuperAdminRequest && !$this->hasAllSuperAdminPermissions($permissions)) {
             return $this->backToTab($request, 'staff')
@@ -293,6 +313,8 @@ class DashboardController extends Controller
 
     public function verifyStaffAction(Request $request, Staff $staff)
     {
+        $this->ensureNotSelfStaffAccount($request, $staff);
+
         $validated = $request->validate([
             'action' => ['required', 'in:edit,delete'],
             'password' => ['required', 'string'],
@@ -316,6 +338,8 @@ class DashboardController extends Controller
 
     public function destroyStaff(Request $request, Staff $staff)
     {
+        $this->ensureNotSelfStaffAccount($request, $staff);
+
         if ($staff->isSuperAdmin() && !AdminAccess::canManageSuperAdmins()) {
             abort(403);
         }
@@ -341,6 +365,17 @@ class DashboardController extends Controller
         });
 
         return response()->json(['message' => 'Staff member removed successfully.']);
+    }
+
+    private function ensureNotSelfStaffAccount(Request $request, Staff $staff): void
+    {
+        $actor = $request->user();
+
+        abort_if(
+            $actor instanceof Staff && (int) $actor->staff_id === (int) $staff->staff_id,
+            403,
+            'You cannot edit or remove your own staff account.'
+        );
     }
 
     private function staffConfirmationKey(Staff $staff, string $action): string
